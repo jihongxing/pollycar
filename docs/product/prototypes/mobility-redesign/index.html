@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="PollyCar 默认叫车与车主工作模式核心体验 HTML 设计预览" />
+    <title>PollyCar 核心出行体验重构</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="review-header">
+      <div>
+        <p class="eyebrow">PollyCar · 设计候选</p>
+        <h1>让打车和接单回到首页</h1>
+        <p>普通用户直接叫车，需要接单时再进入车主工作模式。此页面仅为设计预览，不连接真实订单、位置或支付。</p>
+      </div>
+      <div class="review-controls" aria-label="预览控制">
+        <button class="review-tab is-active" data-preview="passenger">叫车首页</button>
+        <button class="review-tab" data-preview="driver">车主端</button>
+        <button class="review-tab" data-preview="compare">并排对比</button>
+        <a class="review-tab gallery-link" href="./flow-gallery.html">主要页面总览</a>
+      </div>
+    </header>
+
+    <main class="review-layout">
+      <aside class="design-brief">
+        <p class="eyebrow">设计原则</p>
+        <h2>核心任务优先</h2>
+        <ol>
+          <li><strong>打开就能叫车</strong><span>不显示“乘客身份”，直接提供目的地入口。</span></li>
+          <li><strong>车主自主接单</strong><span>平台只展示订单，不强制指派。</span></li>
+          <li><strong>行程中再聊天</strong><span>联系入口绑定当前有效行程。</span></li>
+          <li><strong>治理信息降级</strong><span>沙箱和资格不占据首页主体。</span></li>
+        </ol>
+        <div class="rule-card">
+          <span class="rule-icon">3</span>
+          <div>
+            <strong>统一容量规则</strong>
+            <p>乘车人数 1–3 人；车辆单次载客上限 1–3 人；列表与接单双重校验。</p>
+          </div>
+        </div>
+        <p class="review-note">点击手机内按钮可体验叫车、身份切换、上线与自主接单。</p>
+      </aside>
+
+      <section class="devices" aria-label="手机设计预览">
+        <article class="phone passenger-phone" data-device="passenger">
+          <div class="phone-status"><span>09:41</span><span>● ● ◒</span></div>
+
+          <div class="app-screen is-active" data-passenger-screen="home">
+            <div class="map map-passenger">
+              <div class="map-grid"></div>
+              <div class="map-watermark">内部沙箱地图</div>
+              <button class="profile-button passenger-profile account-only" data-action="open-identity" aria-label="打开账户">
+                <span>林</span>
+              </button>
+              <button class="location-button" aria-label="回到当前位置">⌖</button>
+              <span class="road road-one"></span><span class="road road-two"></span><span class="road road-three"></span>
+              <span class="vehicle-dot dot-one">▰</span><span class="vehicle-dot dot-two">▰</span><span class="vehicle-dot dot-three">▰</span>
+              <span class="pickup-marker"><i></i><b>上车点</b></span>
+            </div>
+            <section class="ride-sheet">
+              <div class="sheet-handle"></div>
+              <p class="greeting">上午好，林女士</p>
+              <button class="destination-input" data-action="start-booking">
+                <span class="search-dot"></span><strong>你要去哪里？</strong><span class="arrow">›</span>
+              </button>
+              <div class="pickup-row">
+                <span class="pickup-icon">●</span>
+                <div><small>上车点</small><strong>人民广场 · 城市规划馆</strong></div>
+                <button>修改</button>
+              </div>
+              <div class="quick-places">
+                <button><span>⌂</span><div><strong>家</strong><small>静安寺附近</small></div></button>
+                <button><span>▣</span><div><strong>公司</strong><small>虹桥商务区</small></div></button>
+              </div>
+            </section>
+            <nav class="bottom-nav">
+              <button class="is-active"><span>⌖</span>首页</button>
+              <button><span>◌</span>消息</button>
+              <button><span>○</span>我的</button>
+            </nav>
+          </div>
+
+          <div class="app-screen" data-passenger-screen="booking">
+            <header class="compact-header">
+              <button data-action="passenger-home" aria-label="返回">‹</button>
+              <strong>确认行程</strong><span class="sandbox-chip">沙箱</span>
+            </header>
+            <div class="booking-map">
+              <div class="map-grid"></div><span class="route-line"></span>
+              <span class="route-point start"></span><span class="route-point end"></span>
+            </div>
+            <section class="booking-panel">
+              <div class="route-summary">
+                <div class="route-pin start-pin"></div><div><small>上车点</small><strong>人民广场 · 城市规划馆</strong></div>
+                <div class="route-pin end-pin"></div><div><small>目的地</small><strong>虹桥天地 · 申长路</strong></div>
+              </div>
+              <div class="option-section">
+                <div class="section-heading"><strong>乘车人数</strong><span>必选 · 最多 3 人</span></div>
+                <div class="segmented">
+                  <button class="is-active" data-count="1">1 人</button>
+                  <button data-count="2">2 人</button><button data-count="3">3 人</button>
+                </div>
+              </div>
+              <div class="option-section">
+                <div class="section-heading"><strong>乘车场景</strong><span>可选</span></div>
+                <div class="scene-options">
+                  <button data-scene="通勤">通勤</button><button data-scene="机场／车站">机场／车站</button>
+                  <button data-scene="就医">就医</button><button data-scene="其他">其他</button>
+                </div>
+              </div>
+              <div class="fare-row"><div><strong>内部合成行程</strong><small>不产生真实费用</small></div><span>¥0</span></div>
+              <button class="primary-action passenger-action" data-action="confirm-booking">确认合成行程 · 1 人</button>
+            </section>
+          </div>
+
+          <div class="app-screen" data-passenger-screen="matching">
+            <div class="map map-passenger matching-map">
+              <div class="map-grid"></div><div class="map-watermark">车主自主决定是否接单</div>
+              <span class="pickup-marker center"><i></i><b>上车点</b></span><span class="vehicle-dot moving">▰</span>
+            </div>
+            <section class="ride-sheet matching-sheet">
+              <div class="sheet-handle"></div>
+              <div class="matching-status"><span class="pulse"></span><div><strong>正在寻找附近车主</strong><small>平台不会强制派单或自动接单</small></div></div>
+              <div class="trip-mini-summary"><span>人民广场</span><b>→</b><span>虹桥天地</span><em data-passenger-summary>1 人</em></div>
+              <button class="secondary-action" data-action="passenger-home">取消行程</button>
+            </section>
+          </div>
+
+          <div class="identity-overlay" data-identity-overlay>
+            <button class="overlay-backdrop" data-action="close-identity" aria-label="关闭"></button>
+            <section class="identity-sheet">
+              <div class="sheet-handle"></div><p class="eyebrow">账户</p><h3>林女士</h3>
+              <div class="account-summary"><span>林</span><div><strong>个人账户</strong><small>行程、消息与安全设置</small></div></div>
+              <button class="identity-option" data-action="choose-driver">
+                <span class="identity-avatar driver-avatar">车</span><div><strong>进入车主模式</strong><small>上线、浏览订单并自主接单</small></div><b>›</b>
+              </button>
+            </section>
+          </div>
+        </article>
+
+        <article class="phone driver-phone is-hidden" data-device="driver">
+          <div class="phone-status dark-status"><span>09:41</span><span>● ● ◒</span></div>
+          <div class="app-screen is-active" data-driver-screen="offline">
+            <div class="map map-driver">
+              <div class="map-grid"></div><div class="map-watermark">内部沙箱地图</div>
+              <button class="profile-button driver-profile"><span>林</span><small>车主⌄</small></button>
+              <div class="driver-status-pill"><i></i><span>当前离线</span></div>
+              <span class="driver-car">▰</span><span class="road road-one"></span><span class="road road-two"></span><span class="road road-three"></span>
+            </div>
+            <section class="driver-sheet">
+              <div class="sheet-handle"></div>
+              <div class="driver-summary">
+                <div><small>今日合成行程</small><strong>0</strong></div>
+                <div><small>车辆最多乘坐</small><strong>3 人</strong></div>
+                <div><small>当前状态</small><strong>可上线</strong></div>
+              </div>
+              <button class="online-action" data-action="go-online"><span></span>开始接单</button>
+              <p class="driver-hint">上线后可浏览符合车辆载客上限的附近订单，由你自主决定是否接受。</p>
+            </section>
+            <nav class="bottom-nav driver-nav">
+              <button class="is-active"><span>⌖</span>首页</button><button><span>◌</span>消息</button><button><span>○</span>我的</button>
+            </nav>
+          </div>
+
+          <div class="app-screen" data-driver-screen="offers">
+            <div class="map map-driver offers-map">
+              <div class="map-grid"></div>
+              <button class="profile-button driver-profile"><span>林</span><small>车主⌄</small></button>
+              <button class="online-pill" data-action="go-offline"><i></i>接单中 · 点击下线</button>
+              <span class="driver-car center-car">▰</span><span class="request-marker request-one">1</span><span class="request-marker request-two">2</span>
+            </div>
+            <section class="offer-sheet">
+              <div class="sheet-handle"></div>
+              <div class="offer-heading"><div><small>附近订单 1 / 2</small><h3>距乘客约 1.2 公里</h3></div><span class="capacity-chip">2 人</span></div>
+              <div class="offer-route">
+                <span class="offer-dot pickup"></span><div><small>约 5 分钟到达</small><strong>人民广场 · 城市规划馆</strong></div>
+                <span class="offer-dot destination"></span><div><small>预计行程 28 分钟</small><strong>虹桥天地 · 申长路</strong></div>
+              </div>
+              <div class="offer-meta"><span>通勤</span><span>合成订单</span><span>车辆上限 3 人</span></div>
+              <div class="offer-actions">
+                <button class="decline-action" data-action="skip-offer">暂不接单</button><button class="accept-action" data-action="accept-offer">接单</button>
+              </div>
+              <p class="autonomy-copy">接单与否完全由你决定，不接单不会触发自动接受。</p>
+            </section>
+          </div>
+
+          <div class="app-screen" data-driver-screen="accepted">
+            <div class="map map-driver navigation-map">
+              <div class="map-grid"></div><span class="navigation-route"></span><span class="driver-car nav-car">▰</span>
+              <span class="pickup-marker nav-pickup"><i></i><b>乘客</b></span>
+              <div class="turn-card"><span>↱</span><div><small>前方 300 米</small><strong>右转进入西藏中路</strong></div></div>
+            </div>
+            <section class="accepted-sheet">
+              <div class="sheet-handle"></div>
+              <div class="arrival-time"><div><small>预计到达乘客位置</small><strong>5 分钟</strong></div><span>2 人</span></div>
+              <p class="pickup-address">人民广场 · 城市规划馆 2 号门</p>
+              <div class="contact-actions"><button><span>◌</span>发消息</button><button><span>☎</span>联系乘客</button></div>
+              <button class="primary-action driver-action" data-action="arrive">已到达上车点</button>
+            </section>
+          </div>
+        </article>
+      </section>
+    </main>
+    <div class="toast" role="status" aria-live="polite" data-toast></div>
+    <script src="./prototype.js"></script>
+  </body>
+</html>

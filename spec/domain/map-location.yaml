@@ -1,0 +1,149 @@
+spec_version: "1.0"
+spec_id: "pollycar.domain.map-location"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_documents:
+  - "docs/product/09-地图与位置能力设计.md"
+  - "docs/decisions/0012-高德地图企业接入与密钥治理.md"
+
+sandbox_integration_approval:
+  reference: "AMAP-SANDBOX-20260717"
+  approved_on: "2026-07-17"
+  production_enabled: false
+  platforms:
+    - "android"
+    - "ios"
+    - "mobile_web"
+  android_package: "com.yourcompany.pollycar"
+  ios_bundle_identifier: "com.yourcompany.pollycar"
+  initial_test_region: "安徽省滁州市"
+  foreground_location_allowed: true
+  background_location_allowed: false
+
+providers:
+  active: "synthetic"
+  supported:
+    - "synthetic"
+    - "amap"
+
+coordinate_systems:
+  internal_required:
+    - "wgs84"
+    - "gcj02"
+  amap_required: "gcj02"
+  maximum_decimal_places: 6
+  missing_coordinate_system_effect: "reject"
+
+capability_gates:
+  real_map_enabled: false
+  external_map_provider_enabled: false
+  real_device_location_enabled: false
+  background_location_enabled: false
+  real_vehicle_location_stream_enabled: false
+  amap_sdk_enabled: false
+  amap_web_service_enabled: false
+
+place_search:
+  minimum_query_length: 2
+  debounce_milliseconds: 350
+  maximum_results: 10
+  per_user_per_minute: 10
+  cache_seconds: 300
+
+reverse_geocode:
+  grid_meters: 50
+  cache_seconds: 600
+  failure_fallback: "manual_pin"
+
+route_planning:
+  supported_strategies:
+    - "fastest"
+    - "avoid_congestion"
+    - "avoid_tolls"
+  cache_seconds: 60
+  minimum_refresh_seconds: 60
+  failure_effect: "route_unavailable"
+
+vehicle_location:
+  accepted_states:
+    - "accepted"
+    - "arrived"
+    - "in_progress"
+  minimum_interval_seconds: 3
+  default_interval_seconds: 10
+  aging_after_seconds: 15
+  stale_after_seconds: 30
+  unavailable_after_seconds: 60
+  upload_intervals:
+    accepted: 10
+    driver_en_route: 10
+    driver_arrived: 5
+    in_progress: 3
+    closed: 0
+  accuracy_meters:
+    minimum: 3
+    maximum: 500
+    stored_coordinate_decimal_places: 5
+    stored_accuracy_rounding: "integer"
+  sequence_required: true
+  timestamp_maximum_skew_seconds: 120
+  trip_closed_effect: "stop_and_reject_upload"
+  refresh_recovery: "server_latest_or_unavailable"
+
+data_lifecycle:
+  realtime_location_cache_seconds: 3600
+  precise_location_seconds: 259200
+  trip_closed_cleanup_required: true
+  audit_summary_only: true
+  audit_precise_coordinate_forbidden: true
+  safety_evidence_hold:
+    can_block_deletion: true
+    cannot_resume_stream: true
+    release_required_before_delete: true
+  stop_on_states:
+    - "completed"
+    - "cancelled"
+
+quota_guard:
+  soft_alert_percentage: 70
+  restrict_optional_refresh_percentage: 85
+  degradation_percentage: 95
+  cache_stampede_protection: "single_flight"
+  provider_unknown_result_effect: "fail_closed_without_fabricated_result"
+
+amap_web_service_adapter:
+  enabled: false
+  key_source: "server_secret_provider"
+  key_environment_name: "POLLYCAR_AMAP_WEB_SERVICE_KEY"
+  client_key_forbidden: true
+  log_key_forbidden: true
+  public_artifact_key_forbidden: true
+
+expo_native_map_shell:
+  development_build_required: true
+  provider_neutral_module_required: true
+  amap_sdk_enabled: false
+  real_device_location_enabled: false
+  background_location_enabled: false
+  privacy_initialization_required_before_sdk: true
+  cache_required: true
+  client_web_service_key_forbidden: true
+  synthetic_fallback_required: true
+
+data_lifecycle:
+  saved_places_classification: "L3"
+  precise_location_classification: "L4"
+  full_route_visible_to_operations: false
+  safety_evidence_hold_supported: true
+  ordinary_retention_must_be_finite: true
+
+invariants:
+  - "App 不得直接调用高德 Web 服务"
+  - "高德 Web 服务 Key 只能保存在 Server 密钥系统"
+  - "坐标系缺失时不得展示、规划路线或持久化"
+  - "真实地图门禁关闭时只能使用合成数据"
+  - "位置超过六十秒不得作为实时车辆位置展示"
+  - "行程完成或取消后必须停止位置上传"
+  - "高德 SDK 初始化前必须完成隐私展示和同意"
+  - "不得自研地图、导航、路线规划、轨迹纠偏或交通算法"

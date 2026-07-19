@@ -1,0 +1,191 @@
+spec_version: "1.0"
+spec_id: "pollycar.flex-eligibility.events"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_document: "docs/08-domain-events.md"
+
+event_envelope:
+  required_fields:
+    - "event_id"
+    - "event_type"
+    - "event_version"
+    - "aggregate_type"
+    - "aggregate_id"
+    - "aggregate_version"
+    - "occurred_at"
+    - "recorded_at"
+    - "actor_type"
+    - "actor_id"
+    - "reason_code"
+    - "correlation_id"
+    - "causation_id"
+    - "idempotency_key"
+    - "trace_id"
+    - "data_classification"
+    - "payload"
+
+events:
+  - id: "flex_eligibility_application_submitted"
+    name: "弹性资格申请已提交"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_review_started"
+    name: "弹性资格审核已开始"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_application_approved"
+    name: "弹性资格申请已批准"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_application_rejected"
+    name: "弹性资格申请已拒绝"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_confirmation_expired"
+    name: "资格确认已失效"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_activation_confirmed"
+    name: "资格启用已确认"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_payment_succeeded"
+    name: "资格费用支付成功"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_payment_failed"
+    name: "资格费用支付失败"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_payment_retry_requested"
+    name: "资格费用支付重试已请求"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_activated"
+    name: "弹性资格已启用"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_activation_rejected"
+    name: "资格启用已阻止"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_activation_retry_requested"
+    name: "资格启用重试已请求"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_suspended"
+    name: "弹性资格已暂停"
+    aggregate: "flex_eligibility"
+    classification: "L4"
+    idempotency_required: true
+  - id: "flex_eligibility_suspension_cleared"
+    name: "资格暂停原因已解除"
+    aggregate: "flex_eligibility"
+    classification: "L4"
+    idempotency_required: true
+  - id: "flex_eligibility_restored"
+    name: "弹性资格已恢复"
+    aggregate: "flex_eligibility"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_revoked"
+    name: "弹性资格已撤销"
+    aggregate: "flex_eligibility"
+    classification: "L4"
+    idempotency_required: true
+  - id: "flex_eligibility_appeal_submitted"
+    name: "资格申诉已提交"
+    aggregate: "flex_eligibility"
+    classification: "L4"
+    idempotency_required: true
+  - id: "flex_eligibility_appeal_approved"
+    name: "资格申诉已批准"
+    aggregate: "flex_eligibility"
+    classification: "L4"
+    idempotency_required: true
+  - id: "flex_eligibility_appeal_rejected"
+    name: "资格申诉已驳回"
+    aggregate: "flex_eligibility"
+    classification: "L4"
+    idempotency_required: true
+  - id: "flex_eligibility_expired"
+    name: "弹性资格已到期"
+    aggregate: "flex_eligibility"
+    classification: "L2"
+    idempotency_required: true
+  - id: "flex_eligibility_refund_requested"
+    name: "资格退款已创建"
+    aggregate: "flex_eligibility_refund"
+    classification: "L3"
+    idempotency_required: true
+  - id: "flex_eligibility_refund_completed"
+    name: "资格退款已完成"
+    aggregate: "flex_eligibility_refund"
+    classification: "L3"
+    idempotency_required: true
+  - id: "quota_evaluation_requested"
+    name: "配额检查已请求"
+    aggregate: "driver_quota"
+    classification: "L2"
+    idempotency_required: true
+  - id: "quota_evaluation_passed"
+    name: "配额检查已通过"
+    aggregate: "driver_quota"
+    classification: "L2"
+    idempotency_required: true
+  - id: "quota_evaluation_rejected"
+    name: "配额检查已拒绝"
+    aggregate: "driver_quota"
+    classification: "L2"
+    idempotency_required: true
+  - id: "quota_slot_occupied"
+    name: "配额已占用"
+    aggregate: "driver_quota"
+    classification: "L2"
+    idempotency_required: true
+  - id: "quota_slot_released"
+    name: "配额已释放"
+    aggregate: "driver_quota"
+    classification: "L2"
+    idempotency_required: true
+  - id: "quota_slot_finalized"
+    name: "配额占用已确认计入"
+    aggregate: "driver_quota"
+    classification: "L2"
+    idempotency_required: true
+  - id: "synthetic_trip_cancelled"
+    name: "合成行程已取消"
+    aggregate: "synthetic_trip"
+    classification: "L2"
+    idempotency_required: true
+  - id: "synthetic_trip_timeout_reconciled"
+    name: "合成行程超时已收敛"
+    aggregate: "synthetic_trip"
+    classification: "L2"
+    idempotency_required: true
+  - id: "safety_appeal_resolved"
+    name: "安全申诉已处理"
+    aggregate: "safety_case"
+    classification: "L3"
+    idempotency_required: true
+
+forbidden_payload_fields:
+  - "identity_document_image"
+  - "full_payment_credential"
+  - "chat_message_body"
+  - "precise_location_trace"
+  - "reporter_identity"
+  - "secret_or_token"

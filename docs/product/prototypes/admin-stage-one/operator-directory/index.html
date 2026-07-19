@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PollyCar 运营控制台阶段一运营主体只读名录高保真设计参考" />
+    <title>运营主体只读名录｜PollyCar 运营控制台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar">
+        <strong>内部合成环境 · 运营主体名录只读</strong>
+        <span>阶段一不提供创建、激活、编辑、迁移或退出操作</span>
+      </div>
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">PC</span>
+          <div><b>PollyCar</b><small>运营控制台</small></div>
+        </div>
+        <div class="scope-bar" aria-label="当前组织上下文">
+          <span class="scope-chip">平台组织</span>
+          <span class="scope-chip">城市：<b data-active-city>上海</b></span>
+          <span class="scope-chip">观察主体：<b data-active-operator>全部获批主体</b><button type="button" data-open-context aria-label="切换组织观察范围">切换</button></span>
+          <span class="role-chip">运营主体管理员</span>
+        </div>
+        <div class="top-actions">
+          <button class="secondary-button" type="button" data-audit-action="名录访问已记录；查询只返回当前平台范围内的脱敏字段。">审计</button>
+          <button class="icon-button" type="button" aria-label="通知中心">4</button>
+          <button class="avatar-button" type="button" aria-label="当前内部用户">沈</button>
+        </div>
+      </header>
+      <aside class="sidebar">
+        <nav aria-label="平台导航">
+          <a href="../platform-workbench/index.html"><span>我的工作台</span><span class="nav-count">8</span></a>
+          <a href="#"><span>通知中心</span><span class="nav-count">4</span></a>
+          <p class="nav-heading">组织与运力</p>
+          <a href="#" aria-current="page"><span>运营主体名录</span></a>
+          <a href="#"><span>入驻案件</span><span class="nav-count">阶段二</span></a>
+          <a href="#"><span>城市与能力</span><span class="nav-count">阶段二</span></a>
+          <a href="#"><span>车主与车辆</span><span class="nav-count">24</span></a>
+          <p class="nav-heading">控制与治理</p>
+          <a href="#"><span>临时授权</span><span class="nav-count">2</span></a>
+          <a href="#"><span>审计查询</span></a>
+        </nav>
+        <div class="sidebar-foot">
+          <b>只读名录</b>
+          <small data-pretext>页面用于确认平台授权范围、主体健康和待办摘要；主体生命周期操作必须等待阶段二单独批准。</small>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">组织与运力 · 只读名录</p>
+            <h1 data-pretext>运营主体</h1>
+            <p data-pretext>查看当前平台组织和城市范围内的运营主体摘要。列表不显示法人证件原文、银行账户、联系人完整号码或任何独立资金余额。</p>
+          </div>
+          <div class="readonly-callout"><span class="status-chip warning">只读</span><span>创建与激活入口将在阶段二重新评审</span></div>
+        </div>
+
+        <div class="scope-notice">
+          <span class="task-kind" aria-hidden="true">审</span>
+          <div>
+            <b>名录查询与当前组织上下文绑定</b>
+            <p data-pretext>切换城市或主体观察范围后，Server 将重新生成授权判定。导出使用相同范围，且当前阶段不提供导出能力。</p>
+          </div>
+        </div>
+
+        <section class="metric-strip" aria-label="运营主体名录摘要">
+          <article class="metric"><span>范围内运营主体</span><strong>6</strong><small>全部为合成数据</small></article>
+          <article class="metric"><span>正常运营</span><strong>4</strong><small>无开放阻断</small></article>
+          <article class="metric warning"><span>需关注</span><strong>1</strong><small>存在入驻或运营待办</small></article>
+          <article class="metric danger"><span>已阻断</span><strong>1</strong><small>非零对账差异阻断资金流程</small></article>
+        </section>
+
+        <div class="table-toolbar">
+          <div class="filter-group">
+            <input class="search-field" type="search" placeholder="搜索主体名称或合成编号" aria-label="搜索运营主体" data-directory-search />
+            <select class="filter-select" aria-label="城市筛选"><option>上海</option><option>全部获批城市</option></select>
+            <select class="filter-select" aria-label="状态筛选"><option>全部状态</option><option>正常</option><option>需关注</option><option>已阻断</option></select>
+          </div>
+          <div class="readonly-callout"><span>字段等级：内部／敏感摘要</span><span class="status-chip success">范围有效</span></div>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>运营主体</th>
+                <th>城市与能力</th>
+                <th>运力</th>
+                <th>服务状态</th>
+                <th>资金门禁</th>
+                <th>待办</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-directory-row>
+                <td><div class="entity-name"><b>沪行出行服务</b><small>OP-SH-00018 · 联系人 赵**</small></div></td>
+                <td>上海<br /><span class="muted">运力、行程协作</span></td>
+                <td>128 名车主<br /><span class="muted">132 辆车</span></td>
+                <td><span class="status-chip warning">需关注</span></td>
+                <td>无差异<br /><span class="muted">资金操作关闭</span></td>
+                <td>7 项<br /><span class="muted">1 项需平台复核</span></td>
+                <td><button class="quiet-button" type="button" data-audit-action="已打开沪行出行服务只读摘要；严格敏感字段继续遮蔽。">查看摘要</button></td>
+              </tr>
+              <tr data-directory-row>
+                <td><div class="entity-name"><b>申城伙伴运营</b><small>OP-SH-00021 · 联系人 钱**</small></div></td>
+                <td>上海<br /><span class="muted">运力、客服协作</span></td>
+                <td>96 名车主<br /><span class="muted">101 辆车</span></td>
+                <td><span class="status-chip success">正常</span></td>
+                <td>无差异<br /><span class="muted">资金操作关闭</span></td>
+                <td>2 项<br /><span class="muted">均在时限内</span></td>
+                <td><button class="quiet-button" type="button" data-audit-action="已打开申城伙伴运营只读摘要；访问事件已追加。">查看摘要</button></td>
+              </tr>
+              <tr data-directory-row>
+                <td><div class="entity-name"><b>海湾城市服务</b><small>OP-SH-00027 · 联系人 孙**</small></div></td>
+                <td>上海<br /><span class="muted">运力、行程协作</span></td>
+                <td>74 名车主<br /><span class="muted">79 辆车</span></td>
+                <td><span class="status-chip danger">已阻断</span></td>
+                <td>差异 ¥86.40<br /><span class="muted">清算与付款阻断</span></td>
+                <td>5 项<br /><span class="muted">2 项已超时</span></td>
+                <td><button class="quiet-button" type="button" data-audit-action="已打开海湾城市服务只读摘要；资金金额来自账本和对账事实。">查看摘要</button></td>
+              </tr>
+              <tr data-directory-row>
+                <td><div class="entity-name"><b>浦江协同运营</b><small>OP-SH-00031 · 联系人 周**</small></div></td>
+                <td>上海<br /><span class="muted">运力</span></td>
+                <td>52 名车主<br /><span class="muted">55 辆车</span></td>
+                <td><span class="status-chip success">正常</span></td>
+                <td>无差异<br /><span class="muted">资金操作关闭</span></td>
+                <td>1 项<br /><span class="muted">证照即将到期</span></td>
+                <td><button class="quiet-button" type="button" data-audit-action="已打开浦江协同运营只读摘要；访问范围未扩大。">查看摘要</button></td>
+              </tr>
+              <tr data-directory-row>
+                <td><div class="entity-name"><b>虹桥社区出行</b><small>OP-SH-00035 · 联系人 吴**</small></div></td>
+                <td>上海<br /><span class="muted">运力、客服协作</span></td>
+                <td>41 名车主<br /><span class="muted">43 辆车</span></td>
+                <td><span class="status-chip success">正常</span></td>
+                <td>无差异<br /><span class="muted">资金操作关闭</span></td>
+                <td>0 项<br /><span class="muted">无待办</span></td>
+                <td><button class="quiet-button" type="button" data-audit-action="已打开虹桥社区出行只读摘要；访问事件已追加。">查看摘要</button></td>
+              </tr>
+              <tr data-directory-row>
+                <td><div class="entity-name"><b>南岸联合服务</b><small>OP-SH-00042 · 联系人 郑**</small></div></td>
+                <td>上海<br /><span class="muted">运力</span></td>
+                <td>33 名车主<br /><span class="muted">35 辆车</span></td>
+                <td><span class="status-chip success">正常</span></td>
+                <td>无差异<br /><span class="muted">资金操作关闭</span></td>
+                <td>3 项<br /><span class="muted">均在时限内</span></td>
+                <td><button class="quiet-button" type="button" data-audit-action="已打开南岸联合服务只读摘要；敏感字段保持遮蔽。">查看摘要</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="design-note">高保真设计参考：本页在阶段一只验证平台范围内的只读名录、组织上下文切换和审计反馈；不批准主体创建、激活、编辑或真实数据接入。</p>
+      </main>
+    </div>
+
+    <dialog class="context-dialog" data-context-dialog>
+      <div class="dialog-header"><h2>调整名录观察范围</h2><p data-pretext>选择必须位于当前平台成员关系的显式城市和运营主体范围内。</p></div>
+      <div class="dialog-body">
+        <label>城市范围<select data-context-city><option>上海</option><option>上海 · 浦东新区</option><option>上海 · 徐汇区</option></select></label>
+        <label>运营主体观察范围<select data-context-operator><option>全部获批主体</option><option>沪行出行服务</option><option>申城伙伴运营</option><option>海湾城市服务</option></select></label>
+        <div class="scope-notice"><span class="task-kind">只读</span><div><b>不会解锁生命周期操作</b><p>改变观察范围只影响查询结果，不会出现创建、激活、编辑或资金操作。</p></div></div>
+      </div>
+      <div class="dialog-actions"><button class="secondary-button" type="button" data-close-context>取消</button><button class="primary-button" type="button" data-apply-context>应用范围</button></div>
+    </dialog>
+
+    <div class="audit-toast" role="status" aria-live="polite" data-audit-toast>
+      <span class="audit-dot"></span>
+      <div><b>只读访问已记录</b><p data-audit-message>审计事件已追加。</p></div>
+    </div>
+    <script type="module" src="../shared/prototype.js"></script>
+  </body>
+</html>

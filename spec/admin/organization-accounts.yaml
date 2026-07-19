@@ -1,0 +1,69 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.organization-accounts"
+language: "zh-CN"
+production_enabled: false
+status: "implemented"
+
+feature_gate: "synthetic_admin_organization_accounts"
+
+positioning:
+  product_role: "内部成员与权限治理工作区"
+  authoritative_role_binding_required: true
+  direct_permission_binding_allowed: false
+  role_mutation_allowed: false
+  invitation_allowed: false
+  real_account_directory_allowed: false
+
+directory:
+  summary_fields: ["total_memberships", "active_memberships", "suspended_memberships", "active_sessions"]
+  capabilities: ["search", "organization_type_filter", "state_filter", "role_filter", "sort", "signed_cursor_pagination"]
+  return_filter_restoration_required: true
+  return_cursor_restoration_required: true
+  return_scroll_restoration_required: true
+
+detail:
+  fields: ["membership", "role_binding", "scope_bindings", "active_sessions", "allowed_actions", "audit_trail"]
+  role_binding_source: "authoritative_membership"
+  capability_boundary_required: true
+
+actions:
+  - id: "suspend_membership"
+    expected_resource_version_required: true
+    idempotency_key_required: true
+    reason_required: true
+    revoke_active_sessions: true
+    append_only_audit_event: "admin_membership_suspended"
+  - id: "restore_membership"
+    expected_resource_version_required: true
+    idempotency_key_required: true
+    reason_required: true
+    restore_previous_sessions: false
+    append_only_audit_event: "admin_membership_restored"
+
+role_matrix:
+  platform_access_administrator:
+    scope: "platform_and_authorized_operators"
+    actions: ["suspend_membership", "restore_membership"]
+    self_suspend_allowed: false
+  operator_account_administrator:
+    scope: "own_organization_only"
+    actions: ["suspend_membership", "restore_membership"]
+    self_suspend_allowed: false
+  auditor:
+    scope: "platform"
+    read_only: true
+  operator_auditor:
+    scope: "own_organization_only"
+    read_only: true
+
+audit:
+  view_event: "admin_membership_viewed"
+  suspend_event: "admin_membership_suspended"
+  restore_event: "admin_membership_restored"
+  append_only: true
+  unified_store_required: true
+
+production_boundary:
+  real_accounts_enabled: false
+  production_identity_provider_enabled: false
+  production_enablement_allowed: false

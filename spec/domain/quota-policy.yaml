@@ -1,0 +1,97 @@
+spec_version: "1.0"
+spec_id: "pollycar.driver-quota.policy"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_documents:
+  - "docs/04-domain-model.md"
+  - "docs/09-state-machines.md"
+  - "docs/decisions/0001-弹性参与资格.md"
+
+timezone_policy:
+  storage_timezone: "UTC"
+  activation_day_timezone: "pilot_city"
+  window_type: "rolling"
+
+policy_selection:
+  flex_policy_state: "active"
+  all_other_states_policy: "base"
+  fallback_on_unknown_state: "base"
+
+policies:
+  base:
+    windows:
+      - duration: "PT24H"
+        limit: 3
+      - duration: "P7D"
+        limit: 10
+      - duration: "P30D"
+        limit: 15
+  flex:
+    windows:
+      - duration: "PT24H"
+        limit: 4
+      - duration: "P7D"
+        limit: 12
+      - duration: "P30D"
+        limit: 18
+
+activation_days:
+  lookback: "P90D"
+  maximum_active_calendar_days: 60
+  paused_day_counts_as_active: false
+  partial_active_day_counts_as_one: true
+  carry_over: false
+
+occupancy:
+  occupy_on_event: "quota_slot_occupied"
+  release_events:
+    - reason: "passenger_not_at_fault"
+      event: "quota_slot_released"
+    - reason: "platform_cancellation"
+      event: "quota_slot_released"
+    - reason: "confirmed_force_majeure"
+      event: "quota_slot_released"
+  finalize_events:
+    - reason: "trip_completed"
+      event: "quota_slot_finalized"
+    - reason: "driver_responsible_cancellation"
+      event: "quota_slot_finalized"
+    - reason: "driver_refused_after_arrival"
+      event: "quota_slot_finalized"
+    - reason: "driver_responsible_safety_termination"
+      event: "quota_slot_finalized"
+
+evaluation_order:
+  - "driver_eligibility"
+  - "vehicle_and_insurance_eligibility"
+  - "safety_and_manual_review_blocks"
+  - "waiting_state"
+  - "flex_eligibility_state_and_version"
+  - "policy_selection"
+  - "all_rolling_windows"
+  - "atomic_trip_acceptance_and_quota_occupancy"
+  - "event_persistence"
+
+atomicity:
+  required: true
+  compare_eligibility_version: true
+  partial_occupancy_allowed: false
+  duplicate_request_behavior: "return_original_result"
+
+expiration_behavior:
+  cancel_in_flight_trips: false
+  release_existing_occupancy: false
+  new_acceptance_policy: "base"
+  over_base_limit_behavior: "reject_until_count_drops"
+
+error_codes:
+  - "QUOTA_DRIVER_INELIGIBLE"
+  - "QUOTA_VEHICLE_INELIGIBLE"
+  - "QUOTA_SAFETY_BLOCKED"
+  - "QUOTA_NOT_WAITING"
+  - "QUOTA_24H_EXCEEDED"
+  - "QUOTA_7D_EXCEEDED"
+  - "QUOTA_30D_EXCEEDED"
+  - "QUOTA_ORDER_ALREADY_ACCEPTED"
+  - "QUOTA_CONCURRENT_MODIFICATION"

@@ -1,0 +1,4572 @@
+﻿openapi: 3.1.0
+info:
+  title: PollyCar API
+  version: 0.2.0
+  description: |
+    PollyCar 弹性参与资格最小 API 契约。
+    当前规范处于评审状态，不代表付费弹性资格已批准生产启用。
+servers:
+  - url: https://api.invalid.pollycar.example
+    description: 占位地址，不可用于生产
+tags:
+  - name: DriverFlexEligibility
+    description: 车主本人弹性参与资格
+  - name: EligibilityReview
+    description: 审核与安全后台
+  - name: EligibilityFinance
+    description: 资格费用与退款查询
+  - name: InternalSandboxApp
+    description: 用户 App 合成车辆审核
+  - name: InternalSandboxAdmin
+    description: 运营后台合成车辆审核
+paths:
+  /v1/auth/phone/code:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: requestPhoneAuthenticationCode
+      summary: 请求手机号验证码
+      security:
+        []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestPhoneCodeRequest" }
+      responses:
+        "201":
+          description: 验证码挑战已建立
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PhoneCodeChallenge" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/auth/phone/verify:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: verifyPhoneAuthenticationCode
+      summary: 验证手机号验证码并登录或注册
+      security:
+        []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyPhoneCodeRequest" }
+      responses:
+        "200":
+          description: 认证成功并签发访问令牌及轮换刷新会话
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PhoneAuthenticationResult" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/auth/session/refresh:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: refreshPhoneAuthenticationSession
+      summary: 轮换刷新会话并签发新访问令牌
+      security:
+        []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshPhoneSessionRequest" }
+      responses:
+        "200":
+          description: 会话轮换成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PhoneAuthenticationResult" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/sessions:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: createAppAccountSession
+      summary: 创建内部账户会话
+      security:
+        []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInternalAccountSessionRequest" }
+      responses:
+        "201":
+          description: 会话已创建
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreateInternalAccountSessionResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /v1/internal-sandbox/app/sessions/current:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppAccountSession
+      summary: 获取当前内部账户会话
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 当前会话
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InternalAccountSession" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/sessions/current/identity:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: switchAppAccountSessionIdentity
+      summary: 切换当前账户身份
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [activeIdentity]
+              properties:
+                activeIdentity: { type: string, enum: [passenger, driver] }
+      responses:
+        "200":
+          description: 身份已切换
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InternalAccountSession" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/app/sessions/current/revoke:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: revokeAppAccountSession
+      summary: 撤销当前内部账户会话
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 会话已撤销
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InternalAccountSession" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/chat/content-deletion:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: deleteAppTripChatContent
+      summary: 在保留期届满且无证据保留锁时删除聊天正文
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 删除后的会话摘要
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TripChatView" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /v1/internal-sandbox/app/trust-profile:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppTrustProfile
+      summary: 获取本人合成头像审核与评分摘要
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 本人信任资料
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountTrustProfile" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/app/trust-profile/avatar:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: submitAppAvatar
+      summary: 提交合成头像进行内容安全审核
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset]
+              properties:
+                asset:
+                  type: string
+                  enum: [avatar-city-blue, avatar-warm-gray, avatar-plum]
+      responses:
+        "200":
+          description: 审核后的本人信任资料
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountTrustProfile" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /v1/internal-sandbox/app/trust-profile/fairness:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppFairnessReport
+      summary: 获取不参与自动决策的合成公平性报告
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 公平性监测报告
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FairnessMonitoringReport" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/rating:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppTripRating
+      summary: 获取本人对指定行程的评价
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: 评价或空结果
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+    post:
+      tags: [InternalSandboxApp]
+      operationId: submitAppTripRating
+      summary: 提交已完成行程评价
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [score]
+              properties:
+                score: { type: integer, minimum: 1, maximum: 5 }
+                tags:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string }
+                note: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: 已记录评价
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TripRating" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/chat:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppTripChat
+      summary: 获取合成行程会话
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: 合成会话
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TripChatView" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/chat/messages:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: sendAppTripChatMessage
+      summary: 发送合成行程消息
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 500 }
+              additionalProperties: false
+      responses:
+        "200":
+          description: 更新后的合成会话
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TripChatView" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/messages:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppMessageCenter
+      summary: 获取合成消息中心
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 合成消息中心
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageCenterView" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/app/messages/{item_id}/read:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: markAppMessageRead
+      summary: 标记单条合成消息已读
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 更新后的消息中心
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageCenterView" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/app/messages/read-all:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: markAllAppMessagesRead
+      summary: 标记全部合成消息已读
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 更新后的消息中心
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageCenterView" }
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/drivers/me/flex-eligibility/applications:
+    post:
+      tags: [DriverFlexEligibility]
+      operationId: submitFlexEligibilityApplication
+      summary: 提交弹性参与资格申请
+      description: 仅车主本人可提交；付费试验采用先审核后收费。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlexEligibilityApplicationRequest"
+      responses:
+        "202":
+          description: 申请已受理
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/drivers/me/flex-eligibility:
+    get:
+      tags: [DriverFlexEligibility]
+      operationId: getMyFlexEligibility
+      summary: 查询本人弹性参与资格
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 当前资格状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+  /v1/drivers/me/flex-eligibility/confirmation:
+    post:
+      tags: [DriverFlexEligibility]
+      operationId: confirmFlexEligibilityActivation
+      summary: 确认启用资格
+      description: 禁止默认自动续期；车主必须主动接受当前条款和价格版本。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlexEligibilityConfirmationRequest"
+      responses:
+        "202":
+          description: 确认已受理
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/drivers/me/flex-eligibility/appeals:
+    post:
+      tags: [DriverFlexEligibility]
+      operationId: submitFlexEligibilityAppeal
+      summary: 提交资格申诉
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlexEligibilityAppealRequest"
+      responses:
+        "202":
+          description: 申诉已受理
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/admin/flex-eligibility/applications/{application_id}/decision:
+    post:
+      tags: [EligibilityReview]
+      operationId: decideFlexEligibilityApplication
+      summary: 审核资格申请
+      description: 普通或高级审核员可处理；申诉复核不得由原决定人完成。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityDecisionRequest"
+      responses:
+        "200":
+          description: 审核决定已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/admin/flex-eligibilities/{eligibility_id}/suspension:
+    post:
+      tags: [EligibilityReview]
+      operationId: suspendFlexEligibility
+      summary: 暂停弹性参与资格
+      description: 安全或授权审核角色使用，不能由财务或客服执行。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EligibilityId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityRestrictionRequest"
+      responses:
+        "200":
+          description: 资格已暂停
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+    delete:
+      tags: [EligibilityReview]
+      operationId: clearFlexEligibilitySuspension
+      summary: 解除资格暂停原因
+      description: 解除后进入待恢复，仍需通过恢复守卫。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EligibilityId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: 暂停原因已解除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/admin/flex-eligibilities/{eligibility_id}/revocation:
+    post:
+      tags: [EligibilityReview]
+      operationId: revokeFlexEligibility
+      summary: 撤销弹性参与资格
+      description: 仅安全人员或安全负责人可执行，并必须关联安全案件。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EligibilityId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityRestrictionRequest"
+      responses:
+        "200":
+          description: 资格已撤销
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/admin/flex-eligibility/appeals/{appeal_id}/decision:
+    post:
+      tags: [EligibilityReview]
+      operationId: decideFlexEligibilityAppeal
+      summary: 复核资格申诉
+      description: 必须由非原决定人员处理。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AppealId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppealDecisionRequest"
+      responses:
+        "200":
+          description: 申诉决定已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexEligibilityResource"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/admin/flex-eligibilities/{eligibility_id}/financial-status:
+    get:
+      tags: [EligibilityFinance]
+      operationId: getFlexEligibilityFinancialStatus
+      summary: 查询资格支付和退款状态
+      description: 只返回财务摘要，不返回完整支付凭据或安全证据。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EligibilityId"
+      responses:
+        "200":
+          description: 支付和退款摘要
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityFinancialStatus"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/safety:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppTripSafetyDashboard
+      summary: 查询合成行程临时对话和安全案件状态
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: 临时对话与安全状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyDashboard"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/safety/messages:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: sendAppSyntheticChatMessage
+      summary: 发送预置合成临时消息
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [body]
+              properties:
+                body: { type: string, pattern: "^合成消息：" }
+      responses:
+        "200":
+          description: 已更新临时对话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyDashboard"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/safety/reports:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: reportAppSyntheticTrip
+      summary: 提交结构化合成举报并立即冻结
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reasonCode]
+              properties:
+                reasonCode:
+                  type: string
+                  enum: [unsafe_behavior, harassment, identity_concern]
+      responses:
+        "200":
+          description: 已冻结的安全案件
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyDashboard"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/safety-cases/{case_id}/appeal:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: appealAppSafetyCase
+      summary: 被举报方提交一次合成申诉
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 申诉中的安全案件
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyCaseView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/safety/cases/{case_id}/resolution:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: resolveSafetyCaseAppeal
+      summary: 独立合成安全人员决定恢复或维持冻结
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, outcome]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                outcome: { type: string, enum: [restore_access, uphold_freeze] }
+      responses:
+        "200":
+          description: 已决定的安全案件
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyCaseView"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/safety-cases:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminSafetyCases
+      summary: 查询开放或申诉中的合成安全案件队列
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 安全案件最小摘要队列
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminSafetyCaseSummary"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/admin/safety-cases/{case_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminSafetyCase
+      summary: 查询安全案件结构化最小详情
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: 不包含聊天正文和原始证据的案件详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSafetyCaseDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /v1/internal-sandbox/admin/safety-cases/{case_id}/resolution:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: resolveAdminSafetyCase
+      summary: 安全人员处理申诉中的合成案件
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, outcome]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                outcome: { type: string, enum: [restore_access, uphold_freeze] }
+      responses:
+        "200":
+          description: 已处理的安全案件
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSafetyCaseDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/dashboard:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppSyntheticTripDashboard
+      summary: 查询合成行程乘客与车主视图
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 合成行程工作台
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripDashboard"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/app/synthetic-trips/booking-availability:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppTripBookingAvailability
+      summary: 查询即时和未来七十二小时预约可用性
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: Server 权威预约时间
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripBookingAvailability"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /v1/internal-sandbox/app/synthetic-trips:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: createAppSyntheticTrip
+      summary: 创建待零金额支付的合成行程
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tripId, originLabel, destinationLabel, passengerCount]
+              properties:
+                tripId: { type: string, pattern: "^synthetic-" }
+                originLabel: { type: string }
+                destinationLabel: { type: string }
+                passengerCount:
+                  type: integer
+                  enum: [1, 2, 3]
+                  default: 1
+                scene:
+                  type: string
+                  enum: [commute, airport, medical, other]
+                timing:
+                  $ref: "#/components/schemas/TripTiming"
+                estimatedDurationMinutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 240
+      responses:
+        "200":
+          description: 待支付合成行程
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/payment:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: payAppSyntheticTrip
+      summary: 完成零金额支付前置
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已支付待匹配行程
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/reschedule:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: rescheduleAppSyntheticTrip
+      summary: 修改尚未被车主接受的合成预约时间
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, timing]
+              properties:
+                expectedVersion:
+                  type: integer
+                  minimum: 1
+                originLabel:
+                  type: string
+                  minLength: 1
+                destinationLabel:
+                  type: string
+                  minLength: 1
+                passengerCount:
+                  type: integer
+                  enum: [1, 2, 3]
+                scene:
+                  type: [string, "null"]
+                  enum: [commute, airport, medical, other, null]
+                timing:
+                  $ref: "#/components/schemas/TripTiming"
+                estimatedDurationMinutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 240
+      responses:
+        "200":
+          description: 已更新预约时间
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/accept:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: acceptAppSyntheticTrip
+      summary: 合资格车主接受已完成支付前置的合成行程
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已接受行程
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/start:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: startAppSyntheticTrip
+      summary: 开始已接受的合成行程
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 履约中行程
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/complete:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: completeAppSyntheticTrip
+      summary: 完成合成行程并最终计入车主配额
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已完成行程
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/cancel:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: cancelAppSyntheticTrip
+      summary: 乘客在履约开始前取消合成行程
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已关闭合成行程和零金额支付状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/reconcile-timeout:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: reconcileAppSyntheticTripTimeout
+      summary: 推进合成时钟并收敛支付、匹配或接单超时
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已关闭超时行程或释放超时车主
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticTripView"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/driver/availability:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppDriverAvailability
+      summary: 查询合成车主可用状态
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 默认离线且禁止生产启用的车主状态
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverAvailabilityView" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+    post:
+      tags: [InternalSandboxApp]
+      operationId: updateAppDriverAvailability
+      summary: 由车主主动开始或停止接单
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [state, returnOnlineAfterTrip]
+              properties:
+                state: { type: string, enum: [online, offline] }
+                returnOnlineAfterTrip: { type: boolean }
+      responses:
+        "200":
+          description: 更新后的车主状态
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverAvailabilityView" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/driver/dispatch-presence:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: updateAppDriverDispatchPresence
+      summary: 更新车主上线状态和合成位置心跳
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateDriverDispatchPresenceRequest" }
+      responses:
+        "200":
+          description: 已更新车主派单位置状态
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverDispatchPresenceView" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/app/driver/offers:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: listAppDriverDispatchOffers
+      summary: 查询车主附近仍然有效的接单邀请
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 已执行位置新鲜度、距离、资格、人数和时间冲突过滤
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverDispatchOffersView" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/app/driver/offers/{offer_id}/accept:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: acceptAppDriverDispatchOffer
+      summary: 原子接受属于当前车主的有效接单邀请
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: offer_id
+          in: path
+          required: true
+          schema: { type: string, pattern: "^offer-" }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcceptDispatchOfferRequest" }
+      responses:
+        "200":
+          description: 已唯一获得行程或返回首次接单结果
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyntheticTripView" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/driver/available-trips:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: listAppDriverAvailableTrips
+      summary: 兼容查询车主附近仍然有效的合成接单邀请
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 已执行位置新鲜度、距离、资格、配额和车辆人数过滤的订单
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AvailableDriverTripView" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/driver-en-route:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: markAppDriverEnRoute
+      summary: 车主确认前往上车点
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/TripId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VehicleReviewVersionRequest" }
+      responses:
+        "200":
+          description: 接驾中的合成行程
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyntheticTripView" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/driver-arrived:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: markAppDriverArrived
+      summary: 车主确认已到达上车点
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/TripId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VehicleReviewVersionRequest" }
+      responses:
+        "200":
+          description: 等待乘车人上车的合成行程
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyntheticTripView" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/pickup-verification:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppPickupVerification
+      summary: 查询接单后合成上车确认码
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/TripId" }]
+      responses:
+        "200":
+          description: 仅行程双方可读取的合成确认码
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PickupVerification" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/verify-boarding:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: verifyAppTripBoarding
+      summary: 车主提交上车确认码并开始履约
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/TripId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, code]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                code: { type: string, pattern: "^[0-9]{4}$" }
+      responses:
+        "200":
+          description: 已进入履约的合成行程
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyntheticTripView" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/cancellation-eligibility:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppTripCancellationEligibility
+      summary: 查询服务端权威的接单后三分钟取消资格
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/TripId" }]
+      responses:
+        "200":
+          description: 取消窗口和零费用影响
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TripCancellationEligibility" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/cancel-accepted:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: cancelAppAcceptedTrip
+      summary: 乘车人在接单后三分钟内主动取消
+      description: 取消原因和补充说明均为可选；最终资格由服务端时间判断。
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/TripId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TripCancellationRequest" }
+      responses:
+        "200":
+          description: 已取消且真实取消费为零
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyntheticTripView" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/completion-intents:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: createAppTripCompletionIntent
+      summary: 为滑动完成创建三十秒一次性合成意图
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/TripId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VehicleReviewVersionRequest" }
+      responses:
+        "200":
+          description: 短期完成意图
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompletionIntent" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/complete-with-intent:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: completeAppTripWithIntent
+      summary: 消费滑动确认意图并完成合成行程
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/TripId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, completionIntentToken]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                completionIntentToken: { type: string, pattern: "^synthetic-completion-" }
+      responses:
+        "200":
+          description: 已完成且不产生真实收入的行程
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyntheticTripView" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/driver/orders:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: listAppDriverOrders
+      summary: 查询当前车主合成订单
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: state
+          in: query
+          schema: { $ref: "#/components/schemas/DriverOrderState" }
+      responses:
+        "200":
+          description: 当前车主自己的订单
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DriverOrderSummary" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/driver/orders/{trip_id}:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppDriverOrder
+      summary: 查询当前车主合成订单详情
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/TripId" }]
+      responses:
+        "200":
+          description: 含时间线和零金额结算关闭态的订单详情
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverOrderDetail" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/app/driver/finance/overview:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppDriverFinance
+      summary: 查询车主零金额合成资金中心
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 所有真实资金能力关闭
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverWalletView" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/driver/finance/bank-card-capability:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppDriverBankCardCapability
+      summary: 查询绑卡能力关闭态
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 不接受任何真实银行卡或身份数据
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankCardCapability" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/driver/finance/withdrawal-capability:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppDriverWithdrawalCapability
+      summary: 查询提现能力关闭态
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 不接受真实提现请求
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WithdrawalCapability" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/free-flex-trial:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppFreeFlexTrial
+      summary: 查询当前合成账户的免费弹性资格试验
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 免费弹性资格状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeFlexTrialView"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+    post:
+      tags: [InternalSandboxApp]
+      operationId: submitAppFreeFlexTrial
+      summary: 提交当前合成账户的免费弹性资格申请
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已提交的免费资格申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeFlexTrialView"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/free-flex-trial/confirmation:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: confirmAppFreeFlexTrial
+      summary: 确认免费条款并启用 30 天合成资格
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已启用的免费弹性资格
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeFlexTrialView"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/free-flex-trial/approval:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: approveAdminFreeFlexTrial
+      summary: 合成审核员批准免费弹性资格申请
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [accountId, expectedVersion]
+              properties:
+                accountId: { type: string, pattern: "^synthetic-" }
+                expectedVersion: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: 待用户确认的免费弹性资格
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeFlexTrialView"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/vehicle-reviews/{application_id}:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppVehicleReview
+      summary: 查询当前合成账户的车辆审核申请
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: 车辆审核申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleReviewView"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /v1/internal-sandbox/app/vehicle-reviews/{application_id}/draft:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: saveAppVehicleReviewDraft
+      summary: 保存当前合成账户的车辆审核草稿
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewDraftRequest"
+      responses:
+        "200":
+          description: 已保存的车辆审核申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleReviewView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/vehicle-reviews/{application_id}/submit:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: submitAppVehicleReview
+      summary: 提交当前合成账户的车辆审核申请
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewVersionRequest"
+      responses:
+        "200":
+          description: 已提交的车辆审核申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleReviewView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/vehicle-reviews/{application_id}/material-resubmit:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: resubmitAppVehicleReviewMaterial
+      summary: 补交当前合成账户的车辆审核材料
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleReviewMaterialRequest"
+      responses:
+        "200":
+          description: 已补交材料的车辆审核申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleReviewView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminReviewTasks
+      summary: 查询合成车辆审核队列
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 最小必要队列摘要
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminReviewTaskSummary"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminReviewTask
+      summary: 查询审核任务最小必要详情
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: 审核任务详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/claim:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: claimAdminReviewTask
+      summary: 原子认领单个审核任务
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTaskVersionRequest"
+      responses:
+        "200":
+          description: 认领后的任务详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/lease/renew:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: renewAdminReviewTaskLease
+      summary: 续期当前审核任务租约
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTaskVersionRequest"
+      responses:
+        "200":
+          description: 续期后的任务详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/release:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: releaseAdminReviewTask
+      summary: 主动释放当前审核任务
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedTaskVersion, reasonCode]
+              properties:
+                expectedTaskVersion:
+                  type: integer
+                  minimum: 0
+                reasonCode:
+                  type: string
+                  enum: [reviewer_unavailable, wrong_queue, needs_supervisor]
+      responses:
+        "200":
+          description: 已释放任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/material-request-preview:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: previewAdminMaterialRequest
+      summary: 预览补充材料用户文案
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMaterialReasonRequest"
+      responses:
+        "200":
+          description: 预批准文案
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMaterialPreview"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/material-request:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: requestAdminVehicleMaterial
+      summary: 要求补充合成车辆材料
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, previewConfirmed, expectedTaskVersion, expectedVehicleReviewVersion]
+              properties:
+                reason:
+                  $ref: "#/components/schemas/AdminMaterialReason"
+                previewConfirmed:
+                  type: boolean
+                  const: true
+                expectedTaskVersion:
+                  type: integer
+                  minimum: 0
+                expectedVehicleReviewVersion:
+                  type: integer
+                  minimum: 0
+      responses:
+        "200":
+          description: 等待用户补充的任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/approve:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: approveAdminVehicleReview
+      summary: 批准无未关闭风险的合成车辆审核
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AdminDecisionVersionRequest"
+                - type: object
+                  required: [reasonCode]
+                  properties:
+                    reasonCode:
+                      type: string
+                      enum: [approved_standard]
+      responses:
+        "200":
+          description: 已完成的审核任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/reject:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: rejectAdminVehicleReview
+      summary: 使用结构化原因拒绝合成车辆审核
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AdminDecisionVersionRequest"
+                - type: object
+                  required: [reasonCode]
+                  properties:
+                    reasonCode:
+                      $ref: "#/components/schemas/AdminRejectionReason"
+      responses:
+        "200":
+          description: 已完成的审核任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/admin/review-tasks/{task_id}/audit:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminReviewTaskAudit
+      summary: 查询任务追加式审计摘要
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: 审计摘要
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminReviewAuditEntry"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/AuthorizationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /v1/internal-sandbox/admin/idempotency-results/{idempotency_key}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminIdempotencyResult
+      summary: 恢复未知写入结果
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: idempotency_key
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      responses:
+        "200":
+          description: 原命令结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReviewTaskDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /v1/internal-sandbox/app/adult-eligibility:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppAdultEligibility
+      summary: 查询本人成年资格验证状态
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 成年资格验证状态
+          content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/app/adult-eligibility/authorization:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: authorizeAppAdultEligibility
+      summary: 确认身份、人脸和第三方处理授权
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, privacyNoticeVersion, identityProcessingAuthorized, biometricProcessingAuthorized, thirdPartyProcessingAuthorized]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                privacyNoticeVersion: { type: string }
+                identityProcessingAuthorized: { type: boolean, const: true }
+                biometricProcessingAuthorized: { type: boolean, const: true }
+                thirdPartyProcessingAuthorized: { type: boolean, const: true }
+      responses:
+        "200": { description: 授权后的状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/adult-eligibility/documents:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: uploadAppAdultEligibilityDocument
+      summary: 通过专用敏感数据通道上传合成身份证件
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, side, fileName, mimeType, syntheticDocument]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                side: { type: string, enum: [front, back] }
+                fileName: { type: string }
+                mimeType: { type: string, enum: [image/jpeg, image/png] }
+                syntheticDocument: { type: boolean, const: true }
+      responses:
+        "200": { description: 材料保存后的状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/app/adult-eligibility/submission:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: submitAppAdultEligibility
+      summary: 提交成年资格验证
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, syntheticFaceCapture]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                syntheticFaceCapture: { type: boolean, const: true }
+                syntheticScenario:
+                  type: string
+                  enum: [passed, document_invalid, document_expired, underage, liveness_failed, face_mismatch, provider_timeout, provider_unavailable, result_unknown]
+      responses:
+        "200": { description: 自动供应商核验后的状态；明确结果会直接写入通过或失败, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/adult-eligibility/sdk-session:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: createAppAdultEligibilitySdkSession
+      summary: 创建供应商中立的成年资格 SDK 会话
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                syntheticScenario:
+                  type: string
+                  enum: [passed, document_invalid, document_expired, underage, liveness_failed, face_mismatch, provider_timeout, provider_unavailable, result_unknown]
+      responses:
+        "200": { description: 十分钟有效的 SDK 会话；内部沙箱只返回合成令牌, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilitySdkSession" } } } }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/provider-callbacks/adult-eligibility:
+    post:
+      tags: [InternalSandboxProvider]
+      operationId: receiveAdultEligibilityProviderCallback
+      summary: 接收成年资格供应商签名回调
+      description: 以请求体 callbackId 作为供应商幂等键，重复回调返回首次处理后的状态。
+      security:
+        - identityProviderSignature: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: X-Provider-Signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accountId, callbackId, sessionId, requestId, occurredAt, status]
+              properties:
+                accountId: { type: string }
+                callbackId: { type: string }
+                sessionId: { type: string }
+                requestId: { type: string }
+                occurredAt: { type: string, format: date-time }
+                status: { type: string, enum: [completed, pending, failed, unknown] }
+                failureCode: { type: string }
+      responses:
+        "200": { description: 幂等处理后的成年资格状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/app/adult-eligibility/provider-result:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: refreshAppAdultEligibilityProviderResult
+      summary: 刷新成年资格自动供应商结果
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200": { description: 刷新后的自动核验状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/app/adult-eligibility/appeal:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: submitAppAdultEligibilityAppeal
+      summary: 提交成年资格异常结果申诉
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                reason: { type: string, minLength: 2, maxLength: 500 }
+      responses:
+        "200": { description: 申诉后的状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/admin/adult-eligibility:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminAdultEligibilityTraces
+      summary: 只读查询成年资格自动核验记录
+      security:
+        - sandboxAuth: []
+      responses:
+        "200": { description: 最小化供应商调用与自动结果摘要 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+  /v1/internal-sandbox/admin/adult-eligibility/{account_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminAdultEligibilityTrace
+      summary: 只读查询单个成年资格自动核验记录
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: 最小化供应商调用与自动结果摘要 }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/admin/adult-eligibility/{account_id}/appeal-review:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: reviewAdminAdultEligibilityAppeal
+      summary: 人工复核成年资格申诉
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: account_id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, decision]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                decision: { type: string, enum: [approve, reject] }
+      responses:
+        "200": { description: 复核后的状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/app/map/places/search:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: searchAppMapPlaces
+      summary: 搜索合成地点
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: query, in: query, required: true, schema: { type: string, minLength: 2 } }
+        - { name: city_code, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 10, default: 10 } }
+      responses:
+        "200": { description: 地点搜索结果与缓存状态 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+        "429": { $ref: "#/components/responses/BusinessRuleError" }
+        "503": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/app/map/reverse-geocode:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: reverseGeocodeAppMapPoint
+      summary: 将地图坐标转换为地点
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [location, radiusMeters]
+              properties:
+                location: { $ref: "#/components/schemas/GeoPoint" }
+                radiusMeters: { type: integer, minimum: 1, maximum: 1000 }
+      responses:
+        "200": { description: 逆地理编码地点 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+        "503": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/app/map/routes/driving:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: planAppDrivingRoute
+      summary: 规划驾车路线
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [origin, destination, strategy, includeTraffic]
+              properties:
+                origin: { $ref: "#/components/schemas/GeoPoint" }
+                destination: { $ref: "#/components/schemas/GeoPoint" }
+                strategy: { type: string, enum: [fastest, avoid_congestion, avoid_tolls] }
+                includeTraffic: { type: boolean }
+      responses:
+        "200": { description: 合成驾车路线 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+        "503": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/vehicle-location:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppVehicleLocation
+      summary: 读取行程车辆位置及新鲜度
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: trip_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: 车辆位置、新鲜度和停止状态 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+    post:
+      tags: [InternalSandboxApp]
+      operationId: uploadAppVehicleLocation
+      summary: 上传合成车辆位置
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: trip_id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tripId, accountId, sequence, capturedAt, location, accuracyMeters, appState]
+              properties:
+                tripId: { type: string }
+                accountId: { type: string }
+                sequence: { type: integer, minimum: 1 }
+                capturedAt: { type: string, format: date-time }
+                location: { $ref: "#/components/schemas/GeoPoint" }
+                accuracyMeters: { type: number, minimum: 3, maximum: 500 }
+                speedMetersPerSecond: { type: number, minimum: 0 }
+                headingDegrees: { type: number, minimum: 0, maximum: 360 }
+                appState: { type: string, enum: [foreground, background] }
+      responses:
+        "200": { description: 最小化后的车辆位置 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+        "429": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/synthetic-trips/{trip_id}/vehicle-location/stage:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: setAppVehicleLocationStage
+      summary: 更新车辆位置流的行程阶段
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: trip_id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stage]
+              properties:
+                stage: { type: string, enum: [accepted, driver_en_route, driver_arrived, in_progress, closed] }
+      responses:
+        "200": { description: 更新后的车辆位置流状态 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/admin/access/session:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminAccessSession
+      summary: 获取服务端构造的内部用户、成员关系和组织上下文
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 当前合成内部会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminInternalSession"
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/admin/access/context:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: switchAdminOrganizationContext
+      summary: 在显式授权范围内切换平台观察上下文
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organizationId]
+              additionalProperties: false
+              properties:
+                organizationId:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+      responses:
+        "200":
+          description: 切换后的内部会话；功能角色和最大数据等级不变化
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminInternalSession"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/admin/access/platform-workbench:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminPlatformWorkbench
+      summary: 获取当前平台授权范围内的工作台
+      security:
+        - sandboxAuth: []
+      responses:
+        "200": { description: 平台工作台合成摘要 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/admin/access/operator-workbench:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminOperatorWorkbench
+      summary: 获取固定运营主体范围内的工作台
+      security:
+        - sandboxAuth: []
+      responses:
+        "200": { description: 运营主体工作台合成摘要 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/admin/access/operators:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminOperatorDirectory
+      summary: 查询当前平台授权范围内的运营主体只读名录
+      security:
+        - sandboxAuth: []
+      responses:
+        "200": { description: 脱敏且不可执行生命周期操作的运营主体列表 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/admin/access/audit:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminAccessAuditEvents
+      summary: 查询当前授权范围内的追加式访问审计
+      security:
+        - sandboxAuth: []
+      responses:
+        "200": { description: 不包含严格敏感原文的审计事件 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/admin/operator-management/operators/{operator_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminOperator360
+      summary: 查询授权范围内的合成运营主体 360° 聚合
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: operator_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { description: 脱敏、资金只读且生产关闭的运营主体聚合 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/admin/operator-management/onboarding-cases/{onboarding_case_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminOperatorOnboardingCase
+      summary: 查询平台授权范围内的合成运营主体入驻案件
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: onboarding_case_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { description: 不接收真实材料的入驻案件 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/admin/operator-management/drivers/{driver_account_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminDriver360
+      summary: 查询授权主体范围内的合成车主 360° 聚合
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: driver_account_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { description: 脱敏车主资料与权威主运营关系 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/admin/operator-management/vehicles/{vehicle_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminVehicle360
+      summary: 查询授权主体范围内的合成车辆 360° 聚合
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: vehicle_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { description: 车辆审核与主运营关系只读聚合 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/admin/operator-management/migrations/{migration_case_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminPrimaryOperatorMigration
+      summary: 查询受控主运营关系迁移案件及阻断项
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: migration_case_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { description: 不可回滚的合成迁移案件 }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/admin/operator-management/commands:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: executeAdminOperatorManagementCommand
+      summary: 通过唯一命令入口执行合成运营主体与迁移写操作
+      security:
+        - sandboxAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, resourceVersion]
+              additionalProperties: true
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - request_onboarding_changes
+                    - approve_onboarding
+                    - grant_city_capability
+                    - change_operator_lifecycle
+                    - acknowledge_primary_operator_migration
+                    - review_primary_operator_migration
+                    - schedule_primary_operator_migration
+                    - apply_primary_operator_migration
+                resourceVersion: { type: integer, minimum: 1 }
+      responses:
+        "200": { description: 幂等命令结果；重复调用返回原结果 }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/admin/trip-case-management/trip-operations:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminTripOperationsCenter
+      summary: 查询合成行程运营任务
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 按组织范围过滤的任务中心 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/trips/{trip_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminTrip360
+      summary: 查询只读合成行程 360°
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: trip_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 权威状态与运营主体快照只读 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/support-cases/{case_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminSupportCase
+      summary: 查询合成客服案件
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: case_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 不披露安全证据的客服案件 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/safety-cases/{case_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminSafetyInvestigation
+      summary: 查询合成安全调查
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: case_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 含独立恢复复核阻断项 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/evidence-grants/{grant_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminEvidenceGrant
+      summary: 查询字段级证据授权
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: grant_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 最长三十分钟的合成授权 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/evidence-grants/{grant_id}/fields/{field}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: readAdminEvidenceField
+      summary: 读取单个合成证据字段
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: grant_id, in: path, required: true, schema: { type: string } }
+        - { name: field, in: path, required: true, schema: { type: string } }
+      responses: { "200": { description: 单字段结果 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/recovery-tasks/{task_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminCommandRecoveryTask
+      summary: 查询未知结果恢复任务
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: task_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 禁止重复业务命令的恢复任务 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/trip-case-management/commands:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: executeAdminTripCaseManagementCommand
+      summary: 执行阶段三唯一合成命令入口
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [type], additionalProperties: true }
+      responses:
+        "200": { description: 幂等命令结果 }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /v1/internal-sandbox/admin/finance-operations/operations-center:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminFinanceOperationsCenter
+      summary: 查询合成资金运营中心
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 按服务端组织范围过滤的资金任务 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/allocation-settlements/{settlement_batch_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminAllocationSettlement
+      summary: 查询只读分配与运营主体清算
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: settlement_batch_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 固定比例与服务端金额只读快照 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/driver-payouts/{payout_batch_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminDriverPayout
+      summary: 查询 T+1 车主付款
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: payout_batch_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 本主体脱敏付款快照 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/refund-reversals/{finance_case_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminRefundReversal
+      summary: 查询退款与完整冲正证据链
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: finance_case_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 原支付与原账本交易只读引用 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/reconciliation-runs/{reconciliation_run_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminReconciliationFundCases
+      summary: 查询对账差异与资金案件
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: reconciliation_run_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 四方事实源差异与案件 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/business-days/{business_date}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminBusinessDayClose
+      summary: 查询日终关账条件
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: business_date, in: path, required: true, schema: { type: string, format: date } }]
+      responses: { "200": { description: Asia/Shanghai 账务日关闭条件 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/ledger-transactions/{ledger_transaction_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminLedgerTransaction
+      summary: 查询不可变账本交易
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: ledger_transaction_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 全局序列、平衡分录与只读投影 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/finance-operations/commands:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: executeAdminFinanceOperationsCommand
+      summary: 执行阶段四唯一合成资金命令入口
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, resourceId, resourceVersion, reasonCode]
+              properties:
+                type:
+                  type: string
+                  enum: [prepare_operator_settlement, review_operator_settlement, prepare_driver_payout, review_driver_payout, request_driver_payout, request_refund, request_full_reversal, submit_reconciliation_resolution, review_reconciliation_resolution, prepare_business_day_close, review_business_day_close, query_finance_command_recovery]
+                resourceId: { type: string }
+                resourceVersion: { type: integer, minimum: 0 }
+                reasonCode: { type: string }
+                evidenceReference: { type: string }
+      responses:
+        "200": { description: 幂等资金命令结果；重复调用返回原结果 }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/admin/executive-dashboard/overview:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveOverview
+      summary: 查询高层总览聚合
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 服务端范围过滤的高层总览 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/operations-health:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveOperationsHealth
+      summary: 查询经营趋势与城市健康
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 经营指标与小样本抑制状态 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/operator-health:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveOperatorHealth
+      summary: 查询运营主体健康
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 最严重维度优先主体健康结果 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/finance-safety:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveFinanceSafety
+      summary: 查询分级披露的资金安全聚合
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: L2 区间趋势或 L3 精确聚合金额 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/safety-compliance:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveSafetyCompliance
+      summary: 查询安全与合规摘要
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 去标识安全与合规摘要 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/decision-items:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveDecisionItems
+      summary: 查询高层待决事项
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 待决摘要与追加式意见 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/metrics:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveMetricRegistry
+      summary: 查询指标登记口径
+      security:
+        - sandboxAuth: []
+      responses: { "200": { description: 十九项指标定义和来源 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/drilldowns/{dimension}/{dimension_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminExecutiveDrilldown
+      summary: 查询允许维度的一级钻取
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: dimension, in: path, required: true, schema: { type: string, enum: [city, operator, product, time] } }
+        - { name: dimension_id, in: path, required: true, schema: { type: string } }
+      responses: { "200": { description: 去标识聚合钻取 }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/decision-opinions:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: recordAdminExecutiveDecisionOpinion
+      summary: 追加记录不执行业务命令的高层意见
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [decisionItemId, decisionCode, reasonCode, responsibleRole, dueAt, resourceVersion], additionalProperties: false }
+      responses: { "200": { description: 追加式高层意见 }, "400": { $ref: "#/components/responses/ValidationError" }, "403": { $ref: "#/components/responses/AuthorizationError" }, "409": { $ref: "#/components/responses/ConflictError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/export-requests:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: createAdminExecutiveExportRequest
+      summary: 创建单一职责域受控导出申请
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [domain, purpose, fieldSet, windowStart, windowEnd], additionalProperties: false }
+      responses: { "200": { description: 等待隐私合规复核的导出申请 }, "400": { $ref: "#/components/responses/ValidationError" }, "403": { $ref: "#/components/responses/AuthorizationError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/privacy-decision:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: reviewAdminExecutiveExportPrivacy
+      summary: 隐私合规完成第一道导出复核
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: export_request_id, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [decision, reasonCode, resourceVersion], additionalProperties: false } } } }
+      responses: { "200": { description: 导出隐私复核结果 }, "403": { $ref: "#/components/responses/AuthorizationError" }, "409": { $ref: "#/components/responses/ConflictError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/domain-decision:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: reviewAdminExecutiveExportDomain
+      summary: 职责域负责人完成第二道导出复核
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: export_request_id, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [decision, reasonCode, resourceVersion], additionalProperties: false } } } }
+      responses: { "200": { description: 导出职责域复核结果 }, "403": { $ref: "#/components/responses/AuthorizationError" }, "409": { $ref: "#/components/responses/ConflictError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/revocation:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: revokeAdminExecutiveExport
+      summary: 撤销尚未下载的导出授权
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: export_request_id, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reasonCode, resourceVersion], additionalProperties: false } } } }
+      responses: { "200": { description: 已撤销导出授权 }, "403": { $ref: "#/components/responses/AuthorizationError" }, "409": { $ref: "#/components/responses/ConflictError" } }
+  /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/download:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: downloadAdminExecutiveExport
+      summary: 单次下载已双人批准的加密导出
+      security:
+        - sandboxAuth: []
+      parameters: [{ name: export_request_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: 单次合成导出内容 }, "403": { $ref: "#/components/responses/AuthorizationError" }, "410": { description: 下载授权已过期 } }
+  /v1/internal-sandbox/admin/reports:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminDataReports
+      summary: 查询组织范围内去标识聚合报表名录
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: search, in: query, required: false, schema: { type: string } }
+        - { name: domain, in: query, required: false, schema: { type: string, enum: [operations, finance, safety_compliance, audit] } }
+        - { name: state, in: query, required: false, schema: { type: string, enum: [ready, partial, stale] } }
+        - { name: sort, in: query, required: false, schema: { type: string, enum: [refreshed_at_desc, report_id_asc] } }
+        - { name: page_size, in: query, required: false, schema: { type: integer, enum: [25, 50, 100] } }
+        - { name: after, in: query, required: false, schema: { type: string } }
+        - { name: before, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: 报表摘要、筛选结果和签名游标分页名录
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/admin/reports/{report_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminDataReport
+      summary: 查询去标识聚合报表详情
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: report_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: 聚合指标、角色允许动作、数据边界和追加式审计
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/admin/reports/{report_id}/actions/refresh_report:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: refreshAdminDataReport
+      summary: 按角色职责域刷新报表快照
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: report_id, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, reasonCode]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                reasonCode: { type: string, minLength: 1 }
+              additionalProperties: false
+      responses:
+        "200":
+          description: 已确认的报表刷新结果与追加式审计
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/admin/audit:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: listAdminAuditResources
+      summary: 查询统一审计事件与受控调查资源名录
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: search, in: query, required: false, schema: { type: string } }
+        - { name: kind, in: query, required: false, schema: { type: string, enum: [event, investigation] } }
+        - { name: domain, in: query, required: false, schema: { type: string } }
+        - { name: result, in: query, required: false, schema: { type: string } }
+        - { name: sort, in: query, required: false, schema: { type: string } }
+        - { name: page_size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: cursor, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: 脱敏审计摘要、筛选选项和签名游标分页名录
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/admin/audit/{kind}/{resource_id}:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getAdminAuditResource
+      summary: 查询统一审计事件或受控调查详情
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: kind, in: path, required: true, schema: { type: string, enum: [event, investigation] } }
+        - { name: resource_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: 脱敏事件元数据、完整性摘要或调查详情与追加式轨迹
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/admin/audit/{kind}/{resource_id}/actions/{action}:
+    post:
+      tags: [InternalSandboxAdmin]
+      operationId: performAdminAuditAction
+      summary: 技术运维执行不改变领域业务状态的受控调查操作
+      security:
+        - sandboxAuth: []
+      parameters:
+        - { name: kind, in: path, required: true, schema: { type: string, enum: [event, investigation] } }
+        - { name: resource_id, in: path, required: true, schema: { type: string } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [open_investigation, assign_investigation, add_investigation_note, resolve_investigation, reopen_investigation] } }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                assigneeInternalUserId: { type: string }
+                note: { type: string }
+                resolutionCode: { type: string }
+              additionalProperties: false
+      responses:
+        "200":
+          description: 结果确认状态、更新后的调查详情和追加式审计
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/internal-sandbox/health:
+    get:
+      tags: [InternalSandboxAdmin]
+      operationId: getInternalSandboxHealth
+      summary: 查询内部沙箱健康状态
+      security:
+        - sandboxAuth: []
+      responses:
+        "200":
+          description: 沙箱组件健康状态
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    sandboxAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 仅内部沙箱接受预置合成身份，不得用于生产。
+    identityProviderSignature:
+      type: apiKey
+      in: header
+      name: X-Provider-Signature
+      description: 身份核验供应商回调签名；Server 必须验证签名、时间窗、任务归属和重放。
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+      description: 同一业务动作重试必须使用相同值。
+    ApplicationId:
+      name: application_id
+      in: path
+      required: true
+      schema:
+        type: string
+    EligibilityId:
+      name: eligibility_id
+      in: path
+      required: true
+      schema:
+        type: string
+    AppealId:
+      name: appeal_id
+      in: path
+      required: true
+      schema:
+        type: string
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+    TripId:
+      name: trip_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^synthetic-"
+    CaseId:
+      name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^safety-synthetic-"
+  schemas:
+    GeoPoint:
+      type: object
+      required: [latitude, longitude, coordinateSystem]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        coordinateSystem: { type: string, enum: [wgs84, gcj02] }
+    RequestPhoneCodeRequest:
+      type: object
+      required: [phoneNumber, consentAccepted, deviceId, idempotencyKey]
+      properties:
+        phoneNumber: { type: string, pattern: "^1[3-9][0-9]{9}$" }
+        consentAccepted: { type: boolean, const: true }
+        deviceId: { type: string, minLength: 8, maxLength: 128 }
+        idempotencyKey: { type: string, minLength: 1, maxLength: 128 }
+    VerifyPhoneCodeRequest:
+      type: object
+      required: [challengeId, code, deviceId, idempotencyKey]
+      properties:
+        challengeId: { type: string }
+        code: { type: string, pattern: "^[0-9]{6}$" }
+        deviceId: { type: string, minLength: 8, maxLength: 128 }
+        idempotencyKey: { type: string, minLength: 1, maxLength: 128 }
+    RefreshPhoneSessionRequest:
+      type: object
+      required: [refreshToken, deviceId, idempotencyKey]
+      properties:
+        refreshToken: { type: string, minLength: 32 }
+        deviceId: { type: string, minLength: 8, maxLength: 128 }
+        idempotencyKey: { type: string, minLength: 1, maxLength: 128 }
+    PhoneCodeChallenge:
+      type: object
+      required: [challengeId, maskedPhoneNumber, state, expiresAt, resendAvailableAt, attemptsRemaining, synthetic]
+      properties:
+        challengeId: { type: string }
+        maskedPhoneNumber: { type: string }
+        state: { type: string, enum: [pending, consumed, expired, locked, superseded, delivery_unknown] }
+        expiresAt: { type: string, format: date-time }
+        resendAvailableAt: { type: string, format: date-time }
+        attemptsRemaining: { type: integer, minimum: 0, maximum: 5 }
+        synthetic: { type: boolean, const: true }
+    PhoneAuthenticationResult:
+      type: object
+      required: [accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt, account, session]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        accessTokenExpiresAt: { type: string, format: date-time }
+        refreshTokenExpiresAt: { type: string, format: date-time }
+        account:
+          type: object
+          required: [accountId, state, isNewAccount, adultEligibilityState, businessAccessAllowed, nextStep, synthetic]
+          properties:
+            accountId: { type: string }
+            state: { type: string }
+            isNewAccount: { type: boolean }
+            adultEligibilityState: { type: string }
+            businessAccessAllowed: { type: boolean }
+            nextStep: { type: string, enum: [adult_eligibility, ride_home, restricted] }
+            synthetic: { type: boolean, const: true }
+        session: { $ref: "#/components/schemas/InternalAccountSession" }
+    CreateInternalAccountSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [accountId]
+      properties:
+        accountId:
+          type: string
+          enum: [synthetic-account-7, synthetic-passenger-8, synthetic-unverified-9]
+    CreateInternalAccountSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [token, session]
+      properties:
+        token: { type: string, pattern: "^synthetic-session-" }
+        session: { $ref: "#/components/schemas/InternalAccountSession" }
+    InternalAccountSession:
+      type: object
+      additionalProperties: false
+      required: [sessionId, accountId, activeIdentity, availableIdentities, adultEligibilityState, businessAccessAllowed, issuedAt, expiresAt, state, productionEnabled, synthetic]
+      properties:
+        sessionId: { type: string, pattern: "^session-" }
+        accountId: { type: string, pattern: "^synthetic-" }
+        activeIdentity: { type: string, enum: [passenger, driver] }
+        availableIdentities:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [passenger, driver] }
+        adultEligibilityState: { type: string }
+        businessAccessAllowed: { type: boolean }
+        issuedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time }
+        state: { type: string, enum: [active, expired, revoked] }
+        productionEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    AccountTrustProfile:
+      type: object
+      required: [accountId, avatar, synthetic]
+      properties:
+        accountId: { type: string }
+        avatar:
+          type: object
+          required: [state, realUploadEnabled, synthetic]
+          properties:
+            state: { type: string, enum: [default, pending, approved, rejected] }
+            publicUrl: { type: string, format: uri }
+            rejectionReason: { type: string, enum: [face_missing, multiple_people, unsafe_content] }
+            realUploadEnabled: { const: false }
+            synthetic: { const: true }
+        rating:
+          type: object
+          required: [average, ratingCount]
+          properties:
+            average: { type: number, minimum: 1, maximum: 5 }
+            ratingCount: { type: integer, minimum: 0 }
+        synthetic: { const: true }
+    TripRating:
+      type: object
+      required: [ratingId, tripId, raterAccountId, subjectAccountId, score, tags, createdAt, synthetic]
+      properties:
+        ratingId: { type: string }
+        tripId: { type: string }
+        raterAccountId: { type: string }
+        subjectAccountId: { type: string }
+        score: { type: integer, minimum: 1, maximum: 5 }
+        tags: { type: array, items: { type: string } }
+        note: { type: string, maxLength: 200 }
+        createdAt: { type: string, format: date-time }
+        synthetic: { const: true }
+    FairnessMonitoringReport:
+      type: object
+      required: [dimension, rows, alert, thresholdPercentagePoints, automatedDecisionEnabled, synthetic]
+      properties:
+        dimension: { const: legal_gender }
+        rows: { type: array, items: { type: object } }
+        alert: { type: boolean }
+        thresholdPercentagePoints: { type: number }
+        automatedDecisionEnabled: { const: false }
+        synthetic: { const: true }
+    AdultEligibilityVerification:
+      type: object
+      required: [accountId, state, version, checks, recoveryAction, businessAccessAllowed, realIdentityDataEnabled, realBiometricDataEnabled, externalIdentityProviderEnabled, consent, synthetic]
+      properties:
+        accountId: { type: string }
+        state: { type: string, enum: [not_started, collecting, processing, needs_retry, needs_review, verified, rejected, expired, suspended, revoked] }
+        version: { type: integer, minimum: 0 }
+        checks: { type: object, additionalProperties: true }
+        recoveryAction: { type: string }
+        businessAccessAllowed: { type: boolean }
+        realIdentityDataEnabled: { type: boolean, const: false }
+        realBiometricDataEnabled: { type: boolean, const: false }
+        externalIdentityProviderEnabled: { type: boolean, const: false }
+        consent: { type: object, additionalProperties: true }
+        appeal: { type: object, additionalProperties: true }
+        synthetic: { type: boolean, const: true }
+    AdultEligibilitySdkSession:
+      type: object
+      required: [sessionId, providerId, clientToken, expiresAt, sdkMode, requestedChecks, realIdentityDataEnabled, realBiometricDataEnabled, externalIdentityProviderEnabled]
+      properties:
+        sessionId: { type: string }
+        providerId: { type: string }
+        clientToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+        sdkMode: { type: string, enum: [synthetic, native] }
+        requestedChecks:
+          type: array
+          items: { type: string, enum: [identity_document, adult_age, liveness, face_match] }
+        realIdentityDataEnabled: { type: boolean, const: false }
+        realBiometricDataEnabled: { type: boolean, const: false }
+        externalIdentityProviderEnabled: { type: boolean, const: false }
+      additionalProperties: false
+    TripChatMessage:
+      type: object
+      required: [messageId, senderAccountId, body, sentAt, deliveryState, synthetic]
+      properties:
+        messageId: { type: string }
+        senderAccountId: { type: string }
+        body: { type: string, maxLength: 500 }
+        sentAt: { type: string, format: date-time }
+        deliveryState: { type: string, enum: [sent, failed, unknown] }
+        synthetic: { type: boolean, const: true }
+      additionalProperties: false
+    TripChatView:
+      type: object
+      required: [conversationId, tripId, state, participants, messages, quickReplies, retention, realChatEnabled, externalChatProviderEnabled, synthetic]
+      properties:
+        conversationId: { type: string }
+        tripId: { type: string }
+        state: { type: string, enum: [scheduled, open, frozen, expired, closed] }
+        participants:
+          type: array
+          items: { $ref: "#/components/schemas/TripPartyPublicProfile" }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/TripChatMessage" }
+        quickReplies:
+          type: array
+          items: { type: string }
+        openedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        closedAt: { type: string, format: date-time }
+        retention:
+          type: object
+          required: [evidenceHold, deletionState, summaryRetained]
+          properties:
+            contentDeleteAfter: { type: string, format: date-time }
+            evidenceHold: { type: boolean }
+            deletionState: { type: string, enum: [not_due, eligible, blocked_by_hold, deleted] }
+            summaryRetained: { const: true }
+          additionalProperties: false
+        realChatEnabled: { type: boolean, const: false }
+        externalChatProviderEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+      additionalProperties: false
+    MessageCenterTarget:
+      oneOf:
+        - type: object
+          required: [kind, tripId]
+          properties:
+            kind: { const: trip_chat }
+            tripId: { type: string }
+          additionalProperties: false
+        - type: object
+          required: [kind, tripId]
+          properties:
+            kind: { const: trip }
+            tripId: { type: string }
+          additionalProperties: false
+        - type: object
+          required: [kind]
+          properties:
+            kind: { const: vehicle_review }
+            reviewId: { type: string }
+          additionalProperties: false
+        - type: object
+          required: [kind]
+          properties:
+            kind: { const: eligibility }
+          additionalProperties: false
+        - type: object
+          required: [kind, caseId]
+          properties:
+            kind: { const: safety_case }
+            caseId: { type: string }
+          additionalProperties: false
+    MessageCenterItem:
+      type: object
+      required: [itemId, category, title, body, occurredAt, pinned, target, synthetic]
+      properties:
+        itemId: { type: string }
+        category: { type: string, enum: [trip_chat, trip_service, vehicle_review, eligibility, safety] }
+        title: { type: string }
+        body: { type: string }
+        occurredAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time }
+        pinned: { type: boolean }
+        target: { $ref: "#/components/schemas/MessageCenterTarget" }
+        synthetic: { type: boolean, const: true }
+      additionalProperties: false
+    MessageCenterView:
+      type: object
+      required: [items, unreadCount, realPushEnabled, externalNotificationProviderEnabled, synthetic]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MessageCenterItem" }
+        unreadCount: { type: integer, minimum: 0 }
+        realPushEnabled: { type: boolean, const: false }
+        externalNotificationProviderEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+      additionalProperties: false
+    TemporaryChatView:
+      type: object
+      additionalProperties: false
+      required: [tripId, state, messages, synthetic]
+      properties:
+        tripId: { type: string, pattern: "^synthetic-" }
+        state: { type: string, enum: [closed, open, frozen] }
+        messages:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [messageId, senderAccountId, body, sentAt, synthetic]
+            properties:
+              messageId: { type: string, pattern: "^synthetic-" }
+              senderAccountId: { type: string, pattern: "^synthetic-" }
+              body: { type: string, pattern: "^合成消息：" }
+              sentAt: { type: string, format: date-time }
+              synthetic: { type: boolean, const: true }
+        expiresAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    SafetyCaseView:
+      type: object
+      additionalProperties: false
+      required: [caseId, tripId, reporterAccountId, reportedAccountId, reasonCode, state, version, createdAt, synthetic]
+      properties:
+        caseId: { type: string, pattern: "^safety-synthetic-" }
+        tripId: { type: string, pattern: "^synthetic-" }
+        reporterAccountId: { type: string, pattern: "^synthetic-" }
+        reportedAccountId: { type: string, pattern: "^synthetic-" }
+        reasonCode: { type: string, enum: [unsafe_behavior, harassment, identity_concern] }
+        state: { type: string, enum: [open_frozen, appealing, restored, upheld] }
+        version: { type: integer, minimum: 1 }
+        appealReasonCode: { type: string, enum: [context_missing, misunderstanding, new_evidence] }
+        resolutionCode: { type: string, enum: [restore_access, uphold_freeze] }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    AdminSafetyCaseSummary:
+      type: object
+      additionalProperties: false
+      required: [caseId, tripId, state, reasonCode, createdAt, hasAppeal, synthetic]
+      properties:
+        caseId: { type: string, pattern: "^safety-synthetic-" }
+        tripId: { type: string, pattern: "^synthetic-" }
+        state: { type: string, enum: [open_frozen, appealing, restored, upheld] }
+        reasonCode: { type: string, enum: [unsafe_behavior, harassment, identity_concern] }
+        createdAt: { type: string, format: date-time }
+        hasAppeal: { type: boolean }
+        synthetic: { type: boolean, const: true }
+    AdminSafetyCaseDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminSafetyCaseSummary"
+        - type: object
+          additionalProperties: false
+          required: [reporterAccountReference, reportedAccountReference, version, disclosure]
+          properties:
+            reporterAccountReference: { type: string, pattern: "^合成账户" }
+            reportedAccountReference: { type: string, pattern: "^合成账户" }
+            appealReasonCode: { type: string, enum: [context_missing, misunderstanding, new_evidence] }
+            version: { type: integer, minimum: 1 }
+            disclosure:
+              type: object
+              additionalProperties: false
+              required: [chatBodyAvailable, rawEvidenceAvailable]
+              properties:
+                chatBodyAvailable: { type: boolean, const: false }
+                rawEvidenceAvailable: { type: boolean, const: false }
+    SafetyDashboard:
+      type: object
+      additionalProperties: false
+      required: [realChatEnabled, realEvidenceEnabled]
+      properties:
+        chat:
+          $ref: "#/components/schemas/TemporaryChatView"
+        safetyCase:
+          $ref: "#/components/schemas/SafetyCaseView"
+        realChatEnabled: { type: boolean, const: false }
+        realEvidenceEnabled: { type: boolean, const: false }
+    SyntheticTripView:
+      type: object
+      additionalProperties: false
+      required: [tripId, passengerAccountId, state, version, originLabel, destinationLabel, passengerCount, payment, createdAt, recovery, synthetic]
+      properties:
+        tripId: { type: string, pattern: "^synthetic-" }
+        passengerAccountId: { type: string, pattern: "^synthetic-" }
+        driverAccountId: { type: string, pattern: "^synthetic-" }
+        state:
+          type: string
+          enum: [pending_payment, paid_pending_match, scheduled, reserved, preparing, accepted, driver_en_route, driver_arrived, in_progress, safety_frozen, completed, unfulfilled, cancelled]
+        version: { type: integer, minimum: 0 }
+        originLabel: { type: string }
+        destinationLabel: { type: string }
+        passengerCount:
+          type: integer
+          enum: [1, 2, 3]
+        scene:
+          type: string
+          enum: [commute, airport, medical, other]
+        timing:
+          $ref: "#/components/schemas/TripTiming"
+        estimatedDurationMinutes: { type: integer, minimum: 1, maximum: 240 }
+        scheduleNotices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripScheduleNotice"
+        passengerProfile: { $ref: "#/components/schemas/TripPartyPublicProfile" }
+        driverProfile: { $ref: "#/components/schemas/TripPartyPublicProfile" }
+        vehicle: { $ref: "#/components/schemas/VehiclePublicSummary" }
+        pickupVerification: { $ref: "#/components/schemas/PickupVerification" }
+        vehiclePosition: { $ref: "#/components/schemas/SyntheticVehiclePosition" }
+        cancellationEligibility: { $ref: "#/components/schemas/TripCancellationEligibility" }
+        cancellation: { $ref: "#/components/schemas/TripCancellationRecord" }
+        payment:
+          type: object
+          additionalProperties: false
+          required: [amountMinor, currency, realPayment, state]
+          properties:
+            amountMinor: { type: integer, const: 0 }
+            currency: { type: string, const: "CNY" }
+            realPayment: { type: boolean, const: false }
+            state: { type: string, enum: [pending_payment, paid_pending_match, closed] }
+        quotaPolicy: { type: string, enum: [base, flex] }
+        createdAt: { type: string, format: date-time }
+        acceptedAt: { type: string, format: date-time }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+        cancelledAt: { type: string, format: date-time }
+        closureReason:
+          type: string
+          enum: [passenger_cancelled, driver_cancelled, payment_timeout, matching_timeout]
+        recovery:
+          type: object
+          additionalProperties: false
+          required: [state]
+          properties:
+            state: { type: string, enum: [none, driver_acceptance_released, cancellation_confirmed, timeout_closed] }
+            recoveredAt: { type: string, format: date-time }
+            source: { type: string, enum: [idempotency_replay, state_reconciliation, timeout_worker] }
+        synthetic: { type: boolean, const: true }
+    AvailableDriverTripView:
+      type: object
+      additionalProperties: false
+      required: [tripId, version, state, originLabel, destinationLabel, passengerCount, passengerProfile, synthetic]
+      properties:
+        tripId: { type: string, pattern: "^synthetic-" }
+        dispatchOfferId: { type: string, pattern: "^offer-" }
+        version: { type: integer, minimum: 0 }
+        state: { type: string, enum: [paid_pending_match, scheduled] }
+        originLabel: { type: string }
+        destinationLabel: { type: string }
+        passengerCount: { type: integer, enum: [1, 2, 3] }
+        scene: { type: string, enum: [commute, airport, medical, other] }
+        timing: { $ref: "#/components/schemas/TripTiming" }
+        estimatedDurationMinutes: { type: integer, minimum: 1, maximum: 240 }
+        passengerProfile: { $ref: "#/components/schemas/TripPartyPublicProfile" }
+        synthetic: { type: boolean, const: true }
+    DriverDispatchLocation:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, coordinateSystem, accuracyMeters, capturedAt, synthetic]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        coordinateSystem: { type: string, const: gcj02 }
+        accuracyMeters: { type: number, minimum: 0, maximum: 500 }
+        capturedAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    UpdateDriverDispatchPresenceRequest:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state: { type: string, enum: [online, offline] }
+        location: { $ref: "#/components/schemas/DriverDispatchLocation" }
+    DriverDispatchPresenceView:
+      type: object
+      additionalProperties: false
+      required: [accountId, state, updatedAt, productionEnabled, realLocationEnabled, backgroundLocationEnabled, synthetic]
+      properties:
+        accountId: { type: string }
+        state: { type: string, enum: [online, offline] }
+        location: { $ref: "#/components/schemas/DriverDispatchLocation" }
+        locationFreshUntil: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        productionEnabled: { type: boolean, const: false }
+        realLocationEnabled: { type: boolean, const: false }
+        backgroundLocationEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    DispatchOfferView:
+      type: object
+      additionalProperties: false
+      required: [offerId, tripId, tripVersion, driverAccountId, state, dispatchRound, distanceMeters, offeredAt, expiresAt, trip, synthetic]
+      properties:
+        offerId: { type: string, pattern: "^offer-" }
+        tripId: { type: string }
+        tripVersion: { type: integer, minimum: 0 }
+        driverAccountId: { type: string }
+        state: { type: string, enum: [offered, viewed, accepted, expired, withdrawn] }
+        dispatchRound: { type: integer, minimum: 1, maximum: 3 }
+        distanceMeters: { type: integer, minimum: 0, maximum: 10000 }
+        offeredAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        trip: { $ref: "#/components/schemas/AvailableDriverTripView" }
+        synthetic: { type: boolean, const: true }
+    DriverDispatchOffersView:
+      type: object
+      additionalProperties: false
+      required: [offers, serverTime, productionEnabled, realPushEnabled, synthetic]
+      properties:
+        offers:
+          type: array
+          items: { $ref: "#/components/schemas/DispatchOfferView" }
+        serverTime: { type: string, format: date-time }
+        productionEnabled: { type: boolean, const: false }
+        realPushEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    AcceptDispatchOfferRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedTripVersion]
+      properties:
+        expectedTripVersion: { type: integer, minimum: 0 }
+    DriverAvailabilityView:
+      type: object
+      additionalProperties: false
+      required: [accountId, state, returnOnlineAfterTrip, updatedAt, productionEnabled, synthetic]
+      properties:
+        accountId: { type: string, pattern: "^synthetic-" }
+        state: { type: string, enum: [offline, online, busy] }
+        returnOnlineAfterTrip: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        productionEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    TripTiming:
+      type: object
+      additionalProperties: false
+      required: [mode, timezone, selectionSource]
+      properties:
+        mode: { type: string, enum: [immediate, scheduled] }
+        timezone: { type: string, const: "Asia/Shanghai" }
+        selectionSource: { type: string, enum: [immediate, quick_slot, calendar_slot] }
+        requestedPickupStartsAt: { type: string, format: date-time }
+        requestedPickupEndsAt: { type: string, format: date-time }
+    PickupTimeSlot:
+      type: object
+      additionalProperties: false
+      required: [startsAt, endsAt, available]
+      properties:
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        available: { type: boolean }
+    TripServiceWindow:
+      type: object
+      additionalProperties: false
+      required: [weekday, startsAtMinute, endsAtMinute]
+      properties:
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        startsAtMinute: { type: integer, minimum: 0, maximum: 1439 }
+        endsAtMinute: { type: integer, minimum: 1, maximum: 1440 }
+    TripBookingAvailability:
+      type: object
+      additionalProperties: false
+      required: [serverNow, timezone, immediateAvailable, minimumLeadMinutes, slotDurationMinutes, latestScheduledAt, quickSlots, availableSlots, serviceWindows]
+      properties:
+        serverNow: { type: string, format: date-time }
+        timezone: { type: string, const: "Asia/Shanghai" }
+        immediateAvailable: { type: boolean }
+        minimumLeadMinutes: { type: integer, const: 30 }
+        slotDurationMinutes: { type: integer, const: 10 }
+        latestScheduledAt: { type: string, format: date-time }
+        quickSlots:
+          type: array
+          minItems: 0
+          maxItems: 4
+          items: { $ref: "#/components/schemas/PickupTimeSlot" }
+        availableSlots:
+          type: array
+          items: { $ref: "#/components/schemas/PickupTimeSlot" }
+        serviceWindows:
+          type: array
+          items: { $ref: "#/components/schemas/TripServiceWindow" }
+    TripScheduleNotice:
+      type: object
+      additionalProperties: false
+      required: [kind, dueAt, delivered]
+      properties:
+        kind: { type: string, enum: [created, accepted, day_before, two_hours, thirty_minutes, unmatched] }
+        dueAt: { type: string, format: date-time }
+        delivered: { type: boolean }
+    TripPartyPublicProfile:
+      type: object
+      additionalProperties: false
+      required: [accountId, displayName, gender, synthetic]
+      properties:
+        accountId: { type: string }
+        displayName: { type: string }
+        avatarUrl: { type: string, format: uri }
+        gender: { type: string, enum: [undisclosed, female, male, nonbinary] }
+        rating:
+          type: object
+          additionalProperties: false
+          required: [average, ratingCount]
+          properties:
+            average: { type: number, minimum: 0, maximum: 5 }
+            ratingCount: { type: integer, minimum: 0 }
+        synthetic: { type: boolean, const: true }
+    VehiclePublicSummary:
+      type: object
+      additionalProperties: false
+      required: [vehicleId, color, make, model, licensePlate, maxPassengerCount, synthetic]
+      properties:
+        vehicleId: { type: string }
+        color: { type: string }
+        make: { type: string }
+        model: { type: string }
+        licensePlate: { type: string }
+        maxPassengerCount: { type: integer, enum: [1, 2, 3] }
+        synthetic: { type: boolean, const: true }
+    PickupVerification:
+      type: object
+      additionalProperties: false
+      required: [code, synthetic]
+      properties:
+        code: { type: string, pattern: "^[0-9]{4}$" }
+        expiresAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    SyntheticVehiclePosition:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, capturedAt, realLocationEnabled, synthetic]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        capturedAt: { type: string, format: date-time }
+        estimatedArrivalAt: { type: string, format: date-time }
+        realLocationEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    TripCancellationEligibility:
+      type: object
+      additionalProperties: false
+      required: [eligible, policy, mode, serverTime, reasonRequired, noteRequired, realFeeAmountMinor, currency, determinedByServer]
+      properties:
+        eligible: { type: boolean }
+        policy: { type: string, const: accepted_cancellation_responsibility }
+        mode: { type: string, enum: [free_window, responsibility_assessment, not_available] }
+        acceptedAt: { type: string, format: date-time }
+        deadlineAt: { type: string, format: date-time }
+        serverTime: { type: string, format: date-time }
+        reasonRequired: { type: boolean }
+        noteRequired: { type: boolean, const: false }
+        realFeeAmountMinor: { type: integer, const: 0 }
+        currency: { type: string, const: CNY }
+        determinedByServer: { type: boolean, const: true }
+        goodwill: { $ref: "#/components/schemas/GoodwillCancellationEligibility" }
+    GoodwillCancellationEligibility:
+      type: object
+      additionalProperties: false
+      required: [actor, eligible, reasonRequired, usage, limits, serverTime, determinedByServer, productionEnabled]
+      properties:
+        actor: { type: string, enum: [passenger, driver] }
+        eligible: { type: boolean }
+        reasonRequired: { type: boolean, const: true }
+        usage: { $ref: "#/components/schemas/GoodwillCancellationCounts" }
+        limits: { $ref: "#/components/schemas/GoodwillCancellationCounts" }
+        blockedBy: { type: string, enum: [trip_state, hours24, days7, days30] }
+        serverTime: { type: string, format: date-time }
+        determinedByServer: { type: boolean, const: true }
+        productionEnabled: { type: boolean, const: false }
+    GoodwillCancellationCounts:
+      type: object
+      additionalProperties: false
+      required: [hours24, days7, days30]
+      properties:
+        hours24: { type: integer, minimum: 0 }
+        days7: { type: integer, minimum: 0 }
+        days30: { type: integer, minimum: 0 }
+    TripCancellationRecord:
+      type: object
+      additionalProperties: false
+      required: [cancelledAt, cancelledBy, realFeeAmountMinor, currency, withinFreeWindow, responsibility, nonFinancialRemedy, automaticallyDetermined]
+      properties:
+        reason:
+          type: string
+          enum: [plans_changed, pickup_incorrect, wait_too_long, driver_or_vehicle_concern, other]
+        note: { type: string, maxLength: 200 }
+        cancelledAt: { type: string, format: date-time }
+        cancelledBy: { type: string, enum: [passenger, driver, system] }
+        realFeeAmountMinor: { type: integer, const: 0 }
+        currency: { type: string, const: CNY }
+        withinFreeWindow: { type: boolean }
+        responsibility: { type: string, enum: [passenger, driver, platform, shared, manual_review] }
+        nonFinancialRemedy: { type: string, enum: [none, priority_rematch, driver_quota_exemption, goodwill_cancellation, manual_review] }
+        automaticallyDetermined: { type: boolean, const: true }
+        goodwill:
+          type: object
+          additionalProperties: false
+          required: [recordId, actor, state, consumedAt, synthetic]
+          properties:
+            recordId: { type: string, pattern: "^goodwill-" }
+            actor: { type: string, enum: [passenger, driver] }
+            state: { type: string, const: consumed }
+            consumedAt: { type: string, format: date-time }
+            synthetic: { type: boolean, const: true }
+    TripCancellationRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        reason:
+          type: string
+          enum: [plans_changed, pickup_incorrect, wait_too_long, driver_or_vehicle_concern, other]
+        note: { type: string, maxLength: 200 }
+    CompletionIntent:
+      type: object
+      additionalProperties: false
+      required: [token, tripId, driverAccountId, tripVersion, expiresAt, synthetic]
+      properties:
+        token: { type: string, pattern: "^synthetic-completion-" }
+        tripId: { type: string, pattern: "^synthetic-" }
+        driverAccountId: { type: string, pattern: "^synthetic-" }
+        tripVersion: { type: integer, minimum: 0 }
+        expiresAt: { type: string, format: date-time }
+        consumedAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    DriverOrderState:
+      type: string
+      enum: [available, accepted, in_progress, completed, cancelled]
+    DriverOrderSummary:
+      type: object
+      additionalProperties: false
+      required: [orderId, tripId, state, origin, destination, passengerCount, amountMinor, currency, occurredAt, synthetic]
+      properties:
+        orderId: { type: string }
+        tripId: { type: string }
+        state: { $ref: "#/components/schemas/DriverOrderState" }
+        origin: { $ref: "#/components/schemas/TripPlace" }
+        destination: { $ref: "#/components/schemas/TripPlace" }
+        passengerCount: { type: integer, enum: [1, 2, 3] }
+        amountMinor: { type: integer, const: 0 }
+        currency: { type: string, const: CNY }
+        occurredAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    DriverOrderDetail:
+      allOf:
+        - { $ref: "#/components/schemas/DriverOrderSummary" }
+        - type: object
+          required: [timeline, realOrderEnabled, realSettlementEnabled]
+          properties:
+            timeline:
+              type: array
+              items:
+                type: object
+                required: [event, occurredAt]
+                properties:
+                  event: { type: string, enum: [created, accepted, started, completed, cancelled] }
+                  occurredAt: { type: string, format: date-time }
+            realOrderEnabled: { type: boolean, const: false }
+            realSettlementEnabled: { type: boolean, const: false }
+    TripPlace:
+      type: object
+      additionalProperties: false
+      required: [placeId, label, kind, source, synthetic]
+      properties:
+        placeId: { type: string }
+        label: { type: string }
+        address: { type: string }
+        kind: { type: string, enum: [current_location, home, work, poi, custom] }
+        source: { type: string, enum: [synthetic_current_location, manual, saved, recent] }
+        synthetic: { type: boolean, const: true }
+    DriverWalletView:
+      type: object
+      additionalProperties: false
+      required: [withdrawableAmountMinor, pendingSettlementAmountMinor, totalIncomeAmountMinor, currency, bankCards, entries, withdrawals, realPaymentEnabled, realSettlementEnabled, realBankCardBindingEnabled, realWithdrawalEnabled, synthetic]
+      properties:
+        withdrawableAmountMinor: { type: integer, const: 0 }
+        pendingSettlementAmountMinor: { type: integer, const: 0 }
+        totalIncomeAmountMinor: { type: integer, const: 0 }
+        currency: { type: string, const: CNY }
+        bankCards: { type: array, maxItems: 0 }
+        entries: { type: array, maxItems: 0 }
+        withdrawals: { type: array, maxItems: 0 }
+        realPaymentEnabled: { type: boolean, const: false }
+        realSettlementEnabled: { type: boolean, const: false }
+        realBankCardBindingEnabled: { type: boolean, const: false }
+        realWithdrawalEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    BankCardCapability:
+      type: object
+      additionalProperties: false
+      required: [availability, realPayment, realDataAccepted, syntheticCardEntryAllowed, reason]
+      properties:
+        availability: { type: string, const: disabled }
+        realPayment: { type: boolean, const: false }
+        realDataAccepted: { type: boolean, const: false }
+        syntheticCardEntryAllowed: { type: boolean, const: false }
+        reason: { type: string, const: external_payment_and_identity_approval_required }
+    WithdrawalCapability:
+      type: object
+      additionalProperties: false
+      required: [availability, realFunds, requestAccepted, reason]
+      properties:
+        availability: { type: string, const: disabled }
+        realFunds: { type: boolean, const: false }
+        requestAccepted: { type: boolean, const: false }
+        reason: { type: string, const: real_payment_gate_closed }
+    SyntheticTripDashboard:
+      type: object
+      additionalProperties: false
+      required: [availableDriverTrips, productionEnabled, realPayment, shanghaiPilot]
+      properties:
+        passengerTrip:
+          $ref: "#/components/schemas/SyntheticTripView"
+        passengerTrips:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyntheticTripView"
+        availableDriverTrips:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyntheticTripView"
+        reservedDriverTrips:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyntheticTripView"
+        activeDriverTrip:
+          $ref: "#/components/schemas/SyntheticTripView"
+        productionEnabled: { type: boolean, const: false }
+        realPayment: { type: boolean, const: false }
+        shanghaiPilot: { type: boolean, const: false }
+    FreeFlexTrialView:
+      type: object
+      additionalProperties: false
+      required: [eligibilityId, accountId, batchId, state, version, qualificationFeeMinor, paidPathEnabled, realInvitation, activationDaysInLookback, maximumActivationDays, quota, synthetic]
+      properties:
+        eligibilityId: { type: string }
+        accountId: { type: string, pattern: "^synthetic-" }
+        batchId: { type: string, const: "batch_0" }
+        state:
+          type: string
+          enum: [invited, under_review, awaiting_confirmation, active, rejected, expired]
+        version: { type: integer, minimum: 0 }
+        qualificationFeeMinor: { type: integer, const: 0 }
+        paidPathEnabled: { type: boolean, const: false }
+        realInvitation: { type: boolean, const: false }
+        activationDaysInLookback: { type: integer, minimum: 0, maximum: 60 }
+        maximumActivationDays: { type: integer, const: 60 }
+        quota:
+          type: object
+          additionalProperties: false
+          required: [hours24, days7, days30]
+          properties:
+            hours24: { type: integer, const: 4 }
+            days7: { type: integer, const: 12 }
+            days30: { type: integer, const: 18 }
+        cycleEndsAt: { type: string, format: date-time }
+        synthetic: { type: boolean, const: true }
+    VehicleReviewVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+    VehicleReviewDraftRequest:
+      allOf:
+        - $ref: "#/components/schemas/VehicleReviewVersionRequest"
+        - type: object
+          additionalProperties: false
+          required: [vehicleType, maxPassengerCount, insuranceExpiresOn, syntheticAttachmentId]
+          properties:
+            vehicleType:
+              type: string
+            maxPassengerCount:
+              type: integer
+              enum: [1, 2, 3]
+              default: 1
+            insuranceExpiresOn:
+              type: string
+              format: date
+            syntheticAttachmentId:
+              type: string
+              pattern: "^synthetic-"
+    VehicleReviewMaterialRequest:
+      allOf:
+        - $ref: "#/components/schemas/VehicleReviewVersionRequest"
+        - type: object
+          additionalProperties: false
+          required: [insuranceExpiresOn, syntheticAttachmentId]
+          properties:
+            insuranceExpiresOn:
+              type: string
+              format: date
+            syntheticAttachmentId:
+              type: string
+              pattern: "^synthetic-"
+    VehicleReviewTimelineItem:
+      type: object
+      additionalProperties: false
+      required: [code, label, state]
+      properties:
+        code:
+          type: string
+          enum: [submitted, review_started, material_requested, material_resubmitted, approved]
+        label:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum: [complete, current, future]
+    VehicleReviewView:
+      type: object
+      additionalProperties: false
+      required: [applicationId, accountId, status, version, ownerIdentityAvailable, requestedMaterialCodes, timeline, synthetic]
+      properties:
+        applicationId: { type: string }
+        accountId: { type: string }
+        status:
+          type: string
+          enum: [draft, under_review, needs_material, approved, suspended, appealing, revoked, expired]
+        version: { type: integer, minimum: 0 }
+        ownerIdentityAvailable: { type: boolean }
+        vehicleType: { type: string }
+        maxPassengerCount:
+          type: integer
+          enum: [1, 2, 3]
+          default: 1
+        insuranceExpiresOn: { type: string, format: date }
+        syntheticAttachmentId: { type: string, pattern: "^synthetic-" }
+        requestedMaterialCodes:
+          type: array
+          items: { type: string }
+        decisionCode: { type: string }
+        escalationType: { type: string }
+        userMessage:
+          type: object
+          additionalProperties: false
+          required: [title, body]
+          properties:
+            title: { type: string }
+            body: { type: string }
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/VehicleReviewTimelineItem"
+        synthetic: { type: boolean, const: true }
+    AdminMaterialReason:
+      type: string
+      enum: [insurance_expiry_incomplete, authorization_evidence_incomplete, synthetic_attachment_invalid]
+    AdminTaskVersionRequest:
+      type: object
+      required: [expectedTaskVersion]
+      properties:
+        expectedTaskVersion:
+          type: integer
+          minimum: 0
+    AdminDecisionVersionRequest:
+      type: object
+      required: [previewConfirmed, expectedTaskVersion, expectedVehicleReviewVersion]
+      properties:
+        previewConfirmed:
+          type: boolean
+          const: true
+        expectedTaskVersion:
+          type: integer
+          minimum: 0
+        expectedVehicleReviewVersion:
+          type: integer
+          minimum: 0
+    AdminRejectionReason:
+      type: string
+      enum: [vehicle_age_exceeded, vehicle_mileage_exceeded, insurance_requirement_not_met, authorization_remaining_insufficient]
+    AdminMaterialReasonRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          $ref: "#/components/schemas/AdminMaterialReason"
+    AdminReviewTaskSummary:
+      type: object
+      required: [taskId, applicationId, status, submittedAt, vehicleCategory, queueLabel, taskVersion, synthetic]
+      properties:
+        taskId: { type: string }
+        applicationId: { type: string }
+        status: { type: string }
+        submittedAt: { type: string, format: date-time }
+        vehicleCategory: { type: string }
+        queueLabel: { type: string }
+        taskVersion: { type: integer }
+        synthetic: { type: boolean, const: true }
+    AdminReviewTaskDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminReviewTaskSummary"
+        - type: object
+          required: [accountReference, insuranceExpiryStatus, authorizationEvidenceStatus, attachmentValidationStatus, vehicleReviewVersion]
+          properties:
+            accountReference: { type: string }
+            insuranceExpiryStatus: { type: string, enum: [complete, incomplete] }
+            authorizationEvidenceStatus: { type: string, enum: [complete, incomplete] }
+            attachmentValidationStatus: { type: string, enum: [valid, invalid] }
+            vehicleReviewVersion: { type: integer }
+            lease:
+              type: object
+              required: [ownerId, claimedAt, expiresAt]
+              properties:
+                ownerId: { type: string }
+                claimedAt: { type: string, format: date-time }
+                expiresAt: { type: string, format: date-time }
+    AdminMaterialPreview:
+      type: object
+      required: [reason, title, body, templateVersion, synthetic]
+      properties:
+        reason:
+          $ref: "#/components/schemas/AdminMaterialReason"
+        title: { type: string }
+        body: { type: string }
+        templateVersion: { type: string }
+        synthetic: { type: boolean, const: true }
+    AdminReviewAuditEntry:
+      type: object
+      required: [id, occurredAt, actorId, action, outcome, reasonCode, taskId, correlationId, synthetic]
+      properties:
+        id: { type: string }
+        occurredAt: { type: string, format: date-time }
+        actorId: { type: string }
+        action: { type: string }
+        outcome: { type: string, enum: [succeeded, denied] }
+        reasonCode: { type: string }
+        taskId: { type: string }
+        correlationId: { type: string }
+        synthetic: { type: boolean, const: true }
+    AdminOrganizationContext:
+      type: object
+      required: [organizationType, organizationId, organizationName, cityScopes, operatorScopes, purpose, fixed]
+      properties:
+        organizationType: { type: string, enum: [platform, operator, governance] }
+        organizationId: { type: string }
+        organizationName: { type: string }
+        cityScopes:
+          type: array
+          items: { type: string }
+        operatorScopes:
+          type: array
+          items: { type: string }
+        purpose: { type: string, enum: [platform_operations, operator_operations, governance_observation] }
+        fixed: { type: boolean }
+    AdminInternalSession:
+      type: object
+      required: [internalUserId, displayName, membershipId, functionalRoles, maximumDataClassification, context, availableContexts, visibleModules, temporaryGrants, synthetic]
+      properties:
+        internalUserId: { type: string }
+        displayName: { type: string }
+        membershipId: { type: string }
+        functionalRoles:
+          type: array
+          items: { type: string, enum: [platform_operations_lead, operator_administrator, operator_operations_lead, governance_observer] }
+        maximumDataClassification: { type: string, enum: [internal, sensitive, restricted] }
+        context:
+          $ref: "#/components/schemas/AdminOrganizationContext"
+        availableContexts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminOrganizationContext"
+        visibleModules:
+          type: array
+          items: { type: string, enum: [platform_workbench, operator_workbench, operator_directory, notifications, audit] }
+        temporaryGrants:
+          type: array
+          items: { type: object, additionalProperties: true }
+        synthetic: { type: boolean, const: true }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id, retryable, details]
+          properties:
+            code:
+              type: string
+              description: 必须存在于 spec/api/error-codes.yaml。
+            message:
+              type: string
+            request_id:
+              type: string
+            retryable:
+              type: boolean
+            details:
+              type: object
+              additionalProperties: true
+    FlexEligibilityState:
+      type: string
+      description: 状态标识来源于 spec/domain/eligibility-states.yaml。
+      enum:
+        - not_applied
+        - under_review
+        - rejected
+        - awaiting_confirmation
+        - awaiting_payment
+        - payment_failed
+        - pending_activation
+        - activation_blocked
+        - active
+        - suspended
+        - pending_restoration
+        - appealing
+        - revoked
+        - expired
+        - invalidated
+    FlexEligibilityApplicationRequest:
+      type: object
+      required: [policy_version, consent]
+      properties:
+        policy_version:
+          type: string
+        consent:
+          type: boolean
+          const: true
+        material_reference_ids:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+    FlexEligibilityConfirmationRequest:
+      type: object
+      required: [terms_version, mode]
+      properties:
+        terms_version:
+          type: string
+        mode:
+          type: string
+          enum: [free_trial, paid_trial]
+        price_version:
+          type: [string, "null"]
+    FlexEligibilityAppealRequest:
+      type: object
+      required: [decision_id, material_reference_ids]
+      properties:
+        decision_id:
+          type: string
+        material_reference_ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 20
+    EligibilityDecisionRequest:
+      type: object
+      required: [decision, reason_code, policy_version]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        reason_code:
+          type: string
+        policy_version:
+          type: string
+        confirmation_deadline:
+          type: [string, "null"]
+          format: date-time
+    EligibilityRestrictionRequest:
+      type: object
+      required: [reason_code, case_id]
+      properties:
+        reason_code:
+          type: string
+        case_id:
+          type: string
+        evidence_reference_ids:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+    AppealDecisionRequest:
+      type: object
+      required: [decision, reason_code]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        reason_code:
+          type: string
+        compensation:
+          type: string
+          enum: [none, extend_days, proportional_refund]
+    FlexEligibilityResource:
+      type: object
+      required:
+        - eligibility_id
+        - state
+        - version
+        - flex_quota_enabled
+        - quota_policy
+        - allowed_actions
+      properties:
+        eligibility_id:
+          type: string
+        state:
+          $ref: "#/components/schemas/FlexEligibilityState"
+        version:
+          type: integer
+          minimum: 0
+        flex_quota_enabled:
+          type: boolean
+          description: 只有 state 为 active 时可以为 true。
+        quota_policy:
+          type: string
+          enum: [base, flex]
+        period_start:
+          type: [string, "null"]
+          format: date-time
+        period_end:
+          type: [string, "null"]
+          format: date-time
+        confirmation_deadline:
+          type: [string, "null"]
+          format: date-time
+        appeal_allowed:
+          type: boolean
+        allowed_actions:
+          type: array
+          items:
+            type: string
+    EligibilityFinancialStatus:
+      type: object
+      required: [eligibility_id, payment_status, refund_status]
+      properties:
+        eligibility_id:
+          type: string
+        payment_status:
+          type: string
+          enum: [not_required, pending, succeeded, failed]
+        refund_status:
+          type: string
+          enum: [none, pending, processing, succeeded, failed, manual_review]
+        amount:
+          type: [number, "null"]
+          minimum: 0
+        currency:
+          type: [string, "null"]
+          pattern: "^[A-Z]{3}$"
+  responses:
+    ValidationError:
+      description: 请求校验失败
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    AuthenticationError:
+      description: 身份认证失败
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    AuthorizationError:
+      description: 权限或职责分离拒绝
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ConflictError:
+      description: 状态、版本或幂等冲突
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BusinessRuleError:
+      description: 业务守卫或配额限制
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+

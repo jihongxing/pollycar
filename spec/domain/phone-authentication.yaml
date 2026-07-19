@@ -1,0 +1,45 @@
+spec_version: "1.0"
+spec_id: "pollycar.domain.phone-authentication"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+source_document: "docs/decisions/0011-手机号验证码账户与会话体系.md"
+
+gates:
+  real_sms_delivery: false
+  real_phone_data: false
+  production_authentication: false
+  synthetic_phone_numbers:
+    - "18800000007"
+    - "18800000008"
+    - "18800000009"
+
+challenge:
+  code_length: 6
+  synthetic_code: "246810"
+  validity_seconds: 300
+  resend_interval_seconds: 60
+  maximum_attempts: 5
+  maximum_requests_per_phone_per_hour: 5
+  states: ["pending", "consumed", "expired", "locked", "superseded", "delivery_unknown"]
+  terminal_states: ["consumed", "expired", "locked", "superseded"]
+
+account:
+  login_creates_account: true
+  phone_binding_encrypted: true
+  account_enumeration_forbidden: true
+  initial_state: "pending_adult_eligibility"
+  states: ["pending_adult_eligibility", "active", "restricted", "closure_pending", "closed", "phone_reverification_required"]
+
+session:
+  access_token_minutes: 30
+  refresh_session_days: 30
+  refresh_rotation_required: true
+  refresh_replay_denied: true
+  device_binding_required: true
+  security_version_required: true
+
+business_access:
+  phone_authentication_sufficient: false
+  adult_eligibility_required: true
+  identity_switch_must_not_bypass_access: true

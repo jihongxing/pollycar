@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/role-access-matrix.schema.json",
+  "title": "运营后台角色权限与授权导航矩阵",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "decision", "design_approval", "feature_gate", "authorization", "platform_roles", "operator_roles", "navigation", "route_policy", "organization_scope", "field_profiles", "export_profiles", "bulk_actions", "forbidden_role_combinations", "implementation_gate"],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.admin.role-access-matrix"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "design_frozen"},
+    "source_document": {"type": "string"},
+    "decision": {"type": "string"},
+    "design_approval": {"type": "object"},
+    "feature_gate": {"type": "object"},
+    "authorization": {"type": "object"},
+    "platform_roles": {
+      "type": "array",
+      "minItems": 17,
+      "maxItems": 17,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/role"}
+    },
+    "operator_roles": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/role"}
+    },
+    "navigation": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "route_prefix"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "route_prefix": {"type": "string", "pattern": "^/admin/[a-z-]+$"}
+        }
+      }
+    },
+    "route_policy": {"type": "object"},
+    "organization_scope": {"type": "object"},
+    "field_profiles": {"type": "object", "minProperties": 9},
+    "export_profiles": {"type": "object", "minProperties": 9},
+    "bulk_actions": {"type": "object"},
+    "forbidden_role_combinations": {"type": "array", "minItems": 7},
+    "implementation_gate": {"type": "object"}
+  },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "menus", "operation_bundles", "field_profile", "export_profile"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "menus": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string"}},
+        "operation_bundles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "field_profile": {"type": "string"},
+        "export_profile": {"type": "string"}
+      }
+    }
+  }
+}

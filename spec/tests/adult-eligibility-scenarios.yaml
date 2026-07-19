@@ -1,0 +1,80 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.adult-eligibility-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_document: "docs/decisions/0010-全用户实名与法定性别披露.md"
+
+scenarios:
+  - id: "ADULT-001"
+    name: "读取本人成年资格状态"
+    category: "adult_eligibility"
+    initial_state: "not_started"
+    actor: "passenger"
+    command: "adult_eligibility.self.read"
+    expected_events: []
+    expected_state: "not_started"
+    expected_error: null
+    audit: "standard"
+    classification: "L3"
+    release_blocking: true
+  - id: "ADULT-002"
+    name: "完成必要告知授权"
+    category: "adult_eligibility"
+    initial_state: "not_started"
+    actor: "passenger"
+    command: "adult_eligibility.self.authorize"
+    expected_events: []
+    expected_state: "collecting"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ADULT-003"
+    name: "通过专用通道提交合成材料"
+    category: "adult_eligibility"
+    initial_state: "collecting"
+    actor: "passenger"
+    command: "adult_eligibility.material.submit"
+    expected_events: []
+    expected_state: "collecting"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ADULT-004"
+    name: "提交证件与人脸验证"
+    category: "adult_eligibility"
+    initial_state: "collecting"
+    actor: "passenger"
+    command: "adult_eligibility.verification.submit"
+    expected_events: []
+    expected_state: "processing"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ADULT-005"
+    name: "提交人工复核申请"
+    category: "adult_eligibility"
+    initial_state: "rejected"
+    actor: "passenger"
+    command: "adult_eligibility.appeal.submit"
+    expected_events: []
+    expected_state: "needs_review"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ADULT-006"
+    name: "审核员处理人工复核"
+    category: "adult_eligibility"
+    initial_state: "needs_review"
+    actor: "reviewer"
+    command: "adult_eligibility.appeal.review"
+    expected_events: []
+    expected_state: "collecting"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true

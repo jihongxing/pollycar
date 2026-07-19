@@ -1,0 +1,46 @@
+:root {
+  font-family: Inter, "Noto Sans SC", system-ui, sans-serif;
+  color: #18202c;
+  background: #f3f0e9;
+  --page: #f3f0e9;
+  --surface: #fffdf8;
+  --surface-strong: #ffffff;
+  --text: #18202c;
+  --muted: #667085;
+  --line: #ddd8ce;
+  --brand: #263b59;
+  --brand-soft: #e8edf5;
+  --amber: #a86513;
+  --amber-soft: #fff1d6;
+  --danger: #a43434;
+  --danger-soft: #fde9e7;
+  --success: #28664a;
+  --success-soft: #e3f2e9;
+  --shadow: 0 18px 50px rgb(22 31 45 / 10%);
+}
+
+[data-theme="dark"] {
+  color: #edf1f7;
+  background: #111823;
+  --page: #111823;
+  --surface: #182231;
+  --surface-strong: #202d3e;
+  --text: #edf1f7;
+  --muted: #aeb8c7;
+  --line: #35445a;
+  --brand: #b9c9df;
+  --brand-soft: #26364b;
+  --amber: #f1ba68;
+  --amber-soft: #3c2e1a;
+  --danger: #ffaaa2;
+  --danger-soft: #422625;
+  --success: #8bd1ad;
+  --success-soft: #203a30;
+  --shadow: 0 18px 50px rgb(0 0 0 / 28%);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--page); color: var(--text); }
+button, select { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, select:focus-visible { outline: 3px solid #f0a33b; outline-offset: 2px; }

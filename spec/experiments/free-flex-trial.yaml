@@ -1,0 +1,43 @@
+spec_version: "1.0"
+spec_id: "pollycar.experiment.free-flex-trial"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+source_document: "docs/decisions/0001-弹性参与资格.md"
+feature_flags:
+  free_flex_trial: false
+  paid_flex_trial: false
+  real_user_invitation: false
+  shanghai_pilot: false
+  emergency_stop: true
+funding:
+  qualification_fee_minor: 0
+  payment_intent_allowed: false
+  refund_allowed: false
+cohorts:
+  maximum_invited_drivers: 30
+  minimum_observation: "P90D"
+  cycle_duration: "P30D"
+  control_group_minimum_ratio: 1.0
+batches:
+  - { id: "batch_0", maximum_total_drivers: 0, mode: "synthetic_only" }
+  - { id: "batch_1", maximum_total_drivers: 5, minimum_observation: "P14D" }
+  - { id: "batch_2", maximum_total_drivers: 15, requires_previous_batch_pass: true }
+  - { id: "batch_3", maximum_total_drivers: 30, requires_previous_batch_pass: true }
+quota:
+  base: [3, 10, 15]
+  flex: [4, 12, 18]
+  activation_lookback: "P90D"
+  maximum_active_days: 60
+stop_thresholds:
+  severe_safety_events_max: 0
+  driver_responsible_cancellation_rate_max: 0.05
+  cancellation_rate_delta_vs_control_max: 0.02
+  valid_report_rate_delta_vs_control_max: 0.01
+  completed_orders_ratio_vs_control_max: 2.0
+  order_share_to_waiting_share_max: 1.5
+  calculation_error_rate_max: 0
+paid_path:
+  state_transitions_enabled: false
+  awaiting_payment_enabled: false
+  price_configuration_enabled: false

@@ -1,0 +1,107 @@
+spec_version: "1.0"
+spec_id: "pollycar.finance.operator-funds"
+language: "zh-CN"
+status: "approved_for_internal_sandbox"
+production_enabled: false
+synthetic_data_only: true
+
+feature_gate:
+  id: "synthetic_operator_funds"
+  default_enabled: false
+  required_context: "internal_sandbox"
+  ledger_required: true
+  reconciliation_required: true
+  real_operator_allowed: false
+  real_settlement_allowed: false
+  real_payout_allowed: false
+
+primary_operator:
+  table: "pollycar_finance.driver_operator_memberships"
+  uniqueness_scope: ["driver_account_id", "city_code", "vehicle_id"]
+  one_active_membership_required: true
+  trip_operator_snapshot_immutable: true
+  historical_reassignment_allowed: false
+
+allocation:
+  table: "pollycar_finance.financial_allocations"
+  rule_version: "allocation-15-45-40-v1"
+  platform_rate_bps: 1500
+  operator_rate_bps: 4500
+  driver_rate_bps: 4000
+  total_rate_bps: 10000
+  platform_rounding: "floor"
+  operator_rounding: "floor"
+  remainder_recipient: "driver"
+  amount_conservation_required: true
+  ledger_transaction_type: "ALLOCATION_15_45_40"
+  reconciliation_gate_required: true
+  database_reconciliation_gate_required: true
+
+settlement:
+  batch_table: "pollycar_finance.operator_settlement_batches"
+  item_table: "pollycar_finance.operator_settlement_batch_items"
+  amount_formula: "operator_share_minor_plus_driver_share_minor"
+  server_calculated_only: true
+  allocation_once_only: true
+  prepared_and_reviewed_by_must_differ: true
+  reconciliation_gate_required: true
+  database_reconciliation_gate_required: true
+
+payout:
+  batch_table: "pollycar_finance.driver_payout_batches"
+  item_table: "pollycar_finance.driver_payout_batch_items"
+  standard_cycle: "T+1"
+  previous_business_date_allocations_only: true
+  batch_generation_deadline: "12:00"
+  review_and_submit_deadline: "18:00"
+  prepared_and_reviewed_by_must_differ: true
+  allocation_once_only: true
+  request_transaction_type: "DRIVER_PAYOUT_REQUESTED"
+  completed_transaction_type: "DRIVER_PAYOUT_COMPLETED"
+  payout_fee_borne_by: "operator"
+  payout_fee_reduces_driver_payable: false
+  reconciliation_gate_required: true
+  database_reconciliation_gate_required: true
+
+early_settlement:
+  enabled: false
+  error_code: "DRIVER_EARLY_SETTLEMENT_DISABLED"
+  wallet_created: false
+  driver_fee_allowed: false
+
+fund_cases:
+  table: "pollycar_finance.operator_fund_cases"
+  types:
+    - "settlement_blocked"
+    - "payout_overdue"
+    - "payout_unknown"
+    - "funds_insufficient"
+    - "refund_recovery"
+  evidence_reference_required: true
+  balance_source_allowed: false
+
+balance_authority:
+  authoritative_source: "pollycar_finance.ledger_entries"
+  projection_source: "pollycar_finance.ledger_balance_projections"
+  operator_balance_table_allowed: false
+  driver_balance_table_allowed: false
+  wallet_table_allowed: false
+  direct_balance_mutation_allowed: false
+
+database:
+  command_entrypoint: "pollycar_finance.apply_operator_funds_command(p_command jsonb)"
+  security_definer_required: true
+  runtime_direct_write_allowed: false
+  command_function_bypass_allowed: false
+  migration_file: "apps/server/migrations/0009_operator_funds_orchestration.sql"
+
+implementation:
+  stage_8_status: "completed"
+  service_file: "apps/server/src/application/synthetic-operator-funds-service.ts"
+  repository_file: "apps/server/src/persistence/postgres-operator-funds-repository.ts"
+  integration_test_file: "apps/server/src/persistence/ledger-stage8-operator-funds.integration.test.ts"
+  proof_command: "pnpm test:ledger:stage8"
+  result: "16_passed"
+  app_or_api_integration_allowed: false
+  real_data_allowed: false
+  production_enablement_allowed: false

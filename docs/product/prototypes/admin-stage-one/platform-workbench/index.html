@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PollyCar 运营控制台阶段一平台工作台高保真设计参考" />
+    <title>平台工作台｜PollyCar 运营控制台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar">
+        <strong>内部合成环境 · 多组织门禁关闭</strong>
+        <span>真实账号、真实组织、真实数据与生产启用均未开放</span>
+      </div>
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">PC</span>
+          <div><b>PollyCar</b><small>运营控制台</small></div>
+        </div>
+        <div class="scope-bar" aria-label="当前组织上下文">
+          <span class="scope-chip">平台组织</span>
+          <span class="scope-chip">城市：<b data-active-city>上海</b></span>
+          <span class="scope-chip">观察主体：<b data-active-operator>全部获批主体</b><button type="button" data-open-context aria-label="切换组织观察范围">切换</button></span>
+          <span class="role-chip">平台运营负责人</span>
+        </div>
+        <div class="top-actions">
+          <button class="secondary-button" type="button" data-audit-action="已打开审计侧栏；查询范围与当前组织上下文一致。">审计</button>
+          <button class="icon-button" type="button" aria-label="通知中心">12</button>
+          <button class="avatar-button" type="button" aria-label="当前内部用户">林</button>
+        </div>
+      </header>
+      <aside class="sidebar">
+        <nav aria-label="平台导航">
+          <a href="#" aria-current="page"><span>我的工作台</span><span class="nav-count">8</span></a>
+          <a href="#"><span>通知中心</span><span class="nav-count">12</span></a>
+          <p class="nav-heading">组织与运力</p>
+          <a href="../operator-directory/index.html"><span>运营主体名录</span></a>
+          <a href="#"><span>车主与车辆</span><span class="nav-count">24</span></a>
+          <p class="nav-heading">运营处置</p>
+          <a href="#"><span>行程运营</span><span class="nav-count">6</span></a>
+          <a href="#"><span>客服案件</span><span class="nav-count">3</span></a>
+          <a href="#"><span>安全案件</span><span class="nav-count">2</span></a>
+          <p class="nav-heading">控制与治理</p>
+          <a href="#"><span>资金运营</span><span class="nav-count">门禁</span></a>
+          <a href="#"><span>审计查询</span></a>
+          <a href="#"><span>系统运行</span></a>
+        </nav>
+        <div class="sidebar-foot">
+          <b>最小必要访问</b>
+          <small data-pretext>当前角色可查看获批城市和主体的运营摘要；严格敏感字段仍需临时授权。</small>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">2026 年 7 月 14 日 · 上海</p>
+            <h1 data-pretext>平台运营工作台</h1>
+            <p data-pretext>优先处理跨主体阻断、即将超时任务和需要独立复核的事项。此页面不授予新的功能角色，所有数据按当前组织上下文重新校验。</p>
+          </div>
+          <div>
+            <button class="secondary-button" type="button" data-open-context>调整观察范围</button>
+            <button class="primary-button" type="button" data-audit-action="已打开我的任务队列；仅包含当前城市和运营主体范围内的任务。">查看我的队列</button>
+          </div>
+        </div>
+
+        <div class="gate-banner">
+          <span class="task-kind" aria-hidden="true">门禁</span>
+          <div>
+            <b>阶段一仅验证多组织后台底座</b>
+            <p data-pretext>资金操作、真实运营主体账号和生产环境继续关闭。页面中的金额与案件仅为合成运营摘要，不提供业务写入口。</p>
+          </div>
+        </div>
+
+        <section class="metric-strip" aria-label="平台范围摘要">
+          <article class="metric"><span>待处理工作任务</span><strong>38</strong><small>其中 8 项已分配给你</small></article>
+          <article class="metric warning"><span>两小时内超时</span><strong>7</strong><small>涉及 3 个运营主体</small></article>
+          <article class="metric danger"><span>阻断清算或关账</span><strong>2</strong><small>只读摘要，资金模块未开放</small></article>
+          <article class="metric"><span>范围内运营主体</span><strong>6</strong><small>上海 · 全部获批主体</small></article>
+        </section>
+
+        <div class="dashboard-grid">
+          <div>
+            <section class="panel">
+              <header class="panel-header">
+                <div><h2>优先工作任务</h2><p>按风险、截止时间和职责分离排序</p></div>
+                <button class="quiet-button" type="button" data-audit-action="队列筛选已记录；未扩大当前城市和主体范围。">查看全部</button>
+              </header>
+              <div class="panel-body">
+                <ul class="task-list">
+                  <li class="task-row">
+                    <span class="task-kind">主体</span>
+                    <div><b>复核运营主体入驻限制解除</b><p data-pretext>沪行出行服务 · 需独立复核 · 合成案件 OP-20260714-018</p></div>
+                    <div class="task-meta priority-high">剩余 34 分钟<br />平台运营负责人</div>
+                  </li>
+                  <li class="task-row">
+                    <span class="task-kind">安全</span>
+                    <div><b>确认跨主体安全协作是否完成</b><p data-pretext>两家主体待回执；证据原文对当前角色保持遮蔽</p></div>
+                    <div class="task-meta priority-high">剩余 1 小时<br />不可自我复核</div>
+                  </li>
+                  <li class="task-row">
+                    <span class="task-kind">运力</span>
+                    <div><b>处理主运营关系迁移冲突</b><p data-pretext>车主与车辆范围存在历史关系；仅允许进入受控迁移流程</p></div>
+                    <div class="task-meta priority-medium">今天 16:00<br />上海</div>
+                  </li>
+                  <li class="task-row">
+                    <span class="task-kind">客服</span>
+                    <div><b>协调重复投诉跨主体归属</b><p data-pretext>统一案件保留单一权威状态，工作台只聚合任务摘要</p></div>
+                    <div class="task-meta">明天 10:00<br />2 个关联主体</div>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="panel">
+              <header class="panel-header">
+                <div><h2>运营主体健康</h2><p>仅显示当前观察范围内的聚合指标</p></div>
+                <a class="quiet-button" href="../operator-directory/index.html">进入只读名录</a>
+              </header>
+              <div class="health-list">
+                <div class="health-item"><div><b>沪行出行服务</b><p class="muted">运力稳定；1 项入驻复核待完成</p></div><span class="status-chip warning">需关注</span><div class="health-track"><div class="health-fill warning" style="width:72%"></div></div></div>
+                <div class="health-item"><div><b>申城伙伴运营</b><p class="muted">服务质量与付款时效均在目标内</p></div><span class="status-chip success">正常</span><div class="health-track"><div class="health-fill" style="width:91%"></div></div></div>
+                <div class="health-item"><div><b>海湾城市服务</b><p class="muted">存在未关闭对账差异；清算保持阻断</p></div><span class="status-chip danger">已阻断</span><div class="health-track"><div class="health-fill danger" style="width:48%"></div></div></div>
+              </div>
+            </section>
+          </div>
+
+          <div>
+            <section class="panel">
+              <header class="panel-header"><div><h2>范围与授权</h2><p>本次会话的有效边界</p></div></header>
+              <div class="panel-body">
+                <ul class="alert-list">
+                  <li class="alert-row"><span class="task-kind">城</span><div><b>城市范围</b><p>上海</p></div><span class="status-chip success">有效</span></li>
+                  <li class="alert-row"><span class="task-kind">主</span><div><b>运营主体范围</b><p>6 个获批主体</p></div><span class="status-chip success">有效</span></li>
+                  <li class="alert-row"><span class="task-kind">数</span><div><b>最大数据等级</b><p>敏感；严格敏感需临时授权</p></div><span class="status-chip warning">受限</span></li>
+                  <li class="alert-row"><span class="task-kind">时</span><div><b>临时授权</b><p>当前无有效授权</p></div><button class="quiet-button" type="button" data-audit-action="临时授权申请入口已打开；申请不会改变真实角色或绕过职责分离。">申请</button></li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="panel">
+              <header class="panel-header"><div><h2>重大阻断</h2><p>需要治理角色关注，不等于经办权限</p></div></header>
+              <div class="panel-body">
+                <ul class="alert-list">
+                  <li class="alert-row"><span class="task-kind">差</span><div><b>海湾城市服务对账差异</b><p>差异 ¥86.40 · 清算、付款和关账均已阻断</p></div><span class="status-chip danger">阻断</span></li>
+                  <li class="alert-row"><span class="task-kind">权</span><div><b>运营主体账号仍未开放</b><p>阶段一仅设计合成身份和权限契约</p></div><span class="status-chip warning">门禁关闭</span></li>
+                </ul>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <p class="design-note">高保真设计参考：页面文字可直接编辑并重新计算布局；所有范围切换、披露和拒绝动作都应生成追加式审计事件。</p>
+      </main>
+    </div>
+
+    <dialog class="context-dialog" data-context-dialog>
+      <div class="dialog-header"><h2>切换组织观察范围</h2><p data-pretext>仅可选择当前成员关系已授权的范围。切换不会增加角色、数据等级或临时授权。</p></div>
+      <div class="dialog-body">
+        <label>城市范围<select data-context-city><option>上海</option><option>上海 · 浦东新区</option><option>上海 · 徐汇区</option></select></label>
+        <label>运营主体观察范围<select data-context-operator><option>全部获批主体</option><option>沪行出行服务</option><option>申城伙伴运营</option><option>海湾城市服务</option></select></label>
+        <div class="scope-notice"><span class="task-kind">审</span><div><b>切换将被审计</b><p>记录切换前后范围、会话、目的和服务端时间，不记录敏感业务原文。</p></div></div>
+      </div>
+      <div class="dialog-actions"><button class="secondary-button" type="button" data-close-context>取消</button><button class="primary-button" type="button" data-apply-context>应用范围</button></div>
+    </dialog>
+
+    <div class="audit-toast" role="status" aria-live="polite" data-audit-toast>
+      <span class="audit-dot"></span>
+      <div><b>操作已受控处理</b><p data-audit-message>审计事件已追加。</p></div>
+    </div>
+    <script type="module" src="../shared/prototype.js"></script>
+  </body>
+</html>

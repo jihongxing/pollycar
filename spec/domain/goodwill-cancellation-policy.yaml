@@ -1,0 +1,61 @@
+spec_version: "1.0"
+spec_id: "pollycar.goodwill-cancellation.policy"
+language: "zh-CN"
+production_enabled: false
+status: "approved_for_internal_sandbox"
+
+actors:
+  passenger:
+    windows:
+      - duration: "PT24H"
+        limit: 1
+      - duration: "P7D"
+        limit: 1
+      - duration: "P30D"
+        limit: 2
+  driver:
+    windows:
+      - duration: "PT24H"
+        limit: 1
+      - duration: "P7D"
+        limit: 2
+      - duration: "P30D"
+        limit: 3
+
+shared_rules:
+  window_type: "rolling"
+  purchasable: false
+  transferable: false
+  carry_over: false
+  real_payment_effect: false
+  reason_required: true
+  allowed_trip_states: ["accepted", "driver_en_route"]
+  forbidden_trip_states: ["driver_arrived", "in_progress", "safety_frozen", "completed", "cancelled"]
+  safety_cancellation_consumes_quota: false
+  platform_cancellation_consumes_quota: false
+  counterparty_fault_consumes_quota: false
+  unknown_result_auto_replay: false
+  automatic_discrimination_decision: false
+
+evaluation_order:
+  - "counterparty_platform_safety_or_force_majeure"
+  - "trip_state"
+  - "actor_identity"
+  - "all_rolling_windows"
+  - "atomic_reservation"
+  - "trip_cancellation"
+  - "consume_or_restore"
+
+record_states:
+  - "reserved"
+  - "consumed"
+  - "restored"
+
+driver_fairness_monitoring:
+  profile_view_to_cancellation_recorded: true
+  legal_gender_grouping_allowed_for_monitoring_only: true
+  automatic_penalty: false
+  consecutive_post_accept_cancellations:
+    threshold: 2
+    observation_window: "P7D"
+    action: "manual_review"

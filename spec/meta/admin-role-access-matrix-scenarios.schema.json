@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/admin-role-access-matrix-scenarios.schema.json",
+  "title": "运营后台角色权限矩阵验收场景",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "scenarios"],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.tests.admin-role-access-matrix-scenarios"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "design_frozen"},
+    "source_document": {"type": "string"},
+    "scenarios": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "title", "actor", "command", "expected", "expected_error"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^ADMIN-RBAC-[0-9]{3}$"},
+          "category": {"enum": ["feature_gate", "implementation_gate", "role", "role_combination", "navigation", "route", "organization_scope", "operation", "field", "export", "bulk_action"]},
+          "title": {"type": "string", "minLength": 1},
+          "actor": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "command": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+          "expected": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "expected_error": {"type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]+$"}
+        }
+      }
+    }
+  }
+}

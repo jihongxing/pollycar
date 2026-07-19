@@ -1,0 +1,1680 @@
+﻿spec_version: "1.0"
+spec_id: "pollycar.api.operation-policies"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_documents:
+  - "spec/api/openapi.yaml"
+  - "spec/security/authorization-rules.yaml"
+  - "spec/security/data-classification.yaml"
+  - "spec/api/error-codes.yaml"
+  - "spec/tests/eligibility-scenarios.yaml"
+  - "spec/tests/admin-multi-organization-scenarios.yaml"
+  - "spec/tests/admin-operator-management-scenarios.yaml"
+  - "spec/tests/admin-finance-operations-scenarios.yaml"
+  - "spec/tests/admin-executive-dashboard-scenarios.yaml"
+  - "spec/tests/admin-product-experience-scenarios.yaml"
+
+operations:
+  - operation_id: "getAdminAccessSession"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/access/session"
+    authorization_action: "admin_access.session.read"
+    actors: ["operations_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-ORG-003", "ADMIN-ORG-020"]
+  - operation_id: "switchAdminOrganizationContext"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/access/context"
+    authorization_action: "admin_access.context.switch"
+    actors: ["operations_lead"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_CITY_SCOPE_FORBIDDEN", "ADMIN_ORGANIZATION_CONTEXT_FIXED", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-ORG-005", "ADMIN-ORG-006", "ADMIN-ORG-007", "ADMIN-ORG-014"]
+  - operation_id: "getAdminPlatformWorkbench"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/access/platform-workbench"
+    authorization_action: "admin_access.platform_workbench.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-ORG-004", "ADMIN-ORG-005"]
+  - operation_id: "getAdminOperatorWorkbench"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/access/operator-workbench"
+    authorization_action: "admin_access.operator_workbench.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-ORG-001", "ADMIN-ORG-002", "ADMIN-ORG-007"]
+  - operation_id: "listAdminOperatorDirectory"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/access/operators"
+    authorization_action: "admin_access.operator_directory.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-ORG-018", "ADMIN-ORG-019"]
+  - operation_id: "listAdminAccessAuditEvents"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/access/audit"
+    authorization_action: "admin_access.audit.read"
+    actors: ["operations_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-ORG-014", "ADMIN-ORG-015", "ADMIN-ORG-016"]
+  - operation_id: "getAdminOperator360"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/operator-management/operators/{operator_id}"
+    authorization_action: "admin_operator.profile.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_OPERATOR_RESOURCE_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-OPS-010", "ADMIN-OPS-027"]
+  - operation_id: "getAdminOperatorOnboardingCase"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/operator-management/onboarding-cases/{onboarding_case_id}"
+    authorization_action: "admin_operator.onboarding.manage"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_OPERATOR_RESOURCE_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-OPS-004", "ADMIN-OPS-006"]
+  - operation_id: "getAdminDriver360"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/operator-management/drivers/{driver_account_id}"
+    authorization_action: "admin_operator.driver_360.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_OPERATOR_RESOURCE_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-OPS-011", "ADMIN-OPS-012"]
+  - operation_id: "getAdminVehicle360"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/operator-management/vehicles/{vehicle_id}"
+    authorization_action: "admin_operator.vehicle_360.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_OPERATOR_RESOURCE_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-OPS-013"]
+  - operation_id: "getAdminPrimaryOperatorMigration"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/operator-management/migrations/{migration_case_id}"
+    authorization_action: "admin_operator.primary_relationship.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_OPERATOR_RESOURCE_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-OPS-021", "ADMIN-OPS-026"]
+  - operation_id: "executeAdminOperatorManagementCommand"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/operator-management/commands"
+    authorization_action: "admin_operator.migration.manage"
+    actors: ["operations_lead"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_OPERATOR_INVALID_TRANSITION", "ADMIN_OPERATOR_CHECKLIST_INCOMPLETE", "ADMIN_OPERATOR_ACTIVE_CAPABILITY_REQUIRED", "ADMIN_OPERATOR_TARGET_CAPABILITY_MISSING", "ADMIN_OPERATOR_MIGRATION_BLOCKED", "ADMIN_OPERATOR_EFFECTIVE_TIME_INVALID", "ADMIN_OPERATOR_MIGRATION_ALREADY_EFFECTIVE", "FEATURE_DISABLED", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-OPS-006", "ADMIN-OPS-009", "ADMIN-OPS-015", "ADMIN-OPS-016", "ADMIN-OPS-020"]
+  - operation_id: "getAdminTripOperationsCenter"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/trip-operations"
+    authorization_action: "admin_trip.operations.read"
+    actors: ["operations_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-TCS-002"]
+  - operation_id: "getAdminTrip360"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/trips/{trip_id}"
+    authorization_action: "admin_trip.trip_360.read"
+    actors: ["operations_lead", "customer_support", "safety_officer", "safety_lead"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_TRIP_SCOPE_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-TCS-004"]
+  - operation_id: "getAdminSupportCase"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/support-cases/{case_id}"
+    authorization_action: "admin_support.case.read"
+    actors: ["customer_support"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-TCS-007"]
+  - operation_id: "getAdminSafetyInvestigation"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/safety-cases/{case_id}"
+    authorization_action: "admin_safety.case.read"
+    actors: ["safety_officer", "safety_lead"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-TCS-010"]
+  - operation_id: "getAdminEvidenceGrant"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/evidence-grants/{grant_id}"
+    authorization_action: "admin_evidence.access.request"
+    actors: ["safety_officer", "safety_lead"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EVIDENCE_GRANT_EXPIRED"]
+    acceptance_scenarios: ["ADMIN-TCS-014"]
+  - operation_id: "readAdminEvidenceField"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/evidence-grants/{grant_id}/fields/{field}"
+    authorization_action: "admin_evidence.field.read"
+    actors: ["safety_officer", "safety_lead"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EVIDENCE_DUAL_APPROVAL_REQUIRED", "ADMIN_EVIDENCE_GRANT_EXPIRED"]
+    acceptance_scenarios: ["ADMIN-TCS-017"]
+  - operation_id: "getAdminCommandRecoveryTask"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/trip-case-management/recovery-tasks/{task_id}"
+    authorization_action: "admin_recovery.command_result.read"
+    actors: ["technical_operations"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-TCS-024"]
+  - operation_id: "executeAdminTripCaseManagementCommand"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/trip-case-management/commands"
+    authorization_action: "admin_recovery.command_result.read"
+    actors: ["operations_lead", "customer_support", "safety_officer", "safety_lead", "technical_operations"]
+    request_classification: "L1"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_TRIP_SCOPE_FORBIDDEN", "ADMIN_SAFETY_RESTORATION_BLOCKED", "ADMIN_EVIDENCE_TTL_EXCEEDED", "ADMIN_EVIDENCE_DUAL_APPROVAL_REQUIRED", "ADMIN_COMMAND_RECOVERY_IN_PROGRESS", "ADMIN_RECOVERY_BUSINESS_DECISION_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-TCS-029"]
+  - operation_id: "getAdminFinanceOperationsCenter"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/operations-center"
+    authorization_action: "admin_finance.operations.read"
+    actors: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-001"]
+  - operation_id: "getAdminAllocationSettlement"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/allocation-settlements/{settlement_batch_id}"
+    authorization_action: "admin_finance.settlement.read"
+    actors: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_FINANCE_SCOPE_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-003"]
+  - operation_id: "getAdminDriverPayout"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/driver-payouts/{payout_batch_id}"
+    authorization_action: "admin_finance.payout.read"
+    actors: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_FINANCE_OPERATOR_PAYMENT_DATA_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-004"]
+  - operation_id: "getAdminRefundReversal"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/refund-reversals/{finance_case_id}"
+    authorization_action: "admin_finance.refund.read"
+    actors: ["finance_officer", "finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_FINANCE_REFUND_INELIGIBLE", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-016"]
+  - operation_id: "getAdminReconciliationFundCases"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/reconciliation-runs/{reconciliation_run_id}"
+    authorization_action: "admin_finance.reconciliation.read"
+    actors: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_FINANCE_SCOPE_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-021"]
+  - operation_id: "getAdminBusinessDayClose"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/business-days/{business_date}"
+    authorization_action: "admin_finance.business_day.read"
+    actors: ["finance_officer", "finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_FINANCE_DAY_CLOSE_BLOCKED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-025"]
+  - operation_id: "getAdminLedgerTransaction"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/finance-operations/ledger-transactions/{ledger_transaction_id}"
+    authorization_action: "admin_finance.ledger.read"
+    actors: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_FINANCE_LEDGER_SCOPE_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-028"]
+  - operation_id: "executeAdminFinanceOperationsCommand"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/finance-operations/commands"
+    authorization_action: "admin_finance.command.execute"
+    actors: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "technical_operations"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_RESOURCE_VERSION_CONFLICT", "ADMIN_FINANCE_SCOPE_FORBIDDEN", "ADMIN_FINANCE_REVIEWER_CONFLICT", "ADMIN_FINANCE_SETTLEMENT_BLOCKED", "ADMIN_FINANCE_PAYOUT_BLOCKED", "ADMIN_FINANCE_REFUND_INELIGIBLE", "ADMIN_FINANCE_REVERSAL_INVALID", "ADMIN_FINANCE_RESOLUTION_EVIDENCE_REQUIRED", "ADMIN_FINANCE_DAY_CLOSE_BLOCKED", "ADMIN_FINANCE_UNKNOWN_RESULT_IN_PROGRESS", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-FIN-009", "ADMIN-FIN-010", "ADMIN-FIN-030", "ADMIN-FIN-031"]
+  - operation_id: "getAdminExecutiveOverview"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/overview"
+    authorization_action: "admin_executive.dashboard.read"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-001"]
+  - operation_id: "getAdminExecutiveOperationsHealth"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/operations-health"
+    authorization_action: "admin_executive.operations.read"
+    actors: ["executive_sponsor", "operations_lead", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-006"]
+  - operation_id: "getAdminExecutiveOperatorHealth"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/operator-health"
+    authorization_action: "admin_executive.dashboard.read"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EXECUTIVE_SCOPE_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-004"]
+  - operation_id: "getAdminExecutiveFinanceSafety"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/finance-safety"
+    authorization_action: "admin_executive.finance.read"
+    actors: ["executive_sponsor", "finance_lead", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EXECUTIVE_UNCLOSED_DATA_RESTRICTED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-012", "ADMIN-EXE-027", "ADMIN-EXE-028", "ADMIN-EXE-029"]
+  - operation_id: "getAdminExecutiveSafetyCompliance"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/safety-compliance"
+    authorization_action: "admin_executive.safety_compliance.read"
+    actors: ["executive_sponsor", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EXECUTIVE_SENSITIVE_DETAIL_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-017"]
+  - operation_id: "getAdminExecutiveDecisionItems"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/decision-items"
+    authorization_action: "admin_executive.decisions.read"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-019"]
+  - operation_id: "getAdminExecutiveMetricRegistry"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/metrics"
+    authorization_action: "admin_executive.metric_registry.read"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L1"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-005"]
+  - operation_id: "getAdminExecutiveDrilldown"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/drilldowns/{dimension}/{dimension_id}"
+    authorization_action: "admin_executive.drilldown.read"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EXECUTIVE_SCOPE_FORBIDDEN", "ADMIN_EXECUTIVE_DRILLDOWN_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-014", "ADMIN-EXE-015"]
+  - operation_id: "recordAdminExecutiveDecisionOpinion"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/decision-opinions"
+    authorization_action: "admin_executive.decision_opinion.record"
+    actors: ["executive_sponsor", "operator_executive"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_EXECUTIVE_DECISION_OPINION_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-025", "ADMIN-EXE-026"]
+  - operation_id: "createAdminExecutiveExportRequest"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/export-requests"
+    authorization_action: "admin_executive.export.request"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_EXECUTIVE_EXPORT_PURPOSE_REQUIRED", "ADMIN_EXECUTIVE_EXPORT_DOMAIN_MIXED_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-021", "ADMIN-EXE-032"]
+  - operation_id: "reviewAdminExecutiveExportPrivacy"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/privacy-decision"
+    authorization_action: "admin_executive.export.privacy_approve"
+    actors: ["privacy_compliance"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_EXECUTIVE_EXPORT_REVIEWER_CONFLICT", "ADMIN_EXECUTIVE_EXPORT_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-022", "ADMIN-EXE-023", "ADMIN-EXE-030"]
+  - operation_id: "reviewAdminExecutiveExportDomain"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/domain-decision"
+    authorization_action: "admin_executive.export.domain_approve"
+    actors: ["operations_lead", "finance_lead", "safety_lead"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_EXECUTIVE_EXPORT_REVIEWER_CONFLICT", "ADMIN_EXECUTIVE_EXPORT_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-031"]
+  - operation_id: "revokeAdminExecutiveExport"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/revocation"
+    authorization_action: "admin_executive.export.revoke"
+    actors: ["privacy_compliance", "operations_lead", "finance_lead", "safety_lead"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_EXECUTIVE_EXPORT_FORBIDDEN", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-023"]
+  - operation_id: "downloadAdminExecutiveExport"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/download"
+    authorization_action: "admin_executive.export.download"
+    actors: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_EXECUTIVE_EXPORT_FORBIDDEN", "ADMIN_EXECUTIVE_EXPORT_EXPIRED", "FEATURE_DISABLED"]
+    acceptance_scenarios: ["ADMIN-EXE-024"]
+  - operation_id: "listAdminAuditResources"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/audit"
+    authorization_action: "admin_audit.resource.read"
+    actors: ["technical_operations", "auditor", "operator_auditor"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-077", "ADMIN-UX-078", "ADMIN-UX-080"]
+  - operation_id: "getAdminAuditResource"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/audit/{kind}/{resource_id}"
+    authorization_action: "admin_audit.resource.read"
+    actors: ["technical_operations", "auditor", "operator_auditor"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_OPERATOR_SCOPE_FORBIDDEN", "ADMIN_AUDIT_RESOURCE_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-079", "ADMIN-UX-080"]
+  - operation_id: "performAdminAuditAction"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/audit/{kind}/{resource_id}/actions/{action}"
+    authorization_action: "admin_audit.investigation.manage"
+    actors: ["technical_operations"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_RESOURCE_VERSION_CONFLICT", "ADMIN_AUDIT_RESOURCE_NOT_FOUND", "ADMIN_AUDIT_OPERATION_FORBIDDEN", "ADMIN_AUDIT_IMMUTABLE", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-081", "ADMIN-UX-082"]
+  - operation_id: "listAdminDataReports"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/reports"
+    authorization_action: "admin_data_report.read"
+    actors: ["data_analyst", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "auditor", "operator_operations_lead", "operator_finance_lead", "operator_auditor"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-083", "ADMIN-UX-084", "ADMIN-UX-086", "ADMIN-UX-088"]
+  - operation_id: "getAdminDataReport"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/reports/{report_id}"
+    authorization_action: "admin_data_report.read"
+    actors: ["data_analyst", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "auditor", "operator_operations_lead", "operator_finance_lead", "operator_auditor"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_DATA_REPORT_NOT_FOUND", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-085", "ADMIN-UX-086", "ADMIN-UX-088"]
+  - operation_id: "refreshAdminDataReport"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/reports/{report_id}/actions/refresh_report"
+    authorization_action: "admin_data_report.refresh"
+    actors: ["data_analyst", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_operations_lead", "operator_finance_lead"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_RESOURCE_VERSION_CONFLICT", "ADMIN_DATA_REPORT_NOT_FOUND", "ADMIN_DATA_REPORT_OPERATION_FORBIDDEN", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-086", "ADMIN-UX-087", "ADMIN-UX-088"]
+  - operation_id: "requestPhoneAuthenticationCode"
+    method: "POST"
+    path: "/v1/auth/phone/code"
+    authorization_action: "phone_authentication.code.request"
+    actors: ["anonymous"]
+    request_classification: "L3"
+    response_classification: "L1"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["PHONE_NUMBER_INVALID", "PHONE_AUTH_CONSENT_REQUIRED", "PHONE_CODE_RATE_LIMITED", "PHONE_CODE_DELIVERY_UNKNOWN", "REAL_PHONE_DATA_FORBIDDEN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-025"]
+  - operation_id: "verifyPhoneAuthenticationCode"
+    method: "POST"
+    path: "/v1/auth/phone/verify"
+    authorization_action: "phone_authentication.code.verify"
+    actors: ["anonymous"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["PHONE_CODE_INVALID", "PHONE_CODE_EXPIRED", "PHONE_CODE_LOCKED", "PHONE_CODE_REPLAYED", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-025"]
+  - operation_id: "refreshPhoneAuthenticationSession"
+    method: "POST"
+    path: "/v1/auth/session/refresh"
+    authorization_action: "phone_authentication.session.refresh"
+    actors: ["anonymous"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["REFRESH_TOKEN_REPLAYED", "REFRESH_SESSION_EXPIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-025"]
+  - operation_id: "createAppAccountSession"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/sessions"
+    authorization_action: "account_session.create"
+    actors: ["anonymous"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-025"]
+  - operation_id: "getAppAccountSession"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/sessions/current"
+    authorization_action: "account_session.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "SESSION_EXPIRED", "SESSION_REVOKED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-025"]
+  - operation_id: "switchAppAccountSessionIdentity"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/sessions/current/identity"
+    authorization_action: "account_session.identity.switch"
+    actors: ["passenger", "driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "SESSION_EXPIRED", "SESSION_REVOKED", "SESSION_IDENTITY_NOT_AVAILABLE", "ADULT_ELIGIBILITY_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-026"]
+  - operation_id: "revokeAppAccountSession"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/sessions/current/revoke"
+    authorization_action: "account_session.revoke"
+    actors: ["passenger", "driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "SESSION_EXPIRED", "SESSION_REVOKED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-027"]
+  - operation_id: "deleteAppTripChatContent"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/chat/content-deletion"
+    authorization_action: "temporary_chat.content.delete"
+    actors: ["passenger"]
+    request_classification: "L0"
+    response_classification: "L4"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "CHAT_NOT_FOUND", "DATA_RETENTION_ACTIVE", "DATA_DELETION_BLOCKED_BY_HOLD", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-017", "MOB-018"]
+  - operation_id: "getAppTrustProfile"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/trust-profile"
+    authorization_action: "trust_profile.self.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-013"]
+  - operation_id: "submitAppAvatar"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/trust-profile/avatar"
+    authorization_action: "trust_profile.avatar.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-013", "MOB-014"]
+  - operation_id: "getAppFairnessReport"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/trust-profile/fairness"
+    authorization_action: "fairness_report.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-016"]
+  - operation_id: "getAppTripRating"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/rating"
+    authorization_action: "trip_rating.self.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-015"]
+  - operation_id: "submitAppTripRating"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/rating"
+    authorization_action: "trip_rating.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_RATING_NOT_ALLOWED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-015"]
+  - operation_id: "getAppAdultEligibility"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/adult-eligibility"
+    authorization_action: "adult_eligibility.self.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-001"]
+  - operation_id: "authorizeAppAdultEligibility"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/adult-eligibility/authorization"
+    authorization_action: "adult_eligibility.self.authorize"
+    actors: ["passenger", "driver"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADULT_ELIGIBILITY_AUTHORIZATION_REQUIRED", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-002"]
+  - operation_id: "uploadAppAdultEligibilityDocument"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/adult-eligibility/documents"
+    authorization_action: "adult_eligibility.material.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADULT_ELIGIBILITY_AUTHORIZATION_REQUIRED", "REAL_IDENTITY_DATA_FORBIDDEN", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-003"]
+  - operation_id: "submitAppAdultEligibility"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/adult-eligibility/submission"
+    authorization_action: "adult_eligibility.verification.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADULT_ELIGIBILITY_DOCUMENT_INCOMPLETE", "ADULT_ELIGIBILITY_AUTHORIZATION_REQUIRED", "REAL_BIOMETRIC_DATA_FORBIDDEN", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-004"]
+  - operation_id: "createAppAdultEligibilitySdkSession"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/adult-eligibility/sdk-session"
+    authorization_action: "adult_eligibility.sdk_session.create"
+    actors: ["passenger", "driver"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADULT_ELIGIBILITY_AUTHORIZATION_REQUIRED", "EXTERNAL_IDENTITY_PROVIDER_DISABLED", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-004"]
+  - operation_id: "receiveAdultEligibilityProviderCallback"
+    method: "POST"
+    path: "/v1/internal-sandbox/provider-callbacks/adult-eligibility"
+    authorization_action: "adult_eligibility.provider_callback.receive"
+    actors: ["identity_provider"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHORIZATION_DENIED", "ADULT_ELIGIBILITY_VERIFICATION_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-004"]
+  - operation_id: "refreshAppAdultEligibilityProviderResult"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/adult-eligibility/provider-result"
+    authorization_action: "adult_eligibility.provider_result.refresh"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "ADULT_ELIGIBILITY_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-004"]
+  - operation_id: "submitAppAdultEligibilityAppeal"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/adult-eligibility/appeal"
+    authorization_action: "adult_eligibility.appeal.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADULT_ELIGIBILITY_APPEAL_INVALID", "ADULT_ELIGIBILITY_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-005"]
+  - operation_id: "reviewAdminAdultEligibilityAppeal"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/adult-eligibility/{account_id}/appeal-review"
+    authorization_action: "adult_eligibility.appeal.review"
+    actors: ["reviewer", "senior_reviewer"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADULT_ELIGIBILITY_APPEAL_NOT_FOUND", "ADULT_ELIGIBILITY_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-006"]
+  - operation_id: "listAdminAdultEligibilityTraces"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/adult-eligibility"
+    authorization_action: "adult_eligibility.trace.read"
+    actors: ["reviewer", "senior_reviewer"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-006"]
+  - operation_id: "getAdminAdultEligibilityTrace"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/adult-eligibility/{account_id}"
+    authorization_action: "adult_eligibility.trace.read"
+    actors: ["reviewer", "senior_reviewer"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADULT-006"]
+  - operation_id: "submitFlexEligibilityApplication"
+    method: "POST"
+    path: "/v1/drivers/me/flex-eligibility/applications"
+    authorization_action: "eligibility.application.submit"
+    actors: ["driver"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "VALIDATION_INVALID_FIELD", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ELIGIBILITY_INVALID_STATE", "ELIGIBILITY_REVIEW_REQUIRED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-001", "ELIG-002"]
+  - operation_id: "getMyFlexEligibility"
+    method: "GET"
+    path: "/v1/drivers/me/flex-eligibility"
+    authorization_action: "eligibility.self.read"
+    actors: ["driver"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-001"]
+  - operation_id: "confirmFlexEligibilityActivation"
+    method: "POST"
+    path: "/v1/drivers/me/flex-eligibility/confirmation"
+    authorization_action: "eligibility.activation.confirm"
+    actors: ["driver"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ELIGIBILITY_INVALID_STATE", "ELIGIBILITY_PAYMENT_REQUIRED", "ELIGIBILITY_ACTIVATION_DAYS_EXCEEDED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-006", "ELIG-007", "ELIG-009"]
+  - operation_id: "submitFlexEligibilityAppeal"
+    method: "POST"
+    path: "/v1/drivers/me/flex-eligibility/appeals"
+    authorization_action: "eligibility.appeal.submit"
+    actors: ["driver"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ELIGIBILITY_INVALID_STATE", "ELIGIBILITY_APPEAL_NOT_ALLOWED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-013"]
+  - operation_id: "decideFlexEligibilityApplication"
+    method: "POST"
+    path: "/v1/admin/flex-eligibility/applications/{application_id}/decision"
+    authorization_action: "eligibility.application.decide"
+    actors: ["reviewer", "senior_reviewer"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "AUTHORIZATION_SCOPE_REQUIRED", "ELIGIBILITY_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-003", "ELIG-004"]
+  - operation_id: "suspendFlexEligibility"
+    method: "POST"
+    path: "/v1/admin/flex-eligibilities/{eligibility_id}/suspension"
+    authorization_action: "eligibility.suspend"
+    actors: ["reviewer", "senior_reviewer", "safety_officer"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "AUTHORIZATION_SCOPE_REQUIRED", "ELIGIBILITY_INVALID_STATE", "SAFETY_CASE_SCOPE_REQUIRED", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-010", "CONC-003", "CONC-005"]
+  - operation_id: "clearFlexEligibilitySuspension"
+    method: "DELETE"
+    path: "/v1/admin/flex-eligibilities/{eligibility_id}/suspension"
+    authorization_action: "eligibility.suspension.clear"
+    actors: ["senior_reviewer", "safety_officer"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "AUTHORIZATION_SCOPE_REQUIRED", "ELIGIBILITY_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-011"]
+  - operation_id: "revokeFlexEligibility"
+    method: "POST"
+    path: "/v1/admin/flex-eligibilities/{eligibility_id}/revocation"
+    authorization_action: "eligibility.revoke"
+    actors: ["safety_officer", "safety_lead"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "AUTHORIZATION_SCOPE_REQUIRED", "ELIGIBILITY_INVALID_STATE", "SAFETY_CASE_SCOPE_REQUIRED", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-012"]
+  - operation_id: "decideFlexEligibilityAppeal"
+    method: "POST"
+    path: "/v1/admin/flex-eligibility/appeals/{appeal_id}/decision"
+    authorization_action: "eligibility.appeal.decide"
+    actors: ["senior_reviewer", "safety_lead"]
+    request_classification: "L4"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "AUTHORIZATION_SEPARATION_OF_DUTIES", "AUTHORIZATION_SCOPE_REQUIRED", "ELIGIBILITY_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ELIG-005", "ELIG-014"]
+  - operation_id: "getFlexEligibilityFinancialStatus"
+    method: "GET"
+    path: "/v1/admin/flex-eligibilities/{eligibility_id}/financial-status"
+    authorization_action: "payment.eligibility_status.read"
+    actors: ["finance_officer", "finance_lead"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "AUTHORIZATION_SCOPE_REQUIRED", "TRIP_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["PAY-001", "PAY-002", "PAY-004"]
+  - operation_id: "getAppTripSafetyDashboard"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/safety"
+    authorization_action: "temporary_chat.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L1"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-220"]
+  - operation_id: "sendAppSyntheticChatMessage"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/safety/messages"
+    authorization_action: "temporary_chat.message.send"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "CHAT_NOT_OPEN", "CHAT_FROZEN", "REAL_DATA_FORBIDDEN", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-221", "APP-222"]
+  - operation_id: "reportAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/safety/reports"
+    authorization_action: "safety_report.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "TRIP_INVALID_STATE", "SAFETY_CASE_ALREADY_OPEN", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-223"]
+  - operation_id: "appealAppSafetyCase"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/safety-cases/{case_id}/appeal"
+    authorization_action: "safety_appeal.submit"
+    actors: ["passenger", "driver"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "SAFETY_CASE_NOT_FOUND", "SAFETY_APPEAL_FORBIDDEN", "SAFETY_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-224", "APP-225"]
+  - operation_id: "resolveSafetyCaseAppeal"
+    method: "POST"
+    path: "/v1/internal-sandbox/safety/cases/{case_id}/resolution"
+    authorization_action: "safety_appeal.resolve"
+    actors: ["safety_officer"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "SAFETY_CASE_NOT_FOUND", "SAFETY_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-226"]
+  - operation_id: "listAdminSafetyCases"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/safety-cases"
+    authorization_action: "safety_case.queue.read"
+    actors: ["safety_officer"]
+    request_classification: "L1"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-001"]
+  - operation_id: "getAdminSafetyCase"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/safety-cases/{case_id}"
+    authorization_action: "safety_case.detail.read"
+    actors: ["safety_officer"]
+    request_classification: "L1"
+    response_classification: "L3"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "SAFETY_CASE_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-228"]
+  - operation_id: "resolveAdminSafetyCase"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/safety-cases/{case_id}/resolution"
+    authorization_action: "safety_appeal.resolve"
+    actors: ["safety_officer"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "SAFETY_CASE_NOT_FOUND", "SAFETY_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-229"]
+  - operation_id: "getAppSyntheticTripDashboard"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/dashboard"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-212"]
+  - operation_id: "getAppTripBookingAvailability"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/booking-availability"
+    authorization_action: "synthetic_trip.booking_availability.read"
+    actors: ["passenger"]
+    request_classification: "L1"
+    response_classification: "L1"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-028", "MOB-029"]
+  - operation_id: "createAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips"
+    authorization_action: "synthetic_trip.create"
+    actors: ["passenger"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "REAL_DATA_FORBIDDEN", "TRIP_PICKUP_TIME_INVALID", "TRIP_PICKUP_TIME_IN_PAST", "TRIP_PICKUP_TIME_TOO_SOON", "TRIP_PICKUP_TIME_TOO_FAR", "TRIP_PICKUP_TIME_UNAVAILABLE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-213", "MOB-030", "MOB-031"]
+  - operation_id: "payAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/payment"
+    authorization_action: "synthetic_trip.payment.complete"
+    actors: ["passenger"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "TRIP_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-214"]
+  - operation_id: "rescheduleAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/reschedule"
+    authorization_action: "synthetic_trip.reschedule"
+    actors: ["passenger"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "TRIP_INVALID_STATE", "TRIP_PICKUP_TIME_INVALID", "TRIP_PICKUP_TIME_IN_PAST", "TRIP_PICKUP_TIME_TOO_SOON", "TRIP_PICKUP_TIME_TOO_FAR", "TRIP_PICKUP_TIME_UNAVAILABLE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-034"]
+  - operation_id: "acceptAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/accept"
+    authorization_action: "synthetic_trip.accept"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_SELF_ACCEPT_FORBIDDEN", "TRIP_PAYMENT_REQUIRED", "TRIP_INVALID_STATE", "TRIP_ALREADY_ASSIGNED", "DRIVER_ALREADY_BUSY", "TRIP_SCHEDULE_CONFLICT", "QUOTA_DRIVER_INELIGIBLE", "QUOTA_24H_EXCEEDED", "QUOTA_7D_EXCEEDED", "QUOTA_30D_EXCEEDED", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-215", "APP-216", "APP-217", "MOB-032"]
+  - operation_id: "startAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/start"
+    authorization_action: "synthetic_trip.start"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "TRIP_INVALID_STATE", "TRIP_SCHEDULE_NOT_READY", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-218", "MOB-033"]
+  - operation_id: "completeAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/complete"
+    authorization_action: "synthetic_trip.complete"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "TRIP_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-219"]
+  - operation_id: "cancelAppSyntheticTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/cancel"
+    authorization_action: "synthetic_trip.cancel"
+    actors: ["passenger", "driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_FORBIDDEN", "TRIP_INVALID_STATE", "TRIP_CANCELLATION_REASON_REQUIRED", "TRIP_CANCELLATION_REASON_INVALID", "TRIP_CANCELLATION_NOTE_TOO_LONG", "GOODWILL_CANCELLATION_DISABLED", "GOODWILL_CANCELLATION_TRIP_STATE_EXCEEDED", "GOODWILL_CANCELLATION_HOURS24_EXCEEDED", "GOODWILL_CANCELLATION_DAYS7_EXCEEDED", "GOODWILL_CANCELLATION_DAYS30_EXCEEDED", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-220", "MOB-004", "MOB-005", "MOB-017", "MOB-018", "MOB-019", "MOB-020", "MOB-021"]
+  - operation_id: "reconcileAppSyntheticTripTimeout"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/reconcile-timeout"
+    authorization_action: "synthetic_trip.timeout.reconcile"
+    actors: ["technical_operations"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "TRIP_TIMEOUT_NOT_REACHED", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-221", "APP-222", "APP-223"]
+  - operation_id: "getAppFreeFlexTrial"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/free-flex-trial"
+    authorization_action: "eligibility.free_trial.self.read"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-207"]
+  - operation_id: "submitAppFreeFlexTrial"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/free-flex-trial"
+    authorization_action: "eligibility.free_trial.submit"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ELIGIBILITY_INVALID_STATE", "ELIGIBILITY_INVALID_TRANSITION", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-208"]
+  - operation_id: "approveAdminFreeFlexTrial"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/free-flex-trial/approval"
+    authorization_action: "eligibility.free_trial.approve"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ELIGIBILITY_INVALID_STATE", "ELIGIBILITY_INVALID_TRANSITION", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-209"]
+  - operation_id: "confirmAppFreeFlexTrial"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/free-flex-trial/confirmation"
+    authorization_action: "eligibility.free_trial.confirm"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ELIGIBILITY_INVALID_STATE", "ELIGIBILITY_INVALID_TRANSITION", "ELIGIBILITY_ACTIVATION_DAYS_EXCEEDED", "ELIGIBILITY_PAID_PATH_FROZEN", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-210", "APP-211"]
+  - operation_id: "getAppVehicleReview"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/vehicle-reviews/{application_id}"
+    authorization_action: "vehicle_review.self.read"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "VEHICLE_REVIEW_FORBIDDEN", "VEHICLE_REVIEW_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-201"]
+  - operation_id: "saveAppVehicleReviewDraft"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/vehicle-reviews/{application_id}/draft"
+    authorization_action: "vehicle_review.self.draft.save"
+    actors: ["driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "VEHICLE_REVIEW_FORBIDDEN", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "REAL_DATA_FORBIDDEN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-202", "APP-206"]
+  - operation_id: "submitAppVehicleReview"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/vehicle-reviews/{application_id}/submit"
+    authorization_action: "vehicle_review.self.submit"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "VEHICLE_REVIEW_FORBIDDEN", "VEHICLE_REVIEW_INCOMPLETE", "VEHICLE_REVIEW_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-203", "APP-205"]
+  - operation_id: "resubmitAppVehicleReviewMaterial"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/vehicle-reviews/{application_id}/material-resubmit"
+    authorization_action: "vehicle_review.self.material.resubmit"
+    actors: ["driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "VEHICLE_REVIEW_FORBIDDEN", "VEHICLE_REVIEW_INVALID_STATE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "REAL_DATA_FORBIDDEN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-204", "APP-206"]
+  - operation_id: "listAdminReviewTasks"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/review-tasks"
+    authorization_action: "vehicle_review.queue.read"
+    actors: ["reviewer"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-101"]
+  - operation_id: "getAdminReviewTask"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}"
+    authorization_action: "vehicle_review.task.read"
+    actors: ["reviewer"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_TASK_NOT_FOUND", "ADMIN_TASK_OWNERSHIP_LOST", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-102"]
+  - operation_id: "claimAdminReviewTask"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/claim"
+    authorization_action: "vehicle_review.task.claim"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADMIN_TASK_ALREADY_CLAIMED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-103", "ADMIN-104"]
+  - operation_id: "renewAdminReviewTaskLease"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/lease/renew"
+    authorization_action: "vehicle_review.task.renew"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "ADMIN_TASK_OWNERSHIP_LOST", "ADMIN_LEASE_RENEWAL_TOO_EARLY", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-105"]
+  - operation_id: "releaseAdminReviewTask"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/release"
+    authorization_action: "vehicle_review.task.release"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADMIN_TASK_OWNERSHIP_LOST", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-106"]
+  - operation_id: "previewAdminMaterialRequest"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/material-request-preview"
+    authorization_action: "vehicle_review.material.preview"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADMIN_TASK_OWNERSHIP_LOST", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-107"]
+  - operation_id: "requestAdminVehicleMaterial"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/material-request"
+    authorization_action: "vehicle_review.material.request"
+    actors: ["reviewer"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADMIN_TASK_OWNERSHIP_LOST", "ADMIN_DECISION_REASON_REQUIRED", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-108", "ADMIN-109"]
+  - operation_id: "approveAdminVehicleReview"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/approve"
+    authorization_action: "vehicle_review.decision.approve"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADMIN_TASK_OWNERSHIP_LOST", "ADMIN_OPEN_RISK_BLOCKS_APPROVAL", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-118", "ADMIN-116"]
+  - operation_id: "rejectAdminVehicleReview"
+    method: "POST"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/reject"
+    authorization_action: "vehicle_review.decision.reject"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "ADMIN_TASK_OWNERSHIP_LOST", "ADMIN_DECISION_REASON_REQUIRED", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-119", "ADMIN-117"]
+  - operation_id: "listAdminReviewTaskAudit"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/review-tasks/{task_id}/audit"
+    authorization_action: "vehicle_review.audit.read"
+    actors: ["reviewer"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "ADMIN_TASK_NOT_FOUND", "ADMIN_TASK_OWNERSHIP_LOST", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-110"]
+  - operation_id: "getAdminIdempotencyResult"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/idempotency-results/{idempotency_key}"
+    authorization_action: "vehicle_review.idempotency.read"
+    actors: ["reviewer"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "IDEMPOTENT_RESULT_NOT_FOUND", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-111"]
+  - operation_id: "getInternalSandboxHealth"
+    method: "GET"
+    path: "/v1/internal-sandbox/health"
+    authorization_action: "internal_sandbox.health.read"
+    actors: ["reviewer"]
+    request_classification: "L0"
+    response_classification: "L0"
+    idempotency_required: false
+    audit: "none"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-112"]
+
+  - operation_id: "getAppDriverAvailability"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/availability"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-001"]
+  - operation_id: "updateAppDriverAvailability"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/driver/availability"
+    authorization_action: "synthetic_trip.start"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_AVAILABILITY_INVALID_STATE", "QUOTA_DRIVER_INELIGIBLE", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-001"]
+  - operation_id: "updateAppDriverDispatchPresence"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/driver/dispatch-presence"
+    authorization_action: "dispatch.presence.update"
+    actors: ["driver"]
+    request_classification: "L3"
+    response_classification: "L3"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_LOCATION_STALE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-035"]
+  - operation_id: "listAppDriverDispatchOffers"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/offers"
+    authorization_action: "dispatch.offer.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "DRIVER_LOCATION_STALE", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-035", "MOB-040"]
+  - operation_id: "acceptAppDriverDispatchOffer"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/driver/offers/{offer_id}/accept"
+    authorization_action: "dispatch.offer.accept"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "TRIP_NOT_FOUND", "TRIP_ALREADY_ASSIGNED", "DRIVER_ALREADY_BUSY", "TRIP_OFFER_EXPIRED", "DRIVER_LOCATION_STALE", "TRIP_SCHEDULE_CONFLICT", "QUOTA_DRIVER_INELIGIBLE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "TRIP_ACCEPT_RESULT_UNKNOWN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-036", "MOB-037", "MOB-038", "MOB-039"]
+  - operation_id: "listAppDriverAvailableTrips"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/available-trips"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "DRIVER_LOCATION_STALE", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-002", "MOB-040"]
+  - operation_id: "markAppDriverEnRoute"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/driver-en-route"
+    authorization_action: "synthetic_trip.start"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-003"]
+  - operation_id: "markAppDriverArrived"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/driver-arrived"
+    authorization_action: "synthetic_trip.start"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-003"]
+  - operation_id: "getAppPickupVerification"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/pickup-verification"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-003"]
+  - operation_id: "verifyAppTripBoarding"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/verify-boarding"
+    authorization_action: "synthetic_trip.start"
+    actors: ["driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "TRIP_BOARDING_CODE_INVALID", "TRIP_BOARDING_CODE_EXPIRED", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-004", "MOB-005"]
+  - operation_id: "getAppTripCancellationEligibility"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/cancellation-eligibility"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["passenger"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-004", "MOB-005"]
+  - operation_id: "cancelAppAcceptedTrip"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/cancel-accepted"
+    authorization_action: "synthetic_trip.cancel"
+    actors: ["passenger"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "TRIP_CANCELLATION_REASON_INVALID", "TRIP_CANCELLATION_NOTE_TOO_LONG", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "TRIP_CANCELLATION_WINDOW_EXPIRED", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-006"]
+  - operation_id: "createAppTripCompletionIntent"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/completion-intents"
+    authorization_action: "synthetic_trip.complete"
+    actors: ["driver"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-006"]
+  - operation_id: "completeAppTripWithIntent"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/complete-with-intent"
+    authorization_action: "synthetic_trip.complete"
+    actors: ["driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "TRIP_INVALID_STATE", "TRIP_COMPLETION_INTENT_INVALID", "TRIP_COMPLETION_INTENT_EXPIRED", "TRIP_COMPLETION_INTENT_CONSUMED", "CONFLICT_VERSION_MISMATCH", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-007"]
+  - operation_id: "listAppDriverOrders"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/orders"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-007"]
+  - operation_id: "getAppDriverOrder"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/orders/{trip_id}"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-008"]
+  - operation_id: "getAppDriverFinance"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/finance/overview"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "REAL_PAYMENT_GATE_CLOSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-009"]
+  - operation_id: "getAppDriverBankCardCapability"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/finance/bank-card-capability"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "REAL_DATA_FORBIDDEN", "REAL_PAYMENT_GATE_CLOSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-009"]
+  - operation_id: "getAppDriverWithdrawalCapability"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/finance/withdrawal-capability"
+    authorization_action: "synthetic_trip.dashboard.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "REAL_PAYMENT_GATE_CLOSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["APP-227"]
+  - operation_id: "getAppTripChat"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/chat"
+    authorization_action: "temporary_chat.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-010"]
+  - operation_id: "sendAppTripChatMessage"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/chat/messages"
+    authorization_action: "temporary_chat.message.send"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "TRIP_FORBIDDEN", "TRIP_NOT_FOUND", "CHAT_NOT_OPEN", "CHAT_FROZEN", "CHAT_MESSAGE_INVALID", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-010", "MOB-011"]
+  - operation_id: "getAppMessageCenter"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/messages"
+    authorization_action: "message_center.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-012"]
+  - operation_id: "markAppMessageRead"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/messages/{item_id}/read"
+    authorization_action: "message_center.read.update"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-012"]
+  - operation_id: "markAllAppMessagesRead"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/messages/read-all"
+    authorization_action: "message_center.read.update"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-012"]
+  - operation_id: "searchAppMapPlaces"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/map/places/search"
+    authorization_action: "map.place.search"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "MAP_SEARCH_INVALID", "MAP_SEARCH_RATE_LIMITED", "MAP_COORDINATE_SYSTEM_REQUIRED", "MAP_COORDINATE_INVALID", "MAP_COORDINATE_PRECISION_EXCEEDED", "MAP_PROVIDER_TIMEOUT", "MAP_PROVIDER_UNAVAILABLE", "MAP_QUOTA_DEGRADED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-013"]
+  - operation_id: "reverseGeocodeAppMapPoint"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/map/reverse-geocode"
+    authorization_action: "map.reverse_geocode"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "MAP_COORDINATE_SYSTEM_REQUIRED", "MAP_COORDINATE_INVALID", "MAP_COORDINATE_PRECISION_EXCEEDED", "MAP_REVERSE_GEOCODE_INVALID", "MAP_PROVIDER_TIMEOUT", "MAP_PROVIDER_UNAVAILABLE", "MAP_QUOTA_DEGRADED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-014"]
+  - operation_id: "planAppDrivingRoute"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/map/routes/driving"
+    authorization_action: "map.route.plan"
+    actors: ["passenger", "driver"]
+    request_classification: "L2"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "MAP_COORDINATE_SYSTEM_REQUIRED", "MAP_COORDINATE_INVALID", "MAP_COORDINATE_PRECISION_EXCEEDED", "MAP_ROUTE_INVALID", "MAP_PROVIDER_TIMEOUT", "MAP_PROVIDER_UNAVAILABLE", "MAP_QUOTA_DEGRADED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-015"]
+  - operation_id: "getAppVehicleLocation"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/vehicle-location"
+    authorization_action: "map.vehicle_location.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "VEHICLE_LOCATION_FORBIDDEN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-017"]
+  - operation_id: "uploadAppVehicleLocation"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/vehicle-location"
+    authorization_action: "map.vehicle_location.write"
+    actors: ["driver"]
+    request_classification: "L3"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "VEHICLE_LOCATION_FORBIDDEN", "VEHICLE_LOCATION_ACCURACY_INVALID", "VEHICLE_LOCATION_TOO_FREQUENT", "VEHICLE_LOCATION_SEQUENCE_INVALID", "VEHICLE_LOCATION_TIMESTAMP_INVALID", "VEHICLE_LOCATION_STREAM_STOPPED", "VEHICLE_LOCATION_TRIP_MISMATCH", "MAP_COORDINATE_SYSTEM_REQUIRED", "MAP_COORDINATE_INVALID", "MAP_COORDINATE_PRECISION_EXCEEDED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-016"]
+  - operation_id: "setAppVehicleLocationStage"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/synthetic-trips/{trip_id}/vehicle-location/stage"
+    authorization_action: "map.vehicle_location.stage"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: true
+    audit: "sensitive"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "VEHICLE_LOCATION_FORBIDDEN", "VEHICLE_LOCATION_STAGE_INVALID", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-018"]
+
+global_rules:
+  write_methods: ["POST", "PUT", "PATCH", "DELETE"]
+  all_operations_require_authentication: true
+  all_write_operations_require_idempotency: true
+  all_operations_require_operation_id: true
+  all_operations_require_error_response: true
+  forbidden_actions: ["quota.override"]
+  forbidden_response_fields: ["risk_score", "risk_threshold", "reporter_identity", "chat_message_body", "precise_location_trace", "full_payment_credential"]
+
+

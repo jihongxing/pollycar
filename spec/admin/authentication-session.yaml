@@ -1,0 +1,258 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.authentication-session"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/27-后台账号认证与工作身份契约.md"
+decision: "docs/decisions/0020-运营后台账号认证与工作身份会话.md"
+
+design_approval:
+  design_frozen: true
+  frozen_on: "2026-07-15"
+  implementation_approved: true
+  explicit_implementation_approval_required: true
+  synthetic_only: true
+  internal_sandbox_only: true
+
+feature_gate:
+  id: "synthetic_admin_authentication"
+  default_enabled: false
+  dependencies:
+    - "internal_sandbox"
+    - "synthetic_admin_multi_organization"
+  deny_on_missing_dependency: true
+  production_enable_forbidden: true
+
+authoritative_sources:
+  internal_user: "pollycar_admin.internal_users"
+  admin_account: "pollycar_admin.admin_accounts"
+  organization_membership: "pollycar_admin.organization_memberships"
+  role_binding: "pollycar_admin.role_bindings"
+  scope_binding: "pollycar_admin.scope_bindings"
+  invitation: "pollycar_admin.admin_invitations"
+  mfa_enrollment: "pollycar_admin.mfa_enrollments"
+  recovery_code: "pollycar_admin.mfa_recovery_codes"
+  session_family: "pollycar_admin.session_families"
+  admin_session: "pollycar_admin.admin_sessions"
+  audit_event: "pollycar_admin.audit_events"
+  work_identity_is_permission_source: false
+  client_claim_is_authoritative: false
+  per_operator_account_store_forbidden: true
+
+internal_user:
+  natural_person_unique: true
+  product_account_separate: true
+  direct_permission_binding_forbidden: true
+  one_admin_account_per_internal_user: true
+  multiple_memberships_allowed: true
+
+admin_account:
+  one_to_one_internal_user: true
+  public_registration_allowed: false
+  shared_account_allowed: false
+  normalized_work_email_unique: true
+  business_role_storage_forbidden: true
+  states:
+    - "invited"
+    - "pending_activation"
+    - "active"
+    - "locked"
+    - "suspended"
+    - "departed"
+    - "revoked"
+  terminal_states:
+    - "departed"
+    - "revoked"
+  direct_terminal_reactivation_forbidden: true
+  rehire_requires_new_membership_and_invitation: true
+  failed_authentication_limit: 5
+  automatic_lock_duration: "PT30M"
+
+login_identifier:
+  type: "work_email"
+  normalization_required: true
+  uniqueness_scope: "global"
+  account_enumeration_protection_required: true
+  personal_phone_required: false
+
+organization_membership:
+  reuses_internal_access_control: true
+  one_organization_per_membership: true
+  allowed_organization_types:
+    - "platform"
+    - "operator"
+  governance_product_account_type_forbidden: true
+  operator_id_fixed_for_operator_membership: true
+  states:
+    - "invited"
+    - "active"
+    - "suspended"
+    - "departed"
+    - "revoked"
+  terminal_states:
+    - "departed"
+    - "revoked"
+  role_binding_to_account_forbidden: true
+  role_or_scope_change_revokes_affected_sessions: true
+
+work_identity:
+  permission_fact_source: false
+  active_membership_required: true
+  one_membership_per_session: true
+  merged_organization_permissions_forbidden: true
+  product_types:
+    - "platform"
+    - "operator"
+  platform_observation_scope_may_change_within_authorized_bounds: true
+  platform_role_change_during_scope_change_forbidden: true
+  platform_data_classification_escalation_forbidden: true
+  operator_id_fixed: true
+  operator_cross_switch_forbidden: true
+  server_reauthorization_required: true
+  switch_requires_new_session: true
+  previous_access_token_invalidated: true
+
+invitation:
+  public_signup_forbidden: true
+  identifier: "normalized_work_email"
+  single_use: true
+  default_ttl: "PT72H"
+  token_digest_only: true
+  resend_revokes_previous: true
+  accept_revalidates_membership_role_scope_and_organization: true
+  platform_inviter_explicit_scope_required: true
+  operator_inviter_same_operator_required: true
+  inviter_scope_expansion_forbidden: true
+  terminal_states:
+    - "accepted"
+    - "expired"
+    - "revoked"
+  replay_forbidden: true
+
+credential:
+  password_minimum_length: 14
+  common_password_forbidden: true
+  breached_password_forbidden: true
+  password_digest_algorithm: "Argon2id"
+  reversible_password_storage_forbidden: true
+  password_reset_token_ttl: "PT30M"
+  password_reset_token_digest_only: true
+  password_reset_revokes_all_sessions: true
+
+mfa:
+  required: true
+  method: "totp"
+  sms_as_admin_mfa_forbidden: true
+  activation_requires_verified_enrollment: true
+  secret_encrypted_at_rest: true
+  code_replay_forbidden: true
+  recovery_codes_single_use: true
+  recovery_code_digest_only: true
+  recovery_codes_display_once: true
+  reset_requires_independent_platform_approval: true
+  reset_revokes_all_sessions: true
+  reset_requires_reenrollment: true
+  high_risk_freshness: "PT15M"
+
+authentication:
+  factors:
+    - "work_email"
+    - "password"
+    - "totp"
+  business_session_before_mfa_forbidden: true
+  active_membership_required_for_business_session: true
+  generic_failure_response_required: true
+  successful_login_resets_failure_count: true
+  locked_account_login_forbidden: true
+  suspended_account_login_forbidden: true
+  departed_account_login_forbidden: true
+  revoked_account_login_forbidden: true
+
+session:
+  access_token_ttl: "PT15M"
+  absolute_ttl: "PT8H"
+  idle_timeout: "PT30M"
+  remember_me_allowed: false
+  max_active_sessions_per_account: 3
+  revoke_oldest_on_limit: true
+  refresh_token_rotation_required: true
+  refresh_token_digest_only: true
+  refresh_token_replay_revokes_family: true
+  one_work_identity_per_session: true
+  cookie_http_only: true
+  cookie_secure: true
+  cookie_same_site: "Strict"
+  csrf_protection_required: true
+  device_digest_is_authentication_factor: false
+  every_request_reauthorization_required: true
+
+work_identity_switch:
+  server_side_only: true
+  frontend_state_only_forbidden: true
+  target_membership_revalidation_required: true
+  new_session_required: true
+  old_session_revoked: true
+  deep_link_auto_switch_forbidden: true
+  high_risk_identity_may_require_fresh_mfa: true
+
+account_recovery:
+  password_recovery_does_not_replace_mfa: true
+  mfa_reset_separate_from_password_reset: true
+  mfa_reset_requester_and_approver_must_differ: true
+  terminated_membership_recovery_forbidden: true
+  unknown_result_replay_forbidden: true
+  original_request_query_required: true
+
+revocation:
+  account_lock_revokes_all_sessions: true
+  account_suspend_revokes_all_sessions: true
+  account_departure_revokes_all_sessions: true
+  account_revocation_revokes_all_sessions: true
+  membership_suspend_revokes_membership_sessions: true
+  membership_departure_revokes_membership_sessions: true
+  membership_revocation_revokes_membership_sessions: true
+  role_or_scope_change_revokes_affected_sessions: true
+  password_reset_revokes_all_sessions: true
+  mfa_reset_revokes_all_sessions: true
+  refresh_replay_revokes_session_family: true
+
+audit:
+  append_only: true
+  allowed_and_denied_events_required: true
+  invitation_events_required: true
+  account_state_events_required: true
+  login_and_mfa_events_required: true
+  session_events_required: true
+  work_identity_events_required: true
+  revocation_events_required: true
+  secret_plaintext_forbidden:
+    - "password"
+    - "password_digest"
+    - "totp_secret"
+    - "totp_code"
+    - "recovery_code"
+    - "invitation_token"
+    - "password_reset_token"
+    - "access_token"
+    - "refresh_token"
+    - "cookie"
+
+implementation_gate:
+  implementation_allowed: true
+  explicit_approval_required: true
+  runtime_code_forbidden_before_approval: false
+  database_migration_forbidden_before_approval: false
+  http_api_forbidden_before_approval: false
+  admin_ui_forbidden_before_approval: false
+  real_email_allowed: false
+  real_identity_data_allowed: false
+  real_credential_allowed: false
+  production_enablement_allowed: false
+
+real_capabilities:
+  real_admin_organization_accounts: false
+  real_email_delivery: false
+  real_employee_identity_data: false
+  real_identity_provider: false
+  production_authentication: false
+  production_admin_enabled: false

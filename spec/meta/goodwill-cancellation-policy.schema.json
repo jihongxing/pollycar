@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/goodwill-cancellation-policy.schema.json",
+  "title": "善意取消额度策略规范",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "actors", "shared_rules", "evaluation_order", "record_states", "driver_fairness_monitoring"],
+  "properties": {
+    "spec_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "spec_id": {"const": "pollycar.goodwill-cancellation.policy"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "approved_for_internal_sandbox"},
+    "actors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passenger", "driver"],
+      "properties": {
+        "passenger": {"$ref": "#/$defs/actorPolicy"},
+        "driver": {"$ref": "#/$defs/actorPolicy"}
+      }
+    },
+    "shared_rules": {"type": "object", "required": ["window_type", "purchasable", "transferable", "carry_over", "real_payment_effect", "reason_required", "allowed_trip_states", "forbidden_trip_states", "unknown_result_auto_replay", "automatic_discrimination_decision"]},
+    "evaluation_order": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "record_states": {"type": "array", "const": ["reserved", "consumed", "restored"]},
+    "driver_fairness_monitoring": {"type": "object", "required": ["profile_view_to_cancellation_recorded", "legal_gender_grouping_allowed_for_monitoring_only", "automatic_penalty", "consecutive_post_accept_cancellations"]}
+  },
+  "$defs": {
+    "actorPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["windows"],
+      "properties": {
+        "windows": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["duration", "limit"],
+            "properties": {
+              "duration": {"enum": ["PT24H", "P7D", "P30D"]},
+              "limit": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    }
+  }
+}

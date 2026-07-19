@@ -1,0 +1,91 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.data-reports"
+language: "zh-CN"
+production_enabled: false
+status: "implemented"
+
+feature_gate: "synthetic_admin_data_reports"
+
+positioning:
+  product_role: "内部运营聚合报表工作区"
+  aggregate_only: true
+  person_level_data_allowed: false
+  real_data_allowed: false
+  export_allowed: false
+
+sources:
+  - id: "operations_task_store"
+    purpose: "生成组织范围内运营任务总量、未完成量和受阻量"
+  - id: "admin_audit_event_store"
+    purpose: "生成财务、安全合规和统一审计活动聚合"
+  duplicated_business_detail_store_allowed: false
+
+reports:
+  - report_id: "operations-health"
+    domain: "operations"
+    title: "运营任务健康报表"
+  - report_id: "finance-control"
+    domain: "finance"
+    title: "财务控制事件报表"
+  - report_id: "safety-compliance"
+    domain: "safety_compliance"
+    title: "安全合规事件报表"
+  - report_id: "audit-activity"
+    domain: "audit"
+    title: "统一审计活动报表"
+
+directory:
+  summary_fields: ["total_reports", "ready_reports", "partial_reports", "stale_reports", "total_metrics"]
+  capabilities: ["search", "domain_filter", "state_filter", "sort", "signed_cursor_pagination"]
+  return_filter_restoration_required: true
+  return_cursor_restoration_required: true
+  return_scroll_restoration_required: true
+
+detail:
+  fields: ["report", "metrics", "allowed_actions", "source_boundary", "audit_trail"]
+  source_boundary_required: true
+  source_boundary:
+    aggregate_only: true
+    person_level_data_available: false
+    real_data_available: false
+    export_available: false
+
+actions:
+  - id: "refresh_report"
+    expected_resource_version_required: true
+    idempotency_key_required: true
+    reason_required: true
+    result_states: ["confirming", "confirmed", "error"]
+    append_only_audit_event: "data_report_refreshed"
+
+role_matrix:
+  data_analyst:
+    read_domains: ["operations", "finance", "safety_compliance", "audit"]
+    refresh_domains: ["operations", "finance", "safety_compliance", "audit"]
+  operations_lead:
+    refresh_domains: ["operations"]
+  finance_lead:
+    refresh_domains: ["finance"]
+  safety_lead:
+    refresh_domains: ["safety_compliance"]
+  privacy_compliance:
+    refresh_domains: ["audit"]
+  operator_operations_lead:
+    scope: "own_organization_only"
+    refresh_domains: ["operations"]
+  operator_finance_lead:
+    scope: "own_organization_only"
+    refresh_domains: ["finance"]
+  auditor:
+    read_only: true
+
+audit:
+  view_event: "data_report_viewed"
+  refresh_event: "data_report_refreshed"
+  append_only: true
+  unified_store_required: true
+
+production_boundary:
+  real_data_enabled: false
+  real_export_enabled: false
+  production_enablement_allowed: false

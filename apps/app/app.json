@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "御驾出行",
+    "slug": "pollycar-internal-sandbox",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/brand/rego-app-icon.png",
+    "scheme": "pollycar",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      "./plugins/with-pollycar-map-module.cjs",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#111827",
+          "image": "./assets/brand/rego-splash-mark.png",
+          "imageWidth": 260,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#111827",
+            "image": "./assets/brand/rego-splash-mark.png"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.pollycar",
+      "supportsTablet": false,
+      "icon": "./assets/brand/rego-app-icon.png"
+    },
+    "android": {
+      "package": "com.yourcompany.pollycar",
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/rego-adaptive-foreground.png",
+        "backgroundColor": "#111827",
+        "monochromeImage": "./assets/brand/rego-adaptive-monochrome.png"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/brand/rego-favicon.png"
+    }
+  }
+}

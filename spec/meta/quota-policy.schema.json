@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/quota-policy.schema.json",
+  "title": "接单配额策略规范",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_documents", "timezone_policy", "policy_selection", "policies", "activation_days", "occupancy", "evaluation_order", "atomicity", "expiration_behavior", "error_codes"],
+  "properties": {
+    "spec_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "spec_id": {"const": "pollycar.driver-quota.policy"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"enum": ["draft", "review", "approved", "rejected", "superseded"]},
+    "source_documents": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "timezone_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage_timezone", "activation_day_timezone", "window_type"],
+      "properties": {
+        "storage_timezone": {"const": "UTC"},
+        "activation_day_timezone": {"type": "string", "minLength": 1},
+        "window_type": {"const": "rolling"}
+      }
+    },
+    "policy_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flex_policy_state", "all_other_states_policy", "fallback_on_unknown_state"],
+      "properties": {
+        "flex_policy_state": {"const": "active"},
+        "all_other_states_policy": {"const": "base"},
+        "fallback_on_unknown_state": {"const": "base"}
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "flex"],
+      "properties": {
+        "base": {"$ref": "#/$defs/policy"},
+        "flex": {"$ref": "#/$defs/policy"}
+      }
+    },
+    "activation_days": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lookback", "maximum_active_calendar_days", "paused_day_counts_as_active", "partial_active_day_counts_as_one", "carry_over"],
+      "properties": {
+        "lookback": {"type": "string", "pattern": "^P([0-9]+D|T.+)$"},
+        "maximum_active_calendar_days": {"type": "integer", "minimum": 1},
+        "paused_day_counts_as_active": {"type": "boolean"},
+        "partial_active_day_counts_as_one": {"type": "boolean"},
+        "carry_over": {"type": "boolean"}
+      }
+    },
+    "occupancy": {
+      "type": "object",
+      "required": ["occupy_on_event", "release_events", "finalize_events"],
+      "properties": {
+        "occupy_on_event": {"type": "string"},
+        "release_events": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/reasonEvent"}},
+        "finalize_events": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/reasonEvent"}}
+      }
+    },
+    "evaluation_order": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "atomicity": {"type": "object", "required": ["required", "compare_eligibility_version", "partial_occupancy_allowed", "duplicate_request_behavior"]},
+    "expiration_behavior": {"type": "object", "required": ["cancel_in_flight_trips", "release_existing_occupancy", "new_acceptance_policy", "over_base_limit_behavior"]},
+    "error_codes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^QUOTA_[A-Z0-9_]+$"}}
+  },
+  "$defs": {
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["windows"],
+      "properties": {
+        "windows": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["duration", "limit"],
+            "properties": {
+              "duration": {"type": "string", "pattern": "^P(T?[0-9A-Z]+)+$"},
+              "limit": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    },
+    "reasonEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "event"],
+      "properties": {
+        "reason": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "event": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      }
+    }
+  }
+}

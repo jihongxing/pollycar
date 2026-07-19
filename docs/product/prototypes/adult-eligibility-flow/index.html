@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>REGO 成年资格验证分步设计</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><small>御驾出行 · REGO</small><h1>成年资格验证</h1><p>产品级分步流程设计候选 · 仅使用合成材料</p></div>
+    <nav id="nav"></nav>
+  </header>
+  <main>
+    <aside>
+      <span class="environment">◇ 内部沙箱</span>
+      <h2>设计原则</h2>
+      <p>一次只完成一件事。用户只看到自己需要理解的步骤，不看到内部状态机。</p>
+      <ol id="step-list"></ol>
+      <div class="note"><strong>业务准入</strong><br>验证通过前，仅开放验证、申诉、隐私说明和必要安全入口。</div>
+    </aside>
+    <section class="phone">
+      <div class="status"><span>09:41</span><span>● ● ◒</span></div>
+      <div id="screen"></div>
+    </section>
+  </main>
+  <script src="./prototype.js"></script>
+</body>
+</html>

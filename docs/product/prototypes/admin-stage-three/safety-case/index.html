@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>安全案件详情</title><link rel="stylesheet" href="../shared/stage-three.css"></head><body>
+<div class="shell"><div class="env"><b>内部合成环境 · 阶段三设计原型</b><span>安全恢复双人复核；真实证据关闭</span></div><header class="top"><div class="brand"><span class="brand-mark">PC</span><div><b>PollyCar</b><small>运营控制台</small></div></div><div class="context"><b>安全中心</b><b>案件隔离上下文</b><b>安全负责人</b></div><span class="avatar">安</span></header>
+<aside class="side"><nav><a>行程运营中心</a><a>行程 360°</a><a>客服案件</a><a class="active">安全案件</a><a>证据访问</a><a>结果恢复</a></nav><div class="scope"><b>安全职责</b><span>案件：SAFETY-SYN-8421</span><span>严重度：sev2</span><span>独立复核：必需</span></div></aside><nav class="mobile-nav"><a>行程中心</a><a>行程</a><a>客服</a><a class="active">安全</a><a>证据</a><a>恢复</a></nav>
+<main><div class="heading"><div><span class="eyebrow">安全案件 · open_frozen</span><h1>安全案件详情</h1><p>调查任务与既有安全案件状态分离。冻结经办人不能复核恢复，严重案件必须先关闭应急和证据阻断。</p></div><span class="badge danger">sev2 · 待独立复核</span></div>
+<div class="alert"><b>恢复被阻断：</b> 应急响应尚未关闭，完整位置轨迹的证据保全仍待确认。</div>
+<div class="grid"><section class="panel"><header><div><h2>调查与复核</h2><p>调查经办：安全人员 07；独立复核：当前用户</p></div><span class="badge warning">awaiting_independent_review</span></header><div class="list">
+<article class="item"><span class="icon">冻</span><div><b>安全冻结已执行</b><p>行程进入 safety_frozen；对话进入 frozen。</p></div><span class="badge success">完成</span></article>
+<article class="item"><span class="icon">证</span><div><b>证据保全</b><p>聊天引用已保全；完整位置轨迹等待双人批准。</p></div><span class="badge warning">部分完成</span></article>
+<article class="item"><span class="icon danger">急</span><div><b>应急响应</b><p>应急响应人员已接手，尚未记录关闭时间。</p></div><span class="badge danger">阻断</span></article>
+<article class="item"><span class="icon">资</span><div><b>资格同步</b><p>reported account 已进入受限状态。</p></div><span class="badge success">完成</span></article>
+</div><div class="actions"><button class="primary" disabled>批准恢复访问</button><button class="danger">维持冻结</button><button>退回补充调查</button></div></section>
+<section class="panel"><header><div><h2>最小业务同步</h2><p>案件关闭不会自动改变其他领域结论</p></div></header><div class="stack"><div class="kv"><span>客服可见</span><b>等待安全处理／已恢复／维持冻结</b></div><div class="kv"><span>运营主体可见</span><b>协作动作、期限和完成状态</b></div><div class="kv"><span>资金可见</span><b>是否阻断，不披露安全推理</b></div><div class="kv"><span>审计可见</span><b>访问与决定记录，不含证据原文</b></div><div class="kv"><span>恢复要求</span><b>不同安全负责人独立复核</b></div></div></section></div>
+</main></div></body></html>

@@ -1,0 +1,93 @@
+spec_version: "1.0"
+spec_id: "pollycar.domain.adult-eligibility-verification"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_documents:
+  - "docs/decisions/0010-全用户实名与法定性别披露.md"
+
+purpose:
+  user_facing_name: "成年资格验证"
+  internal_effect: "实名准入"
+  minimum_age_years: 18
+  self_declared_age_sufficient: false
+
+real_capability_gates:
+  real_identity_verification: false
+  real_biometric_verification: false
+  external_identity_provider: false
+  synthetic_only: true
+
+required_checks:
+  - id: "document"
+    meaning: "身份证件正反面、有效性和支持类型核验"
+  - id: "age"
+    meaning: "基于经过验证的出生日期判定已年满十八周岁"
+  - id: "liveness"
+    meaning: "确认采集对象为当前在场的真实人员"
+  - id: "face_match"
+    meaning: "确认活体采集对象与身份证件持有人一致"
+
+check_statuses:
+  - "not_started"
+  - "pending"
+  - "passed"
+  - "failed"
+  - "unknown"
+
+states:
+  - "not_started"
+  - "collecting"
+  - "processing"
+  - "needs_retry"
+  - "needs_review"
+  - "verified"
+  - "rejected"
+  - "expired"
+  - "suspended"
+  - "revoked"
+
+access_rule:
+  business_access_allowed_only_when: "state == verified && all_required_checks == passed"
+  fail_closed_statuses:
+    - "not_started"
+    - "pending"
+    - "failed"
+    - "unknown"
+
+failure_recovery:
+  document_incomplete: "upload_document"
+  document_invalid: "retry_verification"
+  document_expired: "retry_verification"
+  document_unsupported: "retry_verification"
+  underage: "submit_appeal"
+  liveness_failed: "retry_verification"
+  face_mismatch: "retry_verification"
+  provider_timeout: "retry_verification"
+  provider_unavailable: "retry_verification"
+  result_unknown: "retry_verification"
+  manual_review_required: "wait_for_review"
+
+data_minimization:
+  business_payload_allowed:
+    - "adult_confirmed"
+    - "legal_gender"
+    - "verified_at"
+    - "verification_state"
+  business_payload_forbidden:
+    - "identity_document_image"
+    - "raw_face_image"
+    - "liveness_material"
+    - "biometric_template"
+    - "full_document_number"
+    - "full_birth_date"
+
+invariants:
+  - "任何单项成功均不得开放业务能力"
+  - "超时、供应商不可用和未知结果必须按未通过处理"
+  - "真实身份或人脸数据门禁关闭时必须拒绝真实数据"
+  - "用户自行声明年龄不能替代身份证件核验与人脸比对"
+  - "材料采集前必须完成身份、人脸和第三方处理授权"
+  - "申诉和人工复核期间业务能力保持关闭"
+  - "法定性别仅可在合格车主接单前查看乘车人资料，以及乘车人被接单后查看车主资料时以图标弱展示"
+  - "法定性别不得用于平台自动匹配、排序、推荐、筛选、定价、资格、配额或自动风险决策"

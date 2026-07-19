@@ -1,0 +1,269 @@
+spec_version: "1.0"
+spec_id: "pollycar.flex-eligibility.states"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_documents:
+  - "docs/09-state-machines.md"
+  - "docs/decisions/0001-弹性参与资格.md"
+
+initial_state: "not_applied"
+flex_quota_active_state: "active"
+
+states:
+  - id: "not_applied"
+    name: "未申请"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "under_review"
+    name: "审核中"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "rejected"
+    name: "已拒绝"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "awaiting_confirmation"
+    name: "待确认"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "awaiting_payment"
+    name: "待支付"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "payment_failed"
+    name: "支付失败"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "pending_activation"
+    name: "待启用"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "activation_blocked"
+    name: "启用受阻"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "active"
+    name: "已启用"
+    terminal: false
+    flex_quota_enabled: true
+  - id: "suspended"
+    name: "已暂停"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "pending_restoration"
+    name: "待恢复"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "appealing"
+    name: "申诉中"
+    terminal: false
+    flex_quota_enabled: false
+  - id: "revoked"
+    name: "已撤销"
+    terminal: true
+    flex_quota_enabled: false
+  - id: "expired"
+    name: "已到期"
+    terminal: true
+    flex_quota_enabled: false
+  - id: "invalidated"
+    name: "已失效"
+    terminal: true
+    flex_quota_enabled: false
+
+transitions:
+  - id: "submit_application"
+    from: "not_applied"
+    to: "under_review"
+    event: "flex_eligibility_application_submitted"
+    actors: ["driver"]
+    guards: ["driver_eligible", "vehicle_eligible", "no_open_application", "reapplication_allowed"]
+  - id: "approve_application"
+    from: "under_review"
+    to: "awaiting_confirmation"
+    event: "flex_eligibility_application_approved"
+    actors: ["reviewer", "senior_reviewer"]
+    guards: ["tenure_met", "completion_count_met", "completion_rate_met", "cancellation_rate_met", "risk_low", "documents_valid"]
+  - id: "reject_application"
+    from: "under_review"
+    to: "rejected"
+    event: "flex_eligibility_application_rejected"
+    actors: ["reviewer", "senior_reviewer"]
+    guards: []
+  - id: "expire_confirmation"
+    from: "awaiting_confirmation"
+    to: "invalidated"
+    event: "flex_eligibility_confirmation_expired"
+    actors: ["scheduler"]
+    guards: ["confirmation_deadline_reached"]
+  - id: "confirm_free_trial"
+    from: "awaiting_confirmation"
+    to: "pending_activation"
+    event: "flex_eligibility_activation_confirmed"
+    actors: ["driver"]
+    guards: ["trial_mode_free", "terms_accepted"]
+  - id: "confirm_paid_trial"
+    from: "awaiting_confirmation"
+    to: "awaiting_payment"
+    event: "flex_eligibility_activation_confirmed"
+    actors: ["driver"]
+    guards: ["trial_mode_paid", "terms_accepted"]
+  - id: "record_payment_failure"
+    from: "awaiting_payment"
+    to: "payment_failed"
+    event: "flex_eligibility_payment_failed"
+    actors: ["payment_callback", "scheduler"]
+    guards: []
+  - id: "retry_payment"
+    from: "payment_failed"
+    to: "awaiting_payment"
+    event: "flex_eligibility_payment_retry_requested"
+    actors: ["driver"]
+    guards: ["confirmation_still_valid", "payment_retry_allowed"]
+  - id: "record_payment_success"
+    from: "awaiting_payment"
+    to: "pending_activation"
+    event: "flex_eligibility_payment_succeeded"
+    actors: ["payment_callback"]
+    guards: ["payment_before_confirmation_deadline"]
+  - id: "block_activation"
+    from: "pending_activation"
+    to: "activation_blocked"
+    event: "flex_eligibility_activation_rejected"
+    actors: ["eligibility_system"]
+    guards: ["activation_guard_failed"]
+  - id: "retry_activation"
+    from: "activation_blocked"
+    to: "pending_activation"
+    event: "flex_eligibility_activation_retry_requested"
+    actors: ["eligibility_system", "senior_reviewer"]
+    guards: ["activation_block_cleared"]
+  - id: "activate"
+    from: "pending_activation"
+    to: "active"
+    event: "flex_eligibility_activated"
+    actors: ["eligibility_system"]
+    guards: ["documents_valid", "no_safety_block", "activation_days_available", "payment_satisfied", "no_overlapping_period"]
+  - id: "suspend"
+    from: "active"
+    to: "suspended"
+    event: "flex_eligibility_suspended"
+    actors: ["reviewer", "senior_reviewer", "safety_officer", "risk_system"]
+    guards: ["suspension_reason_present"]
+  - id: "clear_suspension"
+    from: "suspended"
+    to: "pending_restoration"
+    event: "flex_eligibility_suspension_cleared"
+    actors: ["senior_reviewer", "safety_officer"]
+    guards: ["suspension_reason_cleared"]
+  - id: "restore"
+    from: "pending_restoration"
+    to: "active"
+    event: "flex_eligibility_restored"
+    actors: ["eligibility_system"]
+    guards: ["period_not_expired", "activation_days_available", "no_safety_block"]
+  - id: "revoke_active"
+    from: "active"
+    to: "revoked"
+    event: "flex_eligibility_revoked"
+    actors: ["safety_officer", "safety_lead"]
+    guards: ["revocation_reason_present"]
+  - id: "revoke_suspended"
+    from: "suspended"
+    to: "revoked"
+    event: "flex_eligibility_revoked"
+    actors: ["safety_officer", "safety_lead"]
+    guards: ["revocation_reason_present"]
+  - id: "revoke_pending_restoration"
+    from: "pending_restoration"
+    to: "revoked"
+    event: "flex_eligibility_revoked"
+    actors: ["safety_officer", "safety_lead"]
+    guards: ["revocation_reason_present"]
+  - id: "appeal_rejection"
+    from: "rejected"
+    to: "appealing"
+    event: "flex_eligibility_appeal_submitted"
+    actors: ["driver"]
+    guards: ["appeal_window_open", "appeal_not_previously_used"]
+  - id: "appeal_suspension"
+    from: "suspended"
+    to: "appealing"
+    event: "flex_eligibility_appeal_submitted"
+    actors: ["driver"]
+    guards: ["appeal_window_open", "appeal_not_previously_used"]
+  - id: "appeal_revocation"
+    from: "revoked"
+    to: "appealing"
+    event: "flex_eligibility_appeal_submitted"
+    actors: ["driver"]
+    guards: ["appeal_window_open", "appeal_not_previously_used"]
+  - id: "approve_rejection_appeal"
+    from: "appealing"
+    to: "awaiting_confirmation"
+    event: "flex_eligibility_appeal_approved"
+    actors: ["senior_reviewer", "safety_lead"]
+    guards: ["appeal_targets_rejection", "reviewer_separated"]
+  - id: "approve_restriction_appeal"
+    from: "appealing"
+    to: "pending_restoration"
+    event: "flex_eligibility_appeal_approved"
+    actors: ["senior_reviewer", "safety_lead"]
+    guards: ["appeal_targets_suspension_or_revocation", "reviewer_separated", "period_not_expired"]
+  - id: "reject_rejection_appeal"
+    from: "appealing"
+    to: "rejected"
+    event: "flex_eligibility_appeal_rejected"
+    actors: ["senior_reviewer", "safety_lead"]
+    guards: ["appeal_targets_rejection", "reviewer_separated"]
+  - id: "reject_suspension_appeal"
+    from: "appealing"
+    to: "suspended"
+    event: "flex_eligibility_appeal_rejected"
+    actors: ["senior_reviewer", "safety_lead"]
+    guards: ["appeal_targets_suspension", "reviewer_separated"]
+  - id: "reject_revocation_appeal"
+    from: "appealing"
+    to: "revoked"
+    event: "flex_eligibility_appeal_rejected"
+    actors: ["senior_reviewer", "safety_lead"]
+    guards: ["appeal_targets_revocation", "reviewer_separated"]
+  - id: "expire_active"
+    from: "active"
+    to: "expired"
+    event: "flex_eligibility_expired"
+    actors: ["scheduler"]
+    guards: ["period_end_reached"]
+  - id: "expire_suspended"
+    from: "suspended"
+    to: "expired"
+    event: "flex_eligibility_expired"
+    actors: ["scheduler"]
+    guards: ["period_end_reached"]
+  - id: "expire_pending_restoration"
+    from: "pending_restoration"
+    to: "expired"
+    event: "flex_eligibility_expired"
+    actors: ["scheduler"]
+    guards: ["period_end_reached"]
+
+concurrency_priority:
+  - "safety_revocation"
+  - "safety_suspension"
+  - "expiration"
+  - "appeal_decision"
+  - "restoration_or_activation"
+  - "payment_result"
+  - "user_abandonment"
+
+error_codes:
+  - "ELIGIBILITY_INVALID_STATE"
+  - "ELIGIBILITY_REVIEW_REQUIRED"
+  - "ELIGIBILITY_SUSPENDED"
+  - "ELIGIBILITY_REVOKED"
+  - "ELIGIBILITY_EXPIRED"
+  - "ELIGIBILITY_ACTIVATION_DAYS_EXCEEDED"
+  - "ELIGIBILITY_PAYMENT_REQUIRED"
+  - "ELIGIBILITY_APPEAL_NOT_ALLOWED"
+  - "ELIGIBILITY_CONCURRENT_MODIFICATION"

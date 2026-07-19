@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/executive-dashboard.schema.json",
+  "title": "运营控制台高层驾驶舱契约",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "status", "production_enabled", "source_document", "decision", "design_approval", "feature_gate", "productized_admin_api", "authoritative_sources", "derived_records", "functional_roles", "organization_scope", "modules", "metric_contract", "metrics", "operator_health_rule", "freshness", "drilldown", "decision_items", "export", "finance_disclosure", "query_architecture", "api", "page_states", "audit", "implementation_gate"],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.admin.executive-dashboard"},
+    "language": {"const": "zh-CN"},
+    "status": {"const": "implementation_approved"},
+    "production_enabled": {"const": false},
+    "source_document": {"type": "string", "minLength": 1},
+    "decision": {"type": "string", "minLength": 1},
+    "design_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "approved_on", "implementation_approved", "implementation_approved_on", "implementation_approval_required", "synthetic_only", "internal_sandbox_only"],
+      "properties": {
+        "approved": {"const": true},
+        "approved_on": {"const": "2026-07-14"},
+        "implementation_approved": {"const": true},
+        "implementation_approved_on": {"const": "2026-07-14"},
+        "implementation_approval_required": {"const": true},
+        "synthetic_only": {"const": true},
+        "internal_sandbox_only": {"const": true}
+      }
+    },
+    "feature_gate": {"type": "object"},
+    "productized_admin_api": {"type": "object"},
+    "authoritative_sources": {"type": "object"},
+    "derived_records": {"type": "object"},
+    "functional_roles": {"type": "object"},
+    "organization_scope": {"type": "object"},
+    "modules": {"type": "array", "minItems": 6, "uniqueItems": true, "items": {"type": "object"}},
+    "metric_contract": {"type": "object"},
+    "metrics": {"type": "array", "minItems": 19, "maxItems": 19, "uniqueItems": true, "items": {"type": "object"}},
+    "operator_health_rule": {"type": "object"},
+    "freshness": {"type": "object"},
+    "drilldown": {"type": "object"},
+    "decision_items": {"type": "object"},
+    "export": {"type": "object"},
+    "finance_disclosure": {"type": "object"},
+    "query_architecture": {"type": "object"},
+    "api": {"type": "object"},
+    "page_states": {"type": "object"},
+    "audit": {"type": "object"},
+    "implementation_gate": {"type": "object"}
+  }
+}

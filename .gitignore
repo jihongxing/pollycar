@@ -1,0 +1,58 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建与测试产物
+dist/
+dist-*/
+build/
+coverage/
+.expo/
+.turbo/
+.vite/
+test-results/
+playwright-report/
+
+# 本地验收、输出与 QA 资料
+output/
+qa/
+
+# 本地 Agent 与浏览器工具状态
+.codex-runtime/
+.gstack/
+.impeccable/
+.playwright-cli/
+
+# 环境变量与本地凭据
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 运行日志与临时进程文件
+*.log
+*.pid
+.tmp-*
+tmp/
+temp/
+
+# 编辑器与操作系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 覆盖率与缓存
+.cache/
+*.tsbuildinfo
+
+# 终端命令意外生成的根目录临时文件
+/'ERR
+/({type
+/innerWidth+1
+/r.status+
+/window.innerWidth+1
+/x.ch+1).slice(0
+/{history.pushState({}

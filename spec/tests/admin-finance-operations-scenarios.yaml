@@ -1,0 +1,297 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-finance-operations-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/21-阶段四资金运营契约.md"
+
+scenarios:
+  - id: "ADMIN-FIN-001"
+    category: feature_gate
+    title: "资金运营门禁默认关闭"
+    initial_state: disabled
+    actor: finance_officer
+    command: admin_finance.operations.read
+    expected_events: ["access_denied"]
+    expected_state: disabled
+    expected_error: "FEATURE_DISABLED"
+  - id: "ADMIN-FIN-002"
+    category: implementation_gate
+    title: "设计通过不允许直接进入代码实现"
+    initial_state: design_frozen
+    actor: operations_lead
+    command: admin_finance.implementation.start
+    expected_events: ["implementation_denied"]
+    expected_state: design_frozen
+    expected_error: "ADMIN_FINANCE_IMPLEMENTATION_NOT_APPROVED"
+  - id: "ADMIN-FIN-003"
+    category: organization_scope
+    title: "运营主体不能查看其他主体清算"
+    initial_state: ready
+    actor: operator_finance_officer
+    command: admin_finance.settlement.read
+    expected_events: ["access_denied"]
+    expected_state: ready
+    expected_error: "ADMIN_FINANCE_SCOPE_FORBIDDEN"
+  - id: "ADMIN-FIN-004"
+    category: organization_scope
+    title: "运营主体不能查看其他主体车主付款"
+    initial_state: awaiting_review
+    actor: operator_finance_lead
+    command: admin_finance.payout.read
+    expected_events: ["access_denied"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_FINANCE_OPERATOR_PAYMENT_DATA_FORBIDDEN"
+  - id: "ADMIN-FIN-005"
+    category: money
+    title: "前端不能修改 Server 返回金额"
+    initial_state: ready
+    actor: finance_officer
+    command: admin_finance.amount.edit
+    expected_events: ["access_denied"]
+    expected_state: ready
+    expected_error: "ADMIN_FINANCE_AMOUNT_EDIT_FORBIDDEN"
+  - id: "ADMIN-FIN-006"
+    category: balance
+    title: "后台不能修改余额投影"
+    initial_state: projected
+    actor: finance_lead
+    command: admin_finance.balance.mutate
+    expected_events: ["access_denied"]
+    expected_state: projected
+    expected_error: "ADMIN_FINANCE_BALANCE_MUTATION_FORBIDDEN"
+  - id: "ADMIN-FIN-007"
+    category: ledger
+    title: "后台不能直接创建任意账本分录"
+    initial_state: open
+    actor: finance_lead
+    command: admin_finance.ledger.post
+    expected_events: ["access_denied"]
+    expected_state: open
+    expected_error: "ADMIN_FINANCE_DIRECT_LEDGER_POST_FORBIDDEN"
+  - id: "ADMIN-FIN-008"
+    category: allocation
+    title: "分配比例保持只读"
+    initial_state: allocated
+    actor: finance_officer
+    command: admin_finance.allocation.rate_edit
+    expected_events: ["access_denied"]
+    expected_state: allocated
+    expected_error: "ADMIN_FINANCE_ALLOCATION_IMMUTABLE"
+  - id: "ADMIN-FIN-009"
+    category: settlement
+    title: "平台财务经办准备清算批次"
+    initial_state: eligible
+    actor: finance_officer
+    command: admin_finance.settlement.prepare
+    expected_events: ["settlement_prepared"]
+    expected_state: ready
+    expected_error: null
+  - id: "ADMIN-FIN-010"
+    category: separation_of_duties
+    title: "清算经办人不能复核自己"
+    initial_state: ready
+    actor: finance_officer
+    command: admin_finance.settlement.review
+    expected_events: ["review_denied"]
+    expected_state: ready
+    expected_error: "ADMIN_FINANCE_REVIEWER_CONFLICT"
+  - id: "ADMIN-FIN-011"
+    category: settlement
+    title: "非零差异阻止运营主体清算"
+    initial_state: differences_found
+    actor: finance_lead
+    command: admin_finance.settlement.review
+    expected_events: ["settlement_blocked"]
+    expected_state: ready
+    expected_error: "ADMIN_FINANCE_SETTLEMENT_BLOCKED"
+  - id: "ADMIN-FIN-012"
+    category: payout
+    title: "本主体财务经办准备 T 加一付款"
+    initial_state: eligible
+    actor: operator_finance_officer
+    command: admin_finance.payout.prepare
+    expected_events: ["payout_prepared"]
+    expected_state: awaiting_review
+    expected_error: null
+  - id: "ADMIN-FIN-013"
+    category: payout
+    title: "非 T 加一分配不能入付款批次"
+    initial_state: ineligible_business_date
+    actor: operator_finance_officer
+    command: admin_finance.payout.prepare
+    expected_events: ["payout_blocked"]
+    expected_state: ineligible_business_date
+    expected_error: "ADMIN_FINANCE_PAYOUT_NOT_T_PLUS_ONE"
+  - id: "ADMIN-FIN-014"
+    category: separation_of_duties
+    title: "付款经办人不能复核自己"
+    initial_state: awaiting_review
+    actor: operator_finance_officer
+    command: admin_finance.payout.review
+    expected_events: ["review_denied"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_FINANCE_REVIEWER_CONFLICT"
+  - id: "ADMIN-FIN-015"
+    category: payout
+    title: "非零差异阻止车主付款"
+    initial_state: differences_found
+    actor: operator_finance_lead
+    command: admin_finance.payout.review
+    expected_events: ["payout_blocked"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_FINANCE_PAYOUT_BLOCKED"
+  - id: "ADMIN-FIN-016"
+    category: payout
+    title: "提前结算继续关闭"
+    initial_state: disabled
+    actor: operator_finance_officer
+    command: admin_finance.early_settlement.request
+    expected_events: ["access_denied"]
+    expected_state: disabled
+    expected_error: "DRIVER_EARLY_SETTLEMENT_DISABLED"
+  - id: "ADMIN-FIN-017"
+    category: refund
+    title: "退款必须引用原支付和责任"
+    initial_state: missing_original_payment
+    actor: finance_officer
+    command: admin_finance.refund.request
+    expected_events: ["refund_denied"]
+    expected_state: missing_original_payment
+    expected_error: "ADMIN_FINANCE_REFUND_INELIGIBLE"
+  - id: "ADMIN-FIN-018"
+    category: refund
+    title: "后台不能直接标记退款成功"
+    initial_state: requested
+    actor: finance_lead
+    command: admin_finance.refund.complete
+    expected_events: ["access_denied"]
+    expected_state: requested
+    expected_error: "ADMIN_FINANCE_PROVIDER_RESULT_REQUIRED"
+  - id: "ADMIN-FIN-019"
+    category: reversal
+    title: "完整冲正必须引用可冲正原交易"
+    initial_state: invalid_original
+    actor: finance_officer
+    command: admin_finance.reversal.request
+    expected_events: ["reversal_denied"]
+    expected_state: invalid_original
+    expected_error: "ADMIN_FINANCE_REVERSAL_INVALID"
+  - id: "ADMIN-FIN-020"
+    category: reversal
+    title: "完整冲正需要独立复核"
+    initial_state: awaiting_review
+    actor: finance_officer
+    command: admin_finance.reversal.review
+    expected_events: ["review_denied"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_FINANCE_REVIEWER_CONFLICT"
+  - id: "ADMIN-FIN-021"
+    category: reconciliation
+    title: "非零差异不能自动核销"
+    initial_state: open
+    actor: finance_officer
+    command: admin_finance.reconciliation.auto_writeoff
+    expected_events: ["resolution_denied"]
+    expected_state: open
+    expected_error: "ADMIN_FINANCE_RECONCILIATION_BLOCKED"
+  - id: "ADMIN-FIN-022"
+    category: reconciliation
+    title: "差异解决必须包含证据引用"
+    initial_state: open
+    actor: finance_officer
+    command: admin_finance.reconciliation.resolve
+    expected_events: ["resolution_denied"]
+    expected_state: open
+    expected_error: "ADMIN_FINANCE_RESOLUTION_EVIDENCE_REQUIRED"
+  - id: "ADMIN-FIN-023"
+    category: separation_of_duties
+    title: "差异解决需要独立复核"
+    initial_state: awaiting_review
+    actor: finance_officer
+    command: admin_finance.reconciliation.review
+    expected_events: ["review_denied"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_FINANCE_REVIEWER_CONFLICT"
+  - id: "ADMIN-FIN-024"
+    category: fund_case
+    title: "资金案件不得修改余额"
+    initial_state: open
+    actor: operator_finance_lead
+    command: admin_finance.fund_case.balance_adjust
+    expected_events: ["access_denied"]
+    expected_state: open
+    expected_error: "ADMIN_FINANCE_BALANCE_MUTATION_FORBIDDEN"
+  - id: "ADMIN-FIN-025"
+    category: business_day_close
+    title: "缺失支付机构账单阻止关账"
+    initial_state: statement_missing
+    actor: finance_lead
+    command: admin_finance.business_day.review
+    expected_events: ["close_blocked"]
+    expected_state: open
+    expected_error: "ADMIN_FINANCE_DAY_CLOSE_BLOCKED"
+  - id: "ADMIN-FIN-026"
+    category: business_day_close
+    title: "非零差异阻止关账"
+    initial_state: differences_found
+    actor: finance_lead
+    command: admin_finance.business_day.review
+    expected_events: ["close_blocked"]
+    expected_state: open
+    expected_error: "ADMIN_FINANCE_DAY_CLOSE_BLOCKED"
+  - id: "ADMIN-FIN-027"
+    category: separation_of_duties
+    title: "账务日经办人不能复核自己"
+    initial_state: prepared
+    actor: finance_officer
+    command: admin_finance.business_day.review
+    expected_events: ["review_denied"]
+    expected_state: prepared
+    expected_error: "ADMIN_FINANCE_REVIEWER_CONFLICT"
+  - id: "ADMIN-FIN-028"
+    category: ledger
+    title: "运营主体账本查询严格按主体过滤"
+    initial_state: posted
+    actor: operator_finance_officer
+    command: admin_finance.ledger.read
+    expected_events: ["access_denied"]
+    expected_state: posted
+    expected_error: "ADMIN_FINANCE_LEDGER_SCOPE_FORBIDDEN"
+  - id: "ADMIN-FIN-029"
+    category: export
+    title: "运营主体不能导出其他主体付款数据"
+    initial_state: ready
+    actor: operator_finance_lead
+    command: admin_finance.export.request
+    expected_events: ["export_denied"]
+    expected_state: ready
+    expected_error: "ADMIN_FINANCE_EXPORT_FORBIDDEN"
+  - id: "ADMIN-FIN-030"
+    category: unknown_result
+    title: "未知付款结果禁止创建第二笔请求"
+    initial_state: unknown
+    actor: operator_finance_officer
+    command: admin_finance.payout.request
+    expected_events: ["command_blocked"]
+    expected_state: unknown
+    expected_error: "ADMIN_FINANCE_UNKNOWN_RESULT_IN_PROGRESS"
+  - id: "ADMIN-FIN-031"
+    category: unknown_result
+    title: "技术运维只能查询原请求"
+    initial_state: unknown
+    actor: technical_operations
+    command: admin_finance.recovery.query
+    expected_events: ["finance_recovery_queried"]
+    expected_state: reconciling_authoritative_state
+    expected_error: null
+  - id: "ADMIN-FIN-032"
+    category: unknown_result
+    title: "技术运维不能替代财务作决定"
+    initial_state: reconciling_authoritative_state
+    actor: technical_operations
+    command: admin_finance.payout.review
+    expected_events: ["access_denied"]
+    expected_state: reconciling_authoritative_state
+    expected_error: "ADMIN_FINANCE_RECOVERY_BUSINESS_DECISION_FORBIDDEN"
+

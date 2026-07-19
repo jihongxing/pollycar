@@ -1,0 +1,73 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.feature-gates"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+source_document: "docs/decisions/0007-生产应用架构与默认关闭策略.md"
+defaults:
+  synthetic_admin_multi_organization: false
+  synthetic_admin_authentication: false
+  synthetic_admin_role_access_matrix: false
+  synthetic_admin_operator_management: false
+  synthetic_admin_driver_vehicle: false
+  synthetic_admin_trip_operations: false
+  synthetic_admin_case_management: false
+  synthetic_admin_finance_operations: false
+  synthetic_admin_executive_dashboard: false
+  synthetic_admin_audit_system: false
+  synthetic_admin_data_reports: false
+  synthetic_admin_organization_accounts: false
+  real_admin_organization_accounts: false
+  real_admin_finance_operations: false
+  production_admin_enabled: false
+  synthetic_financial_ledger: false
+  synthetic_financial_reconciliation: false
+  synthetic_operator_funds: false
+  real_payment: false
+  paid_flex_trial: false
+  real_user_invitation: false
+  shanghai_pilot: false
+  real_data_ingestion: false
+  real_sms_delivery: false
+  real_phone_data: false
+  production_authentication: false
+  internal_sandbox: true
+dependencies:
+  synthetic_admin_multi_organization: ["internal_sandbox"]
+  synthetic_admin_authentication: ["internal_sandbox", "synthetic_admin_multi_organization"]
+  synthetic_admin_role_access_matrix: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_admin_authentication"]
+  synthetic_admin_operator_management: ["internal_sandbox", "synthetic_admin_multi_organization"]
+  synthetic_admin_driver_vehicle: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_admin_authentication", "synthetic_admin_role_access_matrix", "synthetic_admin_operator_management"]
+  synthetic_admin_trip_operations: ["internal_sandbox", "synthetic_admin_multi_organization"]
+  synthetic_admin_case_management: ["internal_sandbox", "synthetic_admin_multi_organization"]
+  synthetic_admin_finance_operations: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_financial_ledger", "synthetic_financial_reconciliation", "synthetic_operator_funds"]
+  synthetic_admin_executive_dashboard: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_admin_operator_management", "synthetic_admin_trip_operations", "synthetic_admin_case_management", "synthetic_admin_finance_operations"]
+  synthetic_admin_audit_system: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_admin_executive_dashboard"]
+  synthetic_admin_data_reports: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_admin_executive_dashboard", "synthetic_admin_audit_system"]
+  synthetic_admin_organization_accounts: ["internal_sandbox", "synthetic_admin_authentication", "synthetic_admin_role_access_matrix", "synthetic_admin_audit_system"]
+  real_admin_organization_accounts: ["production_enabled", "production_authentication", "real_data_ingestion"]
+  real_admin_finance_operations: ["production_enabled", "real_admin_organization_accounts", "real_payment"]
+  production_admin_enabled: ["production_enabled", "production_authentication", "real_admin_organization_accounts"]
+  synthetic_financial_ledger: ["internal_sandbox"]
+  synthetic_financial_reconciliation: ["internal_sandbox", "synthetic_financial_ledger"]
+  synthetic_operator_funds: ["internal_sandbox", "synthetic_financial_ledger", "synthetic_financial_reconciliation"]
+  real_payment: ["production_enabled", "shanghai_pilot", "real_user_invitation", "real_data_ingestion"]
+  paid_flex_trial: ["production_enabled", "real_payment", "shanghai_pilot"]
+  real_user_invitation: ["production_enabled", "shanghai_pilot", "real_data_ingestion"]
+  shanghai_pilot: ["production_enabled"]
+  real_sms_delivery: ["production_enabled", "real_data_ingestion"]
+  real_phone_data: ["production_enabled", "real_data_ingestion"]
+  production_authentication: ["production_enabled", "real_sms_delivery", "real_phone_data"]
+deny_on_missing: true
+dual_approval_required_for:
+  - "production_enabled"
+  - "real_admin_organization_accounts"
+  - "real_admin_finance_operations"
+  - "production_admin_enabled"
+  - "real_payment"
+  - "paid_flex_trial"
+  - "real_user_invitation"
+  - "shanghai_pilot"
+  - "real_sms_delivery"
+  - "real_phone_data"
+  - "production_authentication"

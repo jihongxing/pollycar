@@ -1,0 +1,39 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.decision-messages"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_document: "docs/product/admin/07-交互与审计要求.md"
+templates:
+  insurance_expiry_incomplete:
+    decision: request_material
+    user_title: "请补充保险有效期"
+    user_body: "当前保险有效期信息不完整，请按页面要求补充合成材料。"
+    appeal: not_applicable
+  authorization_evidence_incomplete:
+    decision: request_material
+    user_title: "请补充车辆使用权材料"
+    user_body: "当前车辆使用权材料不足，请按页面要求补充合成材料。"
+    appeal: not_applicable
+  vehicle_age_exceeded:
+    decision: reject
+    user_title: "车辆暂不符合准入条件"
+    user_body: "车辆年限超出当前客观准入范围。"
+    appeal: reapply_when_eligible
+  insurance_requirement_not_met:
+    decision: reject
+    user_title: "保险条件暂不符合要求"
+    user_body: "当前保险条件未达到车辆准入要求。"
+    appeal: reapply_after_correction
+  approved_standard:
+    decision: approve
+    user_title: "车辆审核已通过"
+    user_body: "车主身份已激活；真实接单仍需等待试点与邀请开放。"
+    appeal: not_applicable
+rules:
+  free_text_only_forbidden: true
+  internal_note_separate: true
+  preview_required_before_submit: true
+  sensitive_detail_in_user_message_forbidden: true
+

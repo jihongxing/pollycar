@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PollyCar 运营控制台阶段一运营主体工作台高保真设计参考" />
+    <title>运营主体工作台｜PollyCar 运营控制台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar">
+        <strong>内部合成环境 · 运营主体账号未开放</strong>
+        <span>当前固定主体：沪行出行服务；不能切换主体，不能访问其他运营主体</span>
+      </div>
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">PC</span>
+          <div><b>PollyCar</b><small>运营控制台</small></div>
+        </div>
+        <div class="scope-bar" aria-label="当前组织上下文">
+          <span class="scope-chip">运营主体：<b>沪行出行服务</b></span>
+          <span class="scope-chip">城市：<b>上海</b></span>
+          <span class="scope-chip">主体上下文固定</span>
+          <span class="role-chip">运营主管</span>
+        </div>
+        <div class="top-actions">
+          <button class="secondary-button" type="button" data-audit-action="已打开本主体审计摘要；不包含其他运营主体记录。">审计</button>
+          <button class="icon-button" type="button" aria-label="通知中心">7</button>
+          <button class="avatar-button" type="button" aria-label="当前内部用户">周</button>
+        </div>
+      </header>
+      <aside class="sidebar">
+        <nav aria-label="运营主体导航">
+          <a href="#" aria-current="page"><span>我的工作台</span><span class="nav-count">5</span></a>
+          <a href="#"><span>通知中心</span><span class="nav-count">7</span></a>
+          <p class="nav-heading">主体运营</p>
+          <a href="#"><span>车主与车辆</span><span class="nav-count">16</span></a>
+          <a href="#"><span>主运营关系</span><span class="nav-count">2</span></a>
+          <a href="#"><span>行程协作</span><span class="nav-count">4</span></a>
+          <a href="#"><span>服务案件</span><span class="nav-count">3</span></a>
+          <p class="nav-heading">受控协作</p>
+          <a href="#"><span>安全协作</span><span class="nav-count">1</span></a>
+          <a href="#"><span>付款状态</span><span class="nav-count">门禁</span></a>
+          <a href="#"><span>本主体审计</span></a>
+        </nav>
+        <div class="sidebar-foot">
+          <b>主体隔离生效</b>
+          <small data-pretext>所有查询由 Server 固定附加本主体范围；页面没有跨主体搜索或主体切换入口。</small>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">沪行出行服务 · 上海</p>
+            <h1 data-pretext>运营主体工作台</h1>
+            <p data-pretext>集中处理本主体运力、行程协作和服务任务。平台治理案件只展示需要本主体协作的最小摘要，不披露其他主体信息。</p>
+          </div>
+          <div>
+            <button class="secondary-button" type="button" data-audit-action="主体上下文固定，切换请求已拒绝并记录 ADMIN_ORGANIZATION_CONTEXT_FIXED。">尝试切换主体</button>
+            <button class="primary-button" type="button" data-audit-action="已打开本主体待办队列；查询自动附加 operator_id 范围。">查看本主体待办</button>
+          </div>
+        </div>
+
+        <div class="scope-notice">
+          <span class="task-kind" aria-hidden="true">范围</span>
+          <div>
+            <b>当前会话只能访问沪行出行服务</b>
+            <p data-pretext>即使手工输入其他主体的深链接，Server 仍会重新校验并拒绝。主体负责人也不会因此获得财务复核、安全证据或平台治理权限。</p>
+          </div>
+        </div>
+
+        <section class="metric-strip" aria-label="运营主体范围摘要">
+          <article class="metric"><span>待处理主体任务</span><strong>26</strong><small>5 项已分配给你</small></article>
+          <article class="metric warning"><span>证照即将到期</span><strong>4</strong><small>仅显示本主体车辆</small></article>
+          <article class="metric"><span>今日预约协作</span><strong>18</strong><small>2 项需要人工跟进</small></article>
+          <article class="metric warning"><span>付款状态关注</span><strong>3</strong><small>只读状态；资金操作未开放</small></article>
+        </section>
+
+        <div class="dashboard-grid">
+          <div>
+            <section class="panel">
+              <header class="panel-header">
+                <div><h2>本主体优先任务</h2><p>只包含沪行出行服务及授权城市</p></div>
+                <button class="quiet-button" type="button" data-audit-action="本主体任务筛选已记录；未执行跨主体查询。">查看全部</button>
+              </header>
+              <div class="panel-body">
+                <ul class="task-list">
+                  <li class="task-row">
+                    <span class="task-kind">运力</span>
+                    <div><b>补齐 2 辆车的证照信息</b><p data-pretext>车牌号保持部分遮蔽；进入详情后仍按任务目的披露字段</p></div>
+                    <div class="task-meta priority-high">剩余 42 分钟<br />运力专员</div>
+                  </li>
+                  <li class="task-row">
+                    <span class="task-kind">关系</span>
+                    <div><b>确认主运营关系迁移申请</b><p data-pretext>迁出主体信息只显示必要状态；历史关系不可改写</p></div>
+                    <div class="task-meta priority-medium">今天 15:30<br />需主管复核</div>
+                  </li>
+                  <li class="task-row">
+                    <span class="task-kind">行程</span>
+                    <div><b>联系车主确认迟到预约</b><p data-pretext>只提供本主体关联行程的最小联系入口</p></div>
+                    <div class="task-meta priority-medium">今天 16:10<br />浦东新区</div>
+                  </li>
+                  <li class="task-row">
+                    <span class="task-kind">安全</span>
+                    <div><b>提交平台安全协作回执</b><p data-pretext>当前只可见协作事项，不可查看调查证据或其他主体信息</p></div>
+                    <div class="task-meta">明天 09:00<br />安全联络人</div>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="panel">
+              <header class="panel-header"><div><h2>运力与服务状态</h2><p>来自领域事实源的只读聚合</p></div></header>
+              <div class="health-list">
+                <div class="health-item"><div><b>可服务车主</b><p class="muted">128 人 · 较昨日增加 3 人</p></div><span class="status-chip success">稳定</span><div class="health-track"><div class="health-fill" style="width:88%"></div></div></div>
+                <div class="health-item"><div><b>车辆资料完整率</b><p class="muted">4 辆车需要在 7 天内补齐证照</p></div><span class="status-chip warning">96.9%</span><div class="health-track"><div class="health-fill warning" style="width:78%"></div></div></div>
+                <div class="health-item"><div><b>服务案件按时处理率</b><p class="muted">当前无跨主体数据</p></div><span class="status-chip success">93.4%</span><div class="health-track"><div class="health-fill" style="width:93%"></div></div></div>
+              </div>
+            </section>
+          </div>
+
+          <div>
+            <section class="panel">
+              <header class="panel-header"><div><h2>主体边界</h2><p>不可由页面参数覆盖</p></div></header>
+              <div class="panel-body">
+                <ul class="alert-list">
+                  <li class="alert-row"><span class="task-kind">主</span><div><b>固定主体</b><p>沪行出行服务</p></div><span class="status-chip success">已锁定</span></li>
+                  <li class="alert-row"><span class="task-kind">城</span><div><b>授权城市</b><p>上海</p></div><span class="status-chip success">有效</span></li>
+                  <li class="alert-row"><span class="task-kind">角</span><div><b>功能角色</b><p>运营主管</p></div><span class="status-chip success">有效</span></li>
+                  <li class="alert-row"><span class="task-kind">数</span><div><b>数据等级</b><p>敏感；严格敏感不可见</p></div><span class="status-chip warning">受限</span></li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="panel">
+              <header class="panel-header"><div><h2>付款与资金</h2><p>阶段一只保留契约化关闭态</p></div></header>
+              <div class="panel-body">
+                <ul class="alert-list">
+                  <li class="alert-row"><span class="task-kind">付</span><div><b>`T+1` 付款状态</b><p>3 笔需要关注；金额来自账本投影</p></div><span class="status-chip warning">只读</span></li>
+                  <li class="alert-row"><span class="task-kind">差</span><div><b>未关闭差异</b><p>0 笔；非零差异将阻止付款</p></div><span class="status-chip success">无阻断</span></li>
+                </ul>
+                <button class="secondary-button" type="button" disabled aria-disabled="true">资金操作门禁关闭</button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <p class="design-note">高保真设计参考：运营主体上下文固定，主体切换请求展示明确拒绝反馈；任何数据查询都应由 Server 和 Repository 强制附加主体范围。</p>
+      </main>
+    </div>
+
+    <div class="audit-toast" role="status" aria-live="polite" data-audit-toast>
+      <span class="audit-dot"></span>
+      <div><b>范围判定已完成</b><p data-audit-message>审计事件已追加。</p></div>
+    </div>
+    <script type="module" src="../shared/prototype.js"></script>
+  </body>
+</html>

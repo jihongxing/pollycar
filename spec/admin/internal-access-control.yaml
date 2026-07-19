@@ -1,0 +1,156 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.internal-access-control"
+language: "zh-CN"
+production_enabled: false
+status: "approved"
+source_document: "docs/decisions/0015-运营控制台多组织授权与审计模型.md"
+
+feature_gate:
+  id: synthetic_admin_multi_organization
+  default_enabled: false
+  production_enable_forbidden: true
+
+default_policy: deny
+client_scope_trusted: false
+server_reauthorization_required: true
+repository_scope_required: true
+query_then_client_filter_forbidden: true
+
+organization_types:
+  platform:
+    context_switch_allowed: true
+    cross_operator_access_requires_explicit_scope: true
+  operator:
+    context_switch_allowed: false
+    fixed_operator_scope_required: true
+    cross_operator_access_forbidden: true
+  governance:
+    context_switch_allowed: false
+    aggregate_read_only: true
+
+internal_user:
+  natural_person_unique: true
+  product_account_separate: true
+  direct_permission_binding_forbidden: true
+  required_fields:
+    - internal_user_id
+    - status
+    - maximum_data_classification
+    - session_assurance
+
+organization_membership:
+  required: true
+  one_organization_per_membership: true
+  required_fields:
+    - membership_id
+    - internal_user_id
+    - organization_type
+    - organization_id
+    - status
+    - valid_from
+    - valid_until
+
+role_binding:
+  membership_required: true
+  functional_role_required: true
+  role_does_not_imply_scope: true
+  required_fields:
+    - role_binding_id
+    - membership_id
+    - functional_role_id
+    - valid_from
+    - valid_until
+
+scope_binding:
+  explicit_scope_required: true
+  allowed_scope_types:
+    - city
+    - operator
+    - resource_type
+    - resource_id
+  wildcard_operator_scope_for_operator_forbidden: true
+  required_fields:
+    - scope_binding_id
+    - role_binding_id
+    - scope_type
+    - scope_value
+    - valid_from
+    - valid_until
+
+organization_context:
+  server_constructed: true
+  role_mutation_forbidden: true
+  maximum_data_classification_escalation_forbidden: true
+  deep_link_revalidation_required: true
+  required_fields:
+    - organization_type
+    - organization_id
+    - city_scopes
+    - operator_scopes
+    - purpose
+
+access_decision:
+  decision_id_required: true
+  evaluate_every_request: true
+  deny_if_any_dimension_missing: true
+  dimensions:
+    - authenticated_internal_user
+    - active_membership
+    - functional_role_binding
+    - organization_context
+    - city_scope
+    - operator_scope
+    - resource_scope
+    - action
+    - purpose
+    - data_classification
+    - temporary_grant
+    - separation_of_duties
+    - feature_gate
+  allowed_results:
+    - allow
+    - deny
+
+temporary_grant:
+  optional: true
+  ticket_required: true
+  purpose_required: true
+  approver_required: true
+  valid_from_required: true
+  expires_at_required: true
+  default_max_ttl: "PT4H"
+  restricted_data_max_ttl: "PT15M"
+  automatic_expiry_required: true
+  explicit_revocation_required: true
+  role_mutation_forbidden: true
+  scope_expansion_beyond_approver_forbidden: true
+  separation_of_duties_bypass_forbidden: true
+  feature_gate_bypass_forbidden: true
+  production_closed_state_bypass_forbidden: true
+
+separation_of_duties:
+  maker_checker_must_differ: true
+  self_review_forbidden: true
+  related_party_handling_forbidden: true
+  executive_and_daily_operator_same_session_forbidden: true
+  technical_operations_business_decision_forbidden: true
+  auditor_write_forbidden: true
+
+navigation:
+  unauthorized_module_hidden: true
+  hidden_module_is_not_authorization_boundary: true
+  deep_link_denial_state_required: true
+
+operator_directory_stage_one:
+  platform_authorized_role_read_only: true
+  operator_user_access_forbidden: true
+  create_forbidden: true
+  activate_forbidden: true
+  update_forbidden: true
+  sensitive_fields_masked: true
+
+real_capabilities:
+  real_internal_accounts: false
+  real_operator_accounts: false
+  real_sensitive_data: false
+  production_admin_enabled: false

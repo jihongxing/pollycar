@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>御驾出行 · REGO 品牌视觉预览</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --ink: #111827;
+      --ink-2: #253247;
+      --muted: #667085;
+      --mist: #f7f6f2;
+      --paper: #fffdf8;
+      --line: #d8d6ce;
+      --lamp: #a96b28;
+      --lamp-soft: #e8d4b7;
+      --night: #0d1420;
+      --night-2: #151f2e;
+      --night-line: #344156;
+      --night-text: #f4f1ea;
+      --shadow: 0 26px 70px rgba(17, 24, 39, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 0%, rgba(169,107,40,.11), transparent 30%),
+        var(--mist);
+    }
+    button { font: inherit; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 64px 28px 100px; }
+    .eyebrow { color: var(--lamp); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .hero { display: grid; grid-template-columns: 1.25fr .75fr; gap: 64px; align-items: end; margin-bottom: 70px; }
+    h1 { margin: 14px 0 18px; font: 500 clamp(48px, 7vw, 92px)/.96 Georgia, "Times New Roman", serif; letter-spacing: -.055em; }
+    .hero p { max-width: 680px; color: var(--muted); font-size: 18px; line-height: 1.75; }
+    .principles { padding: 24px; border-left: 1px solid var(--line); }
+    .principles strong { display: block; margin-bottom: 12px; }
+    .principles span { display: block; color: var(--muted); line-height: 1.8; }
+    section { margin-top: 72px; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 28px; }
+    h2 { margin: 7px 0 0; font: 500 38px/1.1 Georgia, serif; letter-spacing: -.035em; }
+    .section-head p { max-width: 520px; margin: 0; color: var(--muted); line-height: 1.65; }
+    .panel { background: rgba(255,253,248,.84); border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--shadow); }
+    .wordmark-board { display: grid; grid-template-columns: 1.15fr .85fr; overflow: hidden; }
+    .wordmark-main { min-height: 410px; padding: 54px; display: flex; flex-direction: column; justify-content: space-between; }
+    .rego {
+      display: inline-flex; align-items: center; color: var(--ink);
+      font: 640 clamp(76px, 10vw, 140px)/.8 Arial, Helvetica, sans-serif;
+      letter-spacing: -.075em;
+    }
+    .rego .g { position: relative; }
+    .rego .g::after {
+      content: ""; position: absolute; width: .29em; height: .095em;
+      right: .07em; top: .46em; background: var(--lamp); border-radius: 999px;
+      transform: rotate(-18deg);
+    }
+    .descriptor { display: flex; align-items: center; gap: 14px; color: var(--muted); letter-spacing: .08em; }
+    .descriptor::before { content: ""; width: 42px; height: 1px; background: var(--lamp); }
+    .wordmark-dark { padding: 54px; background: var(--night); color: var(--night-text); display: flex; flex-direction: column; justify-content: space-between; }
+    .wordmark-dark .rego { color: var(--night-text); font-size: 72px; }
+    .lockups { display: grid; gap: 22px; }
+    .lockup { padding: 20px 0; border-top: 1px solid var(--night-line); }
+    .lockup small { display: block; margin-bottom: 12px; color: #9ba8bb; }
+    .lockup strong { font-size: 22px; font-weight: 560; letter-spacing: .02em; }
+    .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+    .icon-card { padding: 28px; text-align: center; }
+    .icon {
+      width: 154px; height: 154px; margin: 0 auto 24px; border-radius: 35px;
+      display: grid; place-items: center; color: var(--night-text); background: var(--night);
+      box-shadow: 0 22px 45px rgba(13,20,32,.22);
+      font: 650 42px/1 Arial, sans-serif; letter-spacing: -.06em;
+    }
+    .icon svg { width: 100%; height: 100%; display: block; border-radius: inherit; }
+    .icon.light { color: var(--ink); background: var(--paper); border: 1px solid var(--line); }
+    .icon.mono { border-radius: 77px; background: var(--ink-2); }
+    .icon.micro { width: 64px; height: 64px; border-radius: 15px; font-size: 18px; }
+    .icon-card strong { display: block; margin-bottom: 7px; }
+    .icon-card span { color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .phones { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 26px; align-items: start; }
+    .phone { position: relative; overflow: hidden; aspect-ratio: 390 / 844; border: 9px solid #1c2431; border-radius: 46px; box-shadow: var(--shadow); background: var(--paper); }
+    .phone::before { content: ""; position: absolute; z-index: 5; width: 104px; height: 27px; left: 50%; top: 10px; transform: translateX(-50%); border-radius: 18px; background: #121822; }
+    .screen { height: 100%; padding: 60px 25px 28px; display: flex; flex-direction: column; }
+    .screen.dark { color: var(--night-text); background: var(--night); }
+    .screen.light { color: var(--ink); background: var(--mist); }
+    .splash { justify-content: space-between; }
+    .splash-mark { margin-top: 42%; }
+    .splash .rego { font-size: 68px; color: inherit; }
+    .splash-copy { color: #9ba8bb; font-size: 13px; letter-spacing: .08em; }
+    .splash.light .splash-copy { color: var(--muted); }
+    .route-line { display: flex; align-items: center; gap: 6px; width: 140px; margin-top: 30px; }
+    .route-line i { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); }
+    .route-line b { height: 2px; flex: 1; background: linear-gradient(90deg, var(--lamp), transparent); }
+    .login { gap: 24px; }
+    .login-brand { margin-top: 30px; }
+    .login-brand .rego { font-size: 44px; }
+    .login h3 { margin: 18px 0 7px; font: 500 31px/1.16 Georgia, serif; }
+    .login p { margin: 0; color: var(--muted); line-height: 1.65; font-size: 14px; }
+    .field { padding: 16px 17px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.72); color: var(--muted); }
+    .login.dark .field { border-color: var(--night-line); background: var(--night-2); color: #9ba8bb; }
+    .primary { margin-top: auto; padding: 16px; border: 0; border-radius: 13px; background: var(--ink-2); color: white; font-weight: 750; }
+    .login.dark .primary { background: #d69a52; color: #15100b; }
+    .privacy { text-align: center; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .note { padding: 26px; }
+    .note strong { display: block; margin-bottom: 10px; }
+    .note p { margin: 0; color: var(--muted); line-height: 1.65; }
+    .approved { color: #267461; }
+    .avoid { color: #b64a4a; }
+    @media (max-width: 1000px) {
+      .hero, .wordmark-board { grid-template-columns: 1fr; }
+      .icon-grid, .phones { grid-template-columns: repeat(2, 1fr); }
+      .notes { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 34px 16px 70px; }
+      .hero { gap: 20px; }
+      .principles { border-left: 0; border-top: 1px solid var(--line); }
+      .section-head { align-items: start; flex-direction: column; }
+      .icon-grid, .phones { grid-template-columns: 1fr; }
+      .wordmark-main, .wordmark-dark { padding: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <span class="eyebrow">Brand Preview · 01</span>
+        <h1>御驾出行<br>REGO</h1>
+        <p>一个克制、现代、面向日常产品使用的英文品牌壳。视觉首先表达路线、到达与秩序，不表达身份炫耀，也不暗示认识人的场所。</p>
+      </div>
+      <div class="principles">
+        <strong>设计判断</strong>
+        <span>陌生用户：价格更高、预约感更强的出行工具。</span>
+        <span>外部观察：可合理理解为车辆出行产品。</span>
+        <span>明确排除：皇冠、帝王、豪车车标、社交暗示。</span>
+      </div>
+    </header>
+
+    <section>
+      <div class="section-head">
+        <div><span class="eyebrow">01 · Wordmark</span><h2>REGO 字标与组合关系</h2></div>
+        <p>字标以紧凑无衬线为基础，G 的短切口来自路线转向，不使用具象道路或车辆图形。</p>
+      </div>
+      <div class="panel wordmark-board">
+        <div class="wordmark-main">
+          <div class="rego">RE<span class="g">G</span>O</div>
+          <div class="descriptor">一种非日常的出行方式</div>
+        </div>
+        <div class="wordmark-dark">
+          <div class="rego">RE<span class="g">G</span>O</div>
+          <div class="lockups">
+            <div class="lockup"><small>中文联合署名</small><strong>御驾出行 · REGO</strong></div>
+            <div class="lockup"><small>产品内简写</small><strong>REGO</strong></div>
+            <div class="lockup"><small>英文辅助语</small><strong>Reserved journeys, clearly made.</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div><span class="eyebrow">02 · App Icon</span><h2>图标系统</h2></div>
+        <p>图标只使用字母结构和低饱和色。推荐深夜蓝方形主图标，浅色版本只作为系统适配。</p>
+      </div>
+      <div class="icon-grid">
+        <div class="panel icon-card"><div class="icon"><img src="./assets/rego-app-icon-road-car-v2.svg" alt="双道路与豪华轿车主图标" style="width:100%;height:100%;display:block"></div><strong>双道路与豪华轿车 · 主图标</strong><span>两条道路边界包围低矮长轴距轿车线稿，直接建立车辆出行认知。</span></div>
+        <div class="panel icon-card"><div class="icon light"><img src="./assets/rego-app-icon-road-car-light-v2.svg" alt="双道路与豪华轿车浅色图标" style="width:100%;height:100%;display:block"></div><strong>浅色适配</strong><span>保持相同道路与车身比例，用于浅色物料与品牌介绍。</span></div>
+        <div class="panel icon-card"><div class="icon mono"><svg viewBox="0 0 1024 1024" aria-label="双道路豪华车单色图标"><path d="M266 90C188 190 168 306 187 426C202 521 168 605 94 680M930 344C836 392 794 474 797 585C800 701 751 800 650 934" stroke="#F4F1EA" stroke-width="62" stroke-linecap="round"/><path d="M300 626L352 619L401 564C424 538 452 524 486 522H565C600 522 627 532 651 555L705 610L760 620M286 627C264 631 248 648 247 670L246 684C246 699 258 711 273 711H765C783 711 795 695 790 678L782 649C778 635 766 625 751 623" stroke="#F4F1EA" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/><circle cx="360" cy="703" r="58" stroke="#F4F1EA" stroke-width="28"/><circle cx="686" cy="703" r="58" stroke="#F4F1EA" stroke-width="28"/></svg></div><strong>单色安全版</strong><span>通知与系统受限色彩环境使用，保留道路和整车轮廓。</span></div>
+        <div class="panel icon-card"><div class="icon micro"><img src="./assets/rego-app-icon-road-car-v2.svg" alt="双道路豪华车小尺寸测试" style="width:100%;height:100%;display:block"></div><strong>小尺寸测试</strong><span>64px 下优先识别两条道路与完整车辆侧影。</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div><span class="eyebrow">03 · Product Entry</span><h2>启动页与登录页</h2></div>
+        <p>启动页不讲功能；登录页只建立安全进入产品的路径，不展示车辆、人像、性别或关系型内容。</p>
+      </div>
+      <div class="phones">
+        <div class="phone">
+          <div class="screen dark splash">
+            <div class="splash-mark"><div class="rego">RE<span class="g">G</span>O</div><div class="route-line"><i></i><b></b></div></div>
+            <div class="splash-copy">御驾出行 · 一种非日常的出行方式</div>
+          </div>
+        </div>
+        <div class="phone">
+          <div class="screen light splash">
+            <div class="splash-mark"><div class="rego">RE<span class="g">G</span>O</div><div class="route-line"><i></i><b></b></div></div>
+            <div class="splash-copy">御驾出行 · 一种非日常的出行方式</div>
+          </div>
+        </div>
+        <div class="phone">
+          <div class="screen light login">
+            <div class="login-brand"><div class="rego">RE<span class="g">G</span>O</div><h3>欢迎回来</h3><p>登录后继续发起行程、查看订单或切换车主工作模式。</p></div>
+            <div class="field">手机号</div>
+            <div class="field">验证码</div>
+            <button class="primary">继续</button>
+            <div class="privacy">继续即表示你已阅读并同意服务协议和隐私政策。成年资格验证将在进入业务功能前完成。</div>
+          </div>
+        </div>
+        <div class="phone">
+          <div class="screen dark login">
+            <div class="login-brand"><div class="rego">RE<span class="g">G</span>O</div><h3>欢迎回来</h3><p style="color:#9ba8bb">使用手机号登录。费用、安全和责任规则将在对应操作前清晰展示。</p></div>
+            <div class="field">手机号</div>
+            <div class="field">验证码</div>
+            <button class="primary">继续</button>
+            <div class="privacy" style="color:#9ba8bb">不会在登录页展示车辆供给、人像或社交暗示。身份验证属于业务准入步骤。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div><span class="eyebrow">04 · Decision</span><h2>替换前决策点</h2></div>
+      </div>
+      <div class="notes">
+        <div class="panel note"><strong class="approved">当前候选</strong><p>两条道路边界、低矮长轴距豪华轿车侧面线稿、REGO 完整字标和“欢迎回来”登录页。</p></div>
+        <div class="panel note"><strong>图标语义</strong><p>道路提供明确出行场景，整车侧影强化车辆品质；不使用品牌车标、具体车型特征或财富身份符号。</p></div>
+        <div class="panel note"><strong class="avoid">明确禁止</strong><p>皇冠、龙、金色渐变、豪车轮廓、人像拼贴，以及任何暗示交友、匹配对象或身份等级的视觉。</p></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

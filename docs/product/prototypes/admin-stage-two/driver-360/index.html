@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>车主 360° · PollyCar 运营控制台</title>
+    <link rel="stylesheet" href="../shared/stage-two.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar"><strong>内部合成环境 · 阶段二设计参考</strong><span>严格敏感字段默认遮蔽；运营主体上下文固定</span></div>
+      <header class="topbar">
+        <div class="brand-lockup"><span class="brand-mark">PC</span><span><b>PollyCar</b><small>运营控制台</small></span></div>
+        <div class="scope-bar"><span class="scope-chip">沪行出行服务</span><span class="scope-chip">上海</span><span class="role-chip">运营主管</span><span class="status-chip">主体上下文固定</span></div>
+        <div class="top-actions"><button class="avatar-button">周</button></div>
+      </header>
+      <aside class="sidebar"><nav><div class="nav-heading">本主体运力</div><a href="#">主体工作台</a><a href="#" aria-current="page">车主名录</a><a href="#">车辆名录</a><a href="#">主运营关系</a><div class="nav-heading">治理</div><a href="#">审计记录</a></nav></aside>
+      <main class="main">
+        <div class="stage-two-banner">
+          <div><span class="eyebrow">运力 · 车主 360°</span><h1>陈* · DR-SYN-0086</h1><p>当前页面仅聚合本主体有效关系范围内的资格、车辆、行程和案件摘要。深链接会再次由 Server 校验。</p></div>
+          <div><span class="status-chip">可服务</span><span class="fact-source">多领域只读聚合</span></div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric-item"><small>当前资格</small><strong>合成免费弹性资格</strong><span class="fact-source">资格域</span></div>
+          <div class="metric-item"><small>接单配额</small><strong>本周剩余 3 次</strong><span class="fact-source">配额域</span></div>
+          <div class="metric-item"><small>主运营关系</small><strong>沪行出行服务</strong><span class="fact-source">资金编排域</span></div>
+        </div>
+        <div class="stage-grid">
+          <section class="stage-card">
+            <h2>身份与联系方式</h2>
+            <div class="identity-grid">
+              <div class="identity-item"><small>手机号</small><strong>138****7312</strong></div>
+              <div class="identity-item"><small>实名状态</small><strong>已完成 · 原文隐藏</strong></div>
+              <div class="identity-item"><small>服务城市</small><strong>上海</strong></div>
+            </div>
+            <div class="action-row"><button class="button-secondary" data-demo-action data-demo-message="严格敏感字段披露必须提供目的、工单并取得限时临时授权。">申请限时披露</button></div>
+            <p class="closed-state" data-demo-notice hidden></p>
+            <h2>关联车辆</h2>
+            <div class="table-scroll">
+              <table class="relationship-table">
+                <thead><tr><th>车辆</th><th>审核状态</th><th>主运营关系</th><th>证照</th></tr></thead>
+                <tbody><tr><td>沪A·7**21</td><td>已通过 · v9</td><td>有效，自 2026-07-10</td><td>2 项将在 45 天内到期</td></tr></tbody>
+              </table>
+            </div>
+          </section>
+          <aside class="stage-card">
+            <h2>服务与风险摘要</h2>
+            <div class="blocker-list">
+              <div class="blocker warning"><b>证照到期关注</b><br /><small>进入车辆 360° 查看审核权威状态</small></div>
+            </div>
+            <h3>不在本页面修改</h3>
+            <div class="closed-state">资格、配额、车辆审核、行程和主运营关系均由各自权威领域维护。</div>
+          </aside>
+        </div>
+        <section class="stage-card">
+          <h2>主运营关系历史</h2>
+          <div class="table-scroll">
+            <table class="relationship-table">
+              <thead><tr><th>运营主体</th><th>城市与车辆</th><th>状态</th><th>有效期</th><th>依据</th></tr></thead>
+              <tbody>
+                <tr><td>沪行出行服务</td><td>上海 · 沪A·7**21</td><td>有效</td><td>2026-07-10 起</td><td>MIG-20260709-004</td></tr>
+                <tr><td>申城伙伴运营</td><td>上海 · 沪A·7**21</td><td>已结束</td><td>2026-05-01 至 2026-07-10</td><td>历史不可改写</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../shared/stage-two.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+spec_version: "1.0"
+spec_id: "pollycar.vehicle.review"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_document: "docs/decisions/0003-车辆准入标准.md"
+feature_flags:
+  real_vehicle_documents: false
+  user_invitation: false
+  shanghai_pilot: false
+thresholds:
+  first_approval_max_age_years: 6
+  first_approval_max_mileage_km: 120000
+  automatic_exit_age_years: 8
+  automatic_exit_mileage_km: 160000
+  regular_review_interval: "P6M"
+  authorization_minimum_remaining: "P12M"
+  zero_money_liability_insurance_min_cny: 3000000
+binding:
+  max_active_drivers_per_vehicle: 1
+  max_active_vehicles_per_driver: 1
+review_modes: ["document_review", "physical_inspection"]
+statuses: ["draft", "under_review", "approved", "suspended", "appealing", "revoked", "expired"]
+immediate_review_triggers: ["accident", "repair", "modification", "ownership_changed", "plate_changed", "insurance_changed", "major_recall", "safety_report"]
+revoke_reasons: ["forged_document", "vehicle_substitution", "concealed_structural_damage", "insurance_not_covered", "illegal_modification", "duplicate_account_binding"]
+prohibited_ranking_inputs: ["brand", "vehicle_price", "energy_type"]

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>车辆 360° · PollyCar 运营控制台</title>
+    <link rel="stylesheet" href="../shared/stage-two.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar"><strong>内部合成环境 · 阶段二设计参考</strong><span>车辆审核仍由既有审核域负责</span></div>
+      <header class="topbar">
+        <div class="brand-lockup"><span class="brand-mark">PC</span><span><b>PollyCar</b><small>运营控制台</small></span></div>
+        <div class="scope-bar"><span class="scope-chip">平台组织</span><span class="scope-chip">上海</span><span class="scope-chip">沪行出行服务</span><span class="role-chip">普通审核员</span></div>
+        <div class="top-actions"><button class="avatar-button">许</button></div>
+      </header>
+      <aside class="sidebar"><nav><div class="nav-heading">组织与运力</div><a href="#">车主名录</a><a href="#" aria-current="page">车辆名录</a><a href="#">车辆审核队列</a><a href="#">主运营关系</a><div class="nav-heading">治理</div><a href="#">审计记录</a></nav></aside>
+      <main class="main">
+        <div class="stage-two-banner">
+          <div><span class="eyebrow">运力 · 车辆 360°</span><h1>沪A·7**21 · VH-SYN-0132</h1><p>聚合车辆档案、审核、车主关系、证照和任务。审核决定只能在既有车辆审核任务中完成。</p></div>
+          <div><span class="status-chip">审核已通过</span><span class="fact-source">权威来源：车辆审核域</span></div>
+        </div>
+        <div class="stage-grid">
+          <section class="stage-card">
+            <h2>车辆摘要</h2>
+            <div class="identity-grid">
+              <div class="identity-item"><small>合成车型</small><strong>新能源五座轿车</strong></div>
+              <div class="identity-item"><small>审核版本</small><strong>v9 · 2026-06-28</strong></div>
+              <div class="identity-item"><small>当前车主</small><strong>陈* · DR-SYN-0086</strong></div>
+            </div>
+            <h2>审核与证照</h2>
+            <div class="checklist">
+              <div class="check-item"><span class="check-mark">✓</span><div><b>车辆审核</b><p>已通过；原始材料默认不可见。</p></div><span class="status-chip">有效</span></div>
+              <div class="check-item"><span class="check-mark pending">!</span><div><b>营运相关合成证照</b><p>将在 2026-08-20 到期，已生成更新任务。</p></div><span class="status-chip">需关注</span></div>
+              <div class="check-item"><span class="check-mark">✓</span><div><b>主运营关系</b><p>沪行出行服务 · 上海 · 当前有效。</p></div><span class="status-chip">有效</span></div>
+            </div>
+            <div class="action-row"><button class="button-primary">进入车辆审核任务</button><button class="button-secondary" disabled>直接修改审核状态</button></div>
+          </section>
+          <aside class="stage-card">
+            <h2>关系与任务</h2>
+            <div class="metric-item"><small>近 30 日合成行程</small><strong>18 单</strong></div>
+            <div class="metric-item"><small>未关闭任务</small><strong>1 项证照更新</strong></div>
+            <div class="metric-item"><small>未关闭安全阻断</small><strong>0 项</strong></div>
+            <h3>状态边界</h3>
+            <div class="closed-state">本页面没有第二套审核按钮；资源变化时返回原任务刷新版本。</div>
+          </aside>
+        </div>
+        <section class="stage-card">
+          <h2>事件时间线</h2>
+          <div class="timeline">
+            <div class="timeline-item"><b>车辆审核通过</b><br /><time>2026-06-28 14:40</time><br /><small>决定来自车辆审核任务 VR-SYN-0132</small></div>
+            <div class="timeline-item"><b>主运营关系生效</b><br /><time>2026-07-10 00:00</time><br /><small>来源：MIG-20260709-004；历史行程快照保持不变</small></div>
+            <div class="timeline-item"><b>证照更新任务创建</b><br /><time>2026-07-14 08:00</time><br /><small>仅显示到期摘要，不显示材料原文</small></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

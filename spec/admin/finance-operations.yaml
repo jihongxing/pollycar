@@ -1,0 +1,253 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.finance-operations"
+language: "zh-CN"
+status: "approved"
+production_enabled: false
+source_document: "docs/product/admin/21-阶段四资金运营契约.md"
+decision: "docs/decisions/0018-运营控制台资金运营与职责分离.md"
+
+design_approval:
+  approved: true
+  approved_on: "2026-07-14"
+  implementation_approved: true
+  implementation_approval_required: true
+  synthetic_only: true
+  internal_sandbox_only: true
+
+feature_gate:
+  id: "synthetic_admin_finance_operations"
+  default_enabled: false
+  required_dependencies:
+    - "internal_sandbox"
+    - "synthetic_admin_multi_organization"
+    - "synthetic_financial_ledger"
+    - "synthetic_financial_reconciliation"
+    - "synthetic_operator_funds"
+  real_admin_finance_operations_required: false
+
+authoritative_sources:
+  payment: "pollycar_payment"
+  ledger_transactions: "pollycar_finance.ledger_transactions"
+  ledger_entries: "pollycar_finance.ledger_entries"
+  balance_projection: "pollycar_finance.ledger_balance_projections"
+  reconciliation: "pollycar_finance.reconciliation_runs"
+  reconciliation_items: "pollycar_finance.reconciliation_items"
+  business_days: "pollycar_finance.financial_business_days"
+  allocations: "pollycar_finance.financial_allocations"
+  operator_settlements: "pollycar_finance.operator_settlement_batches"
+  driver_payouts: "pollycar_finance.driver_payout_batches"
+  fund_cases: "pollycar_finance.operator_fund_cases"
+  copied_financial_state_forbidden: true
+  shadow_balance_forbidden: true
+
+admin_owned_records:
+  - "finance_operation_task"
+  - "finance_review_assignment"
+  - "finance_export_grant"
+  - "finance_command_recovery_task"
+
+functional_roles:
+  platform:
+    - "finance_officer"
+    - "finance_lead"
+    - "auditor"
+    - "technical_operations"
+  operator:
+    - "operator_finance_officer"
+    - "operator_finance_lead"
+  universal_admin_role_forbidden: true
+  executive_write_access_forbidden: true
+
+organization_scope:
+  platform_scope_source: "server_session_operator_scopes"
+  operator_scope_fixed: true
+  operator_cross_scope_forbidden: true
+  request_operator_id_cannot_expand_scope: true
+  settlement_operator_scope_required: true
+  payout_operator_scope_required: true
+  fund_case_operator_scope_required: true
+  ledger_entry_operator_filter_required: true
+
+money:
+  transport_format: "decimal_integer_string"
+  currency: "CNY"
+  client_calculation_forbidden: true
+  client_amount_edit_forbidden: true
+  server_totals_only: true
+  balance_projection_read_only: true
+  projection_timestamp_required: true
+  projection_rebuild_state_required: true
+  allocation_rule_version: "allocation-15-45-40-v1"
+  allocation_rates_read_only: true
+
+modules:
+  - id: "finance_operations_center"
+    roles: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead"]
+  - id: "allocation_settlement"
+    roles: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+  - id: "driver_payouts"
+    roles: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+  - id: "refund_reversals"
+    roles: ["finance_officer", "finance_lead", "auditor"]
+  - id: "reconciliation_fund_cases"
+    roles: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+  - id: "business_day_close"
+    roles: ["finance_officer", "finance_lead", "auditor"]
+  - id: "ledger_explorer"
+    roles: ["finance_officer", "finance_lead", "operator_finance_officer", "operator_finance_lead", "auditor"]
+
+write_entrypoint:
+  method: "POST"
+  path: "/v1/internal-sandbox/admin/finance-operations/commands"
+  unique: true
+  idempotency_key_required: true
+  request_digest_required: true
+  resource_version_required: true
+  reason_code_required: true
+  correlation_id_required: true
+  direct_repository_access_forbidden: true
+  direct_database_write_forbidden: true
+  commands:
+    - "prepare_operator_settlement"
+    - "review_operator_settlement"
+    - "prepare_driver_payout"
+    - "review_driver_payout"
+    - "request_driver_payout"
+    - "request_refund"
+    - "request_full_reversal"
+    - "submit_reconciliation_resolution"
+    - "review_reconciliation_resolution"
+    - "prepare_business_day_close"
+    - "review_business_day_close"
+    - "query_finance_command_recovery"
+
+allocation_settlement:
+  allocation_manual_creation_forbidden: true
+  allocation_rate_edit_forbidden: true
+  settlement_amount_formula: "operator_share_minor_plus_driver_share_minor"
+  one_operator_per_batch_required: true
+  allocation_once_only: true
+  prepared_and_reviewed_by_must_differ: true
+  reconciliation_gate_required: true
+  fund_case_gate_required: true
+
+driver_payout:
+  standard_cycle: "T+1"
+  previous_business_date_only: true
+  gross_payable_source: "financial_allocation.driver_share_minor"
+  payout_fee_borne_by: "operator"
+  payout_fee_reduces_driver_payable: false
+  prepared_and_reviewed_by_must_differ: true
+  duplicate_payout_forbidden: true
+  unknown_result_second_request_forbidden: true
+  early_settlement_enabled: false
+  early_settlement_error: "DRIVER_EARLY_SETTLEMENT_DISABLED"
+
+refund_reversal:
+  refund_original_payment_required: true
+  refund_liability_required: true
+  refund_provider_result_authoritative: true
+  negative_payment_forbidden: true
+  full_reversal_original_transaction_required: true
+  full_reversal_equal_amount_required: true
+  full_reversal_opposite_direction_required: true
+  arbitrary_journal_entry_forbidden: true
+  original_record_mutation_forbidden: true
+  exception_review_independent: true
+
+reconciliation:
+  fact_sources: ["business_order", "payment_aggregate", "ledger", "provider_statement"]
+  nonzero_difference_auto_writeoff_allowed: false
+  resolution_reason_required: true
+  resolution_evidence_reference_required: true
+  resolution_independent_review_required: true
+  unresolved_nonzero_blocks: ["settlement", "payout", "close"]
+  unresolved_zero_amount_case_blocks: ["settlement", "payout", "close"]
+  missing_statement_blocks: ["settlement", "payout", "close"]
+  invalid_statement_blocks: ["settlement", "payout", "close"]
+
+business_day_close:
+  timezone: "Asia/Shanghai"
+  all_runs_closed_required: true
+  four_sources_required: true
+  zero_difference_required: true
+  prepared_and_reviewed_by_must_differ: true
+  reopen_forbidden: true
+  historical_overwrite_forbidden: true
+
+ledger_query:
+  read_only: true
+  global_sequence_visible_to_platform_finance_and_auditor: true
+  operator_scope_filter_required: true
+  full_payment_credential_forbidden: true
+  full_bank_account_forbidden: true
+  entry_edit_forbidden: true
+  entry_delete_forbidden: true
+  direct_reversal_button_forbidden: true
+
+unknown_result_recovery:
+  original_idempotency_key_only: true
+  original_request_digest_only: true
+  authoritative_state_query_only: true
+  outbox_query_allowed: true
+  replacement_command_forbidden: true
+  technical_operations_business_decision_forbidden: true
+
+separation_of_duties:
+  operations:
+    - "operator_settlement"
+    - "driver_payout"
+    - "refund_exception"
+    - "full_reversal"
+    - "reconciliation_resolution"
+    - "business_day_close"
+    - "finance_export"
+  actor_must_differ: true
+  context_switch_bypass_forbidden: true
+
+audit:
+  append_only: true
+  access_decision_required: true
+  amount_disclosure_event_required: true
+  command_request_event_required: true
+  review_event_required: true
+  export_event_required: true
+  recovery_event_required: true
+  full_bank_account_in_audit_forbidden: true
+  payment_credential_in_audit_forbidden: true
+
+productized_admin_api:
+  bearer_session_required: true
+  organization_scope_reauthorization_required: true
+  routes:
+    - "GET /v1/internal-sandbox/admin/finance"
+    - "GET /v1/internal-sandbox/admin/finance/:kind/:resource_id"
+    - "POST /v1/internal-sandbox/admin/finance/:kind/:resource_id/actions/:action"
+  directory:
+    resource_kinds: ["settlement", "payout", "refund_reversal", "reconciliation", "business_day", "ledger"]
+    capabilities: ["server_summary", "search", "kind_filter", "state_filter", "blocking_filter", "sort", "signed_cursor_pagination"]
+    return_filter_cursor_scroll_restoration_required: true
+  detail:
+    allowed_actions_server_authoritative: true
+    organization_scope_required: true
+    control_boundaries_required: true
+    append_only_audit_required: true
+  commands:
+    expected_resource_version_required: true
+    idempotency_key_required: true
+    reason_code_required: true
+    reconciliation_evidence_reference_required: true
+    confirming_state_required: true
+    confirmed_result_required: true
+  real_money_movement_allowed: false
+  direct_balance_mutation_allowed: false
+
+implementation_gate:
+  implementation_allowed: true
+  explicit_approval_required: true
+  runtime_code_forbidden_before_approval: false
+  http_api_forbidden_before_approval: false
+  admin_module_forbidden_before_approval: false
+  real_data_allowed: false
+  real_money_movement_allowed: false
+  production_enablement_allowed: false

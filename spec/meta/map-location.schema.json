@@ -1,0 +1,124 @@
+{
+  "type": "object",
+  "required": [
+    "spec_version",
+    "spec_id",
+    "language",
+    "production_enabled",
+    "status",
+    "providers",
+    "coordinate_systems",
+    "capability_gates",
+    "place_search",
+    "reverse_geocode",
+    "route_planning",
+    "vehicle_location",
+    "quota_guard",
+    "data_lifecycle",
+    "invariants"
+  ],
+  "properties": {
+    "spec_version": { "type": "string" },
+    "spec_id": { "const": "pollycar.domain.map-location" },
+    "language": { "const": "zh-CN" },
+    "production_enabled": { "const": false },
+    "status": { "enum": ["draft", "review", "approved"] },
+    "source_documents": { "type": "array", "items": { "type": "string" } },
+    "providers": {
+      "type": "object",
+      "required": ["active", "supported"],
+      "properties": {
+        "active": { "const": "synthetic" },
+        "supported": { "type": "array", "items": { "enum": ["synthetic", "amap"] } }
+      }
+    },
+    "coordinate_systems": {
+      "type": "object",
+      "required": ["internal_required", "amap_required", "maximum_decimal_places", "missing_coordinate_system_effect"],
+      "properties": {
+        "internal_required": { "type": "array", "items": { "enum": ["wgs84", "gcj02"] } },
+        "amap_required": { "const": "gcj02" },
+        "maximum_decimal_places": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "missing_coordinate_system_effect": { "const": "reject" }
+      }
+    },
+    "capability_gates": {
+      "type": "object",
+      "properties": {
+        "real_map_enabled": { "const": false },
+        "external_map_provider_enabled": { "const": false },
+        "real_device_location_enabled": { "const": false },
+        "background_location_enabled": { "const": false },
+        "real_vehicle_location_stream_enabled": { "const": false },
+        "amap_sdk_enabled": { "const": false },
+        "amap_web_service_enabled": { "const": false }
+      }
+    },
+    "place_search": {
+      "type": "object",
+      "required": ["minimum_query_length", "debounce_milliseconds", "maximum_results", "per_user_per_minute", "cache_seconds"],
+      "properties": {
+        "minimum_query_length": { "type": "integer", "minimum": 2 },
+        "debounce_milliseconds": { "type": "integer", "minimum": 100 },
+        "maximum_results": { "type": "integer", "maximum": 10 },
+        "per_user_per_minute": { "type": "integer", "maximum": 10 },
+        "cache_seconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "reverse_geocode": {
+      "type": "object",
+      "required": ["grid_meters", "cache_seconds", "failure_fallback"],
+      "properties": {
+        "grid_meters": { "type": "integer", "minimum": 1 },
+        "cache_seconds": { "type": "integer", "minimum": 1 },
+        "failure_fallback": { "const": "manual_pin" }
+      }
+    },
+    "route_planning": {
+      "type": "object",
+      "required": ["supported_strategies", "cache_seconds", "minimum_refresh_seconds", "failure_effect"],
+      "properties": {
+        "supported_strategies": { "type": "array", "items": { "enum": ["fastest", "avoid_congestion", "avoid_tolls"] } },
+        "cache_seconds": { "type": "integer", "minimum": 1 },
+        "minimum_refresh_seconds": { "type": "integer", "minimum": 1 },
+        "failure_effect": { "const": "route_unavailable" }
+      }
+    },
+    "vehicle_location": {
+      "type": "object",
+      "required": ["accepted_states", "minimum_interval_seconds", "default_interval_seconds", "aging_after_seconds", "stale_after_seconds", "unavailable_after_seconds", "stop_on_states"],
+      "properties": {
+        "accepted_states": { "type": "array", "items": { "enum": ["accepted", "arrived", "in_progress"] } },
+        "minimum_interval_seconds": { "type": "integer", "minimum": 1 },
+        "default_interval_seconds": { "type": "integer", "minimum": 1 },
+        "aging_after_seconds": { "type": "integer", "minimum": 1 },
+        "stale_after_seconds": { "type": "integer", "minimum": 1 },
+        "unavailable_after_seconds": { "type": "integer", "minimum": 1 },
+        "stop_on_states": { "type": "array", "items": { "enum": ["completed", "cancelled"] } }
+      }
+    },
+    "quota_guard": {
+      "type": "object",
+      "required": ["soft_alert_percentage", "restrict_optional_refresh_percentage", "degradation_percentage", "cache_required", "client_web_service_key_forbidden"],
+      "properties": {
+        "soft_alert_percentage": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "restrict_optional_refresh_percentage": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "degradation_percentage": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "cache_required": { "const": true },
+        "client_web_service_key_forbidden": { "const": true }
+      }
+    },
+    "data_lifecycle": {
+      "type": "object",
+      "required": ["saved_places_classification", "precise_location_classification", "full_route_visible_to_operations", "safety_evidence_hold_supported", "ordinary_retention_must_be_finite"],
+      "properties": {
+        "saved_places_classification": { "const": "L3" },
+        "precise_location_classification": { "const": "L4" },
+        "full_route_visible_to_operations": { "const": false },
+        "safety_evidence_hold_supported": { "const": true },
+        "ordinary_retention_must_be_finite": { "const": true }
+      }
+    },
+    "invariants": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

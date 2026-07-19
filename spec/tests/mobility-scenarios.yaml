@@ -1,0 +1,560 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.mobility-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_document: "docs/product/06-核心出行功能清单.md"
+
+scenarios:
+  - id: "MOB-035"
+    name: "在线车主上传合成位置后获得附近接单邀请"
+    category: "dispatch_offer"
+    initial_state: "offline"
+    actor: "driver"
+    command: "dispatch.presence.update"
+    expected_events: ["driver_dispatch_presence_updated"]
+    expected_state: "online"
+    expected_error: null
+    audit: "sensitive"
+    classification: "L3"
+    release_blocking: true
+  - id: "MOB-036"
+    name: "双车主同时接受同一邀请仅允许一人成功"
+    category: "dispatch_offer"
+    initial_state: "offered"
+    actor: "driver"
+    command: "dispatch.offer.accept"
+    expected_events: ["trip_assigned", "dispatch_offer_withdrawn"]
+    expected_state: "accepted"
+    expected_error: "TRIP_ALREADY_ASSIGNED"
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-037"
+    name: "同一车主同时接受两个即时订单仅允许一单成功"
+    category: "dispatch_offer"
+    initial_state: "offered"
+    actor: "driver"
+    command: "dispatch.offer.accept"
+    expected_events: ["trip_assigned"]
+    expected_state: "accepted"
+    expected_error: "DRIVER_ALREADY_BUSY"
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-038"
+    name: "同一车主不能接受时间占用重叠的预约订单"
+    category: "dispatch_offer"
+    initial_state: "offered"
+    actor: "driver"
+    command: "dispatch.offer.accept"
+    expected_events: ["trip_assigned"]
+    expected_state: "reserved"
+    expected_error: "TRIP_SCHEDULE_CONFLICT"
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-039"
+    name: "接单响应丢失后使用原幂等键返回首次成功结果"
+    category: "dispatch_offer"
+    initial_state: "accepted"
+    actor: "driver"
+    command: "dispatch.offer.accept"
+    expected_events: []
+    expected_state: "accepted"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-040"
+    name: "位置过期车主不能获得或接受接单邀请"
+    category: "dispatch_offer"
+    initial_state: "online"
+    actor: "driver"
+    command: "dispatch.offer.read"
+    expected_events: []
+    expected_state: "online"
+    expected_error: "DRIVER_LOCATION_STALE"
+    audit: "standard"
+    classification: "L3"
+    release_blocking: true
+  - id: "MOB-028"
+    name: "返回最近四个连续快捷预约时间段"
+    category: "trip_scheduling"
+    initial_state: "available"
+    actor: "passenger"
+    command: "trip.booking_availability.read"
+    expected_events: []
+    expected_state: "available"
+    expected_error: null
+    audit: "standard"
+    classification: "L1"
+    release_blocking: true
+  - id: "MOB-029"
+    name: "预约时间上限为 Server 当前时间起七十二小时"
+    category: "trip_scheduling"
+    initial_state: "available"
+    actor: "passenger"
+    command: "trip.booking_availability.read"
+    expected_events: []
+    expected_state: "available"
+    expected_error: null
+    audit: "standard"
+    classification: "L1"
+    release_blocking: true
+  - id: "MOB-030"
+    name: "乘车人创建未来预约行程"
+    category: "trip_scheduling"
+    initial_state: "eligible"
+    actor: "passenger"
+    command: "synthetic_trip.create"
+    expected_events: ["synthetic_trip_created"]
+    expected_state: "pending_payment"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-031"
+    name: "拒绝超过七十二小时的预约时间"
+    category: "trip_scheduling"
+    initial_state: "eligible"
+    actor: "passenger"
+    command: "synthetic_trip.create"
+    expected_events: []
+    expected_state: "eligible"
+    expected_error: "TRIP_PICKUP_TIME_TOO_FAR"
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-032"
+    name: "车主自主接受无冲突的预约行程"
+    category: "trip_scheduling"
+    initial_state: "scheduled"
+    actor: "driver"
+    command: "synthetic_trip.accept"
+    expected_events: ["synthetic_trip_accepted"]
+    expected_state: "reserved"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-033"
+    name: "预约准备时间前拒绝开始履约"
+    category: "trip_scheduling"
+    initial_state: "reserved"
+    actor: "driver"
+    command: "synthetic_trip.start"
+    expected_events: []
+    expected_state: "reserved"
+    expected_error: "TRIP_SCHEDULE_NOT_READY"
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-034"
+    name: "乘车人修改尚未被接受的预约时间"
+    category: "trip_scheduling"
+    initial_state: "scheduled"
+    actor: "passenger"
+    command: "synthetic_trip.reschedule"
+    expected_events: ["synthetic_trip_rescheduled"]
+    expected_state: "scheduled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-025"
+    name: "创建内部账户会话并读取成年资格状态"
+    category: "account_session"
+    initial_state: "none"
+    actor: "passenger"
+    command: "account_session.create"
+    expected_events: ["account_session_created"]
+    expected_state: "active"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-026"
+    name: "成年资格和车辆资格通过后切换车主身份"
+    category: "account_session"
+    initial_state: "active"
+    actor: "passenger"
+    command: "account_session.identity.switch"
+    expected_events: ["account_session_identity_switched"]
+    expected_state: "active"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-027"
+    name: "撤销会话后拒绝继续访问业务能力"
+    category: "account_session"
+    initial_state: "active"
+    actor: "passenger"
+    command: "account_session.revoke"
+    expected_events: ["account_session_revoked"]
+    expected_state: "revoked"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-017"
+    name: "行程关闭七十二小时后关闭聊天并删除正文"
+    category: "data_lifecycle"
+    initial_state: "eligible"
+    actor: "passenger"
+    command: "temporary_chat.content.delete"
+    expected_events: ["temporary_chat_content_deleted"]
+    expected_state: "deleted"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-018"
+    name: "安全证据保留锁阻止聊天正文删除"
+    category: "data_lifecycle"
+    initial_state: "blocked_by_hold"
+    actor: "driver"
+    command: "temporary_chat.content.delete"
+    expected_events: []
+    expected_state: "blocked_by_hold"
+    expected_error: "DATA_DELETION_BLOCKED_BY_HOLD"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-019"
+    name: "精准位置与实时缓存按期限清理"
+    category: "data_lifecycle"
+    initial_state: "eligible"
+    actor: "driver"
+    command: "location.lifecycle.run"
+    expected_events: ["location_data_deleted"]
+    expected_state: "deleted"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-013"
+    name: "合成头像审核通过后才公开"
+    category: "trust_profile"
+    initial_state: "default"
+    actor: "passenger"
+    command: "trust_profile.avatar.submit"
+    expected_events: ["trust_profile_avatar_moderated"]
+    expected_state: "approved"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-020"
+    name: "乘车人个人计划变化消耗 1/1/2 善意取消额度"
+    category: "trip_cancellation"
+    initial_state: "accepted"
+    actor: "passenger"
+    command: "trip.accepted.cancel"
+    expected_events: ["accepted_trip_cancelled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-021"
+    name: "车主到达前个人原因取消消耗 1/2/3 善意取消额度"
+    category: "trip_cancellation"
+    initial_state: "accepted"
+    actor: "driver"
+    command: "trip.accepted.cancel"
+    expected_events: ["accepted_trip_cancelled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-014"
+    name: "不合规头像拒绝且不返回公开地址"
+    category: "trust_profile"
+    initial_state: "default"
+    actor: "driver"
+    command: "trust_profile.avatar.submit"
+    expected_events: ["trust_profile_avatar_rejected"]
+    expected_state: "rejected"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-015"
+    name: "已完成行程参与者每人每单评价一次"
+    category: "trip_rating"
+    initial_state: "completed"
+    actor: "passenger"
+    command: "trip_rating.submit"
+    expected_events: ["trip_rating_submitted"]
+    expected_state: "rated"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-016"
+    name: "车辆位置按行程阶段限频并刷新恢复"
+    category: "vehicle_location_stream"
+    initial_state: "driver_en_route"
+    actor: "driver"
+    command: "map.vehicle_location.write"
+    expected_events: []
+    expected_state: "fresh"
+    expected_error: null
+    audit: "sensitive"
+    classification: "L3"
+    release_blocking: true
+  - id: "MOB-017"
+    name: "车辆位置老化陈旧和不可用不伪装实时"
+    category: "vehicle_location_stream"
+    initial_state: "fresh"
+    actor: "passenger"
+    command: "map.vehicle_location.read"
+    expected_events: []
+    expected_state: "unavailable"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-018"
+    name: "行程关闭停止位置流且安全证据锁阻止删除"
+    category: "map_data_lifecycle"
+    initial_state: "trip_closed"
+    actor: "driver"
+    command: "map.vehicle_location.stage"
+    expected_events: []
+    expected_state: "stopped"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "MOB-016"
+    name: "公平性报告只读且不参与自动决策"
+    category: "fairness_monitoring"
+    initial_state: "monitoring"
+    actor: "passenger"
+    command: "fairness_report.read"
+    expected_events: []
+    expected_state: "monitoring"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-001"
+    name: "车主主动上线后查看可接订单"
+    category: "driver_availability"
+    initial_state: "offline"
+    actor: "driver"
+    command: "driver.availability.update"
+    expected_events: ["driver_availability_changed"]
+    expected_state: "online"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-002"
+    name: "车主自主接受订单并进入接驾"
+    category: "trip_fulfillment"
+    initial_state: "accepted"
+    actor: "driver"
+    command: "trip.driver_en_route"
+    expected_events: ["driver_en_route"]
+    expected_state: "driver_en_route"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-003"
+    name: "车主到达上车点并验证上车码"
+    category: "trip_fulfillment"
+    initial_state: "driver_en_route"
+    actor: "driver"
+    command: "trip.boarding.verify"
+    expected_events: ["driver_arrived", "boarding_verified"]
+    expected_state: "in_progress"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-004"
+    name: "乘车人在接单后三分钟内无理由取消"
+    category: "trip_cancellation"
+    initial_state: "accepted"
+    actor: "passenger"
+    command: "trip.accepted.cancel"
+    expected_events: ["accepted_trip_cancelled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-005"
+    name: "超过三分钟未提交取消原因被拒绝"
+    category: "trip_cancellation"
+    initial_state: "accepted"
+    actor: "passenger"
+    command: "trip.accepted.cancel"
+    expected_events: []
+    expected_state: "accepted"
+    expected_error: "TRIP_CANCELLATION_REASON_REQUIRED"
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-017"
+    name: "超过三分钟因车辆顾虑取消并优先重新匹配"
+    category: "trip_cancellation"
+    initial_state: "accepted"
+    actor: "passenger"
+    command: "trip.accepted.cancel"
+    expected_events: ["accepted_trip_cancelled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-018"
+    name: "超过三分钟因计划变化取消并豁免车主配额影响"
+    category: "trip_cancellation"
+    initial_state: "accepted"
+    actor: "passenger"
+    command: "trip.accepted.cancel"
+    expected_events: ["accepted_trip_cancelled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-019"
+    name: "重复取消写入返回原责任结果且不重复释放车主"
+    category: "trip_cancellation"
+    initial_state: "cancelled"
+    actor: "passenger"
+    command: "trip.accepted.cancel"
+    expected_events: []
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-006"
+    name: "车主通过短期意图滑动完成行程"
+    category: "trip_completion"
+    initial_state: "in_progress"
+    actor: "driver"
+    command: "trip.complete_with_intent"
+    expected_events: ["trip_completed_with_intent"]
+    expected_state: "completed"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-007"
+    name: "车主查询自己的订单列表和详情"
+    category: "driver_orders"
+    initial_state: "completed"
+    actor: "driver"
+    command: "driver.orders.read"
+    expected_events: []
+    expected_state: "completed"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-008"
+    name: "资金中心返回零金额关闭态"
+    category: "driver_finance"
+    initial_state: "disabled"
+    actor: "driver"
+    command: "driver.finance.read"
+    expected_events: []
+    expected_state: "disabled"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-009"
+    name: "绑卡与提现不接受真实数据和真实资金"
+    category: "driver_finance"
+    initial_state: "disabled"
+    actor: "driver"
+    command: "driver.finance.capability.read"
+    expected_events: []
+    expected_state: "disabled"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "MOB-010"
+    name: "行程双方发送并刷新恢复合成消息"
+    category: "trip_chat"
+    initial_state: "accepted"
+    actor: "passenger"
+    command: "trip_chat.message.send"
+    expected_events: ["trip_chat_message_sent"]
+    expected_state: "open"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-011"
+    name: "安全案件冻结后拒绝发送行程消息"
+    category: "trip_chat"
+    initial_state: "safety_frozen"
+    actor: "driver"
+    command: "trip_chat.message.send"
+    expected_events: []
+    expected_state: "frozen"
+    expected_error: "CHAT_FROZEN"
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-012"
+    name: "消息中心已读状态持久化并使用有效目标"
+    category: "message_center"
+    initial_state: "unread"
+    actor: "passenger"
+    command: "message_center.read.update"
+    expected_events: ["message_center_read_updated"]
+    expected_state: "read"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-013"
+    name: "地点搜索缓存并限制高频查询"
+    category: "map_place_search"
+    initial_state: "synthetic_provider_ready"
+    actor: "passenger"
+    command: "map.place.search"
+    expected_events: []
+    expected_state: "results_available"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-014"
+    name: "地图选点可逆地理编码并保留手动降级"
+    category: "map_reverse_geocode"
+    initial_state: "gcj02_point_selected"
+    actor: "passenger"
+    command: "map.reverse_geocode"
+    expected_events: []
+    expected_state: "place_resolved"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "MOB-015"
+    name: "路线规划缓存且额度降级不伪造结果"
+    category: "map_route"
+    initial_state: "places_selected"
+    actor: "passenger"
+    command: "map.route.plan"
+    expected_events: []
+    expected_state: "route_available"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true

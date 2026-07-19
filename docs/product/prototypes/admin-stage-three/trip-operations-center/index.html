@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>行程运营中心</title><link rel="stylesheet" href="../shared/stage-three.css"></head><body>
+<div class="shell"><div class="env"><b>内部合成环境 · 阶段三设计原型</b><span>真实行程、真实证据与生产启用均关闭</span></div>
+<header class="top"><div class="brand"><span class="brand-mark">PC</span><div><b>PollyCar</b><small>运营控制台</small></div></div><div class="context"><b>PollyCar 平台</b><b>上海 · 6 个主体</b><b>平台运营负责人</b></div><span class="avatar">林</span></header>
+<aside class="side"><nav><a class="active">行程运营中心</a><a>行程 360°</a><a>客服案件</a><a>安全案件</a><a>证据访问</a><a>结果恢复</a></nav><div class="scope"><b>服务端授权范围</b><span>主体：6 个</span><span>城市：上海</span><span>证据授权：0 项</span></div></aside>
+<nav class="mobile-nav"><a class="active">行程中心</a><a>行程</a><a>客服</a><a>安全</a><a>证据</a><a>恢复</a></nav>
+<main><div class="heading"><div><span class="eyebrow">阶段三 · 行程运营</span><h1>行程运营中心</h1><p>聚合预约、匹配、接驾、进行中与结束异常。后台只管理运营任务，不自由修改行程权威状态。</p></div><span class="badge warning">synthetic_admin_trip_operations 关闭态</span></div>
+<div class="gate"><b>唯一写入边界</b><span>所有动作必须映射既有领域命令，并携带幂等键、请求摘要和行程资源版本。</span></div>
+<section class="metrics"><article><span>待分诊异常</span><strong>18</strong><small>较昨日 +3</small></article><article><span>等待权威结果</span><strong>4</strong><small>其中未知结果 1</small></article><article><span>跨主体协作</span><strong>6</strong><small>任务严格隔离</small></article><article><span>安全冻结</span><strong>2</strong><small>仅显示最小摘要</small></article></section>
+<div class="grid"><section class="panel"><header><div><h2>优先异常队列</h2><p>按风险、影响人数和恢复时限排序</p></div><span class="badge danger">2 项阻断</span></header><div class="list">
+<article class="item"><span class="icon danger">急</span><div><b>接驾后位置停止刷新 8 分钟</b><p>TRIP-SYN-8421 · 沪行出行服务 · 当前状态 driver_en_route</p></div><span class="badge danger">sev2</span></article>
+<article class="item"><span class="icon">预</span><div><b>预约出发前 35 分钟仍未确认车主</b><p>TRIP-SYN-8466 · 申城伙伴运营 · 不允许后台改为 cancelled</p></div><span class="badge warning">待协调</span></article>
+<article class="item"><span class="icon">跨</span><div><b>跨主体接驾责任需要双方确认</b><p>平台案件 CASE-SYN-219；两家主体仅收到隔离协作任务</p></div><span class="badge warning">2 个任务</span></article>
+<article class="item"><span class="icon">未</span><div><b>取消命令返回未知结果</b><p>禁止重复提交；进入 REC-SYN-017 查询原幂等结果</p></div><span class="badge danger">结果未知</span></article>
+</div></section>
+<section class="panel"><header><div><h2>运行守卫</h2><p>任何一项不满足都不能提交领域动作</p></div></header><div class="stack"><div class="kv"><span>组织范围</span><b>服务端授权主体快照</b></div><div class="kv"><span>资源版本</span><b>必须等于当前行程版本</b></div><div class="kv"><span>安全状态</span><b>冻结时禁止普通运营动作</b></div><div class="kv"><span>未知结果</span><b>同资源同动作冻结</b></div><div class="kv"><span>资金差异</span><b>只读升级，阶段三不核销</b></div></div><div class="actions"><button class="primary">认领并分诊</button><button disabled>直接修改行程状态</button></div></section></div>
+</main></div></body></html>

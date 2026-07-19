@@ -1,0 +1,62 @@
+spec_version: "1.0"
+spec_id: "pollycar.domain.dispatch-offers"
+language: "zh-CN"
+status: "review"
+production_enabled: false
+synthetic_data_only: true
+
+terms:
+  candidate_trip: "满足位置新鲜度、距离、资格、人数和时间冲突规则的候选行程。"
+  dispatch_offer: "系统向单个车主发出的限时接单邀请，不代表订单已经归属该车主。"
+  trip_assignment: "数据库中唯一生效的车主与行程归属关系。"
+
+presence:
+  states: ["online", "offline"]
+  coordinate_system: "gcj02"
+  maximum_accuracy_meters: 500
+  freshness_seconds: 120
+  real_location_enabled: false
+  background_location_enabled: false
+
+candidate_filter:
+  required:
+    - "车主在线且位置仍然新鲜"
+    - "车主资格、车辆资格和安全限制通过"
+    - "乘车人数不超过车辆人数上限"
+    - "车主不是该行程的乘车人"
+    - "即时行程不存在其他活动行程"
+    - "预约行程不存在占用时间重叠"
+  maximum_radius_meters: 10000
+  dispatch_round_radius_meters: [3000, 6000, 10000]
+
+offer:
+  states: ["offered", "viewed", "accepted", "expired", "withdrawn"]
+  default_ttl_seconds: 30
+  notification_is_authoritative: false
+  authoritative_source: "trip_assignment"
+  unique_per_round: ["trip_id", "driver_account_id", "dispatch_round"]
+
+acceptance:
+  idempotency_required: true
+  atomic_resources:
+    - "trip_assignment"
+    - "driver_active_trip_constraint"
+    - "driver_schedule_constraint"
+    - "driver_quota_occupancy"
+    - "dispatch_offer_state"
+    - "audit_and_outbox"
+  winner_result: "accepted"
+  loser_error: "TRIP_ALREADY_ASSIGNED"
+  replay_result: "返回首次接单的相同结果"
+
+notifications:
+  event_chain:
+    - "trip_matchable"
+    - "dispatch_offer_created"
+    - "driver_offer_available"
+    - "trip_assigned"
+    - "dispatch_offer_withdrawn"
+  foreground_channel: "application_stream"
+  background_channel: "synthetic_notification_delivery"
+  fallback_channel: "authoritative_offer_query"
+

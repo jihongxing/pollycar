@@ -1,0 +1,196 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.trip-case-management"
+language: "zh-CN"
+status: "approved"
+production_enabled: false
+source_document: "docs/product/admin/19-阶段三行程客服安全契约.md"
+decision: "docs/decisions/0017-行程客服安全协作与证据访问.md"
+
+implementation_approval:
+  approved: true
+  approved_on: "2026-07-14"
+  synthetic_only: true
+  internal_sandbox_only: true
+  feature_gate_default_enabled: false
+  production_enable_forbidden: true
+  real_data_forbidden: true
+
+feature_gates:
+  trip_operations: "synthetic_admin_trip_operations"
+  case_management: "synthetic_admin_case_management"
+  defaults_enabled: false
+  required_dependencies: ["internal_sandbox", "synthetic_admin_multi_organization"]
+
+authoritative_sources:
+  trip_state: "pollycar_mobility.synthetic_trips"
+  trip_timeline: "pollycar_mobility.trip_domain_events"
+  trip_operator_snapshot: "pollycar_mobility.trip_operator_snapshots"
+  communication_state: "pollycar_communication.trip_chats"
+  safety_case: "pollycar_safety.safety_cases"
+  eligibility_state: "pollycar_eligibility.current_state"
+  finance_blockers: "pollycar_finance.reconciliation_cases"
+  copied_authoritative_state_forbidden: true
+
+owned_records:
+  - trip_operation_task
+  - support_case
+  - organization_collaboration_task
+  - evidence_access_grant
+  - escalation_record
+  - command_recovery_task
+
+trip_operations:
+  authoritative_trip_states:
+    - pending_payment
+    - paid_pending_match
+    - scheduled
+    - reserved
+    - preparing
+    - accepted
+    - driver_en_route
+    - driver_arrived
+    - in_progress
+    - safety_frozen
+    - completed
+    - unfulfilled
+    - cancelled
+  operation_task_states:
+    - detected
+    - triaged
+    - coordinating
+    - awaiting_authoritative_result
+    - resolved
+    - closed
+  direct_trip_state_mutation_forbidden: true
+  generic_state_override_forbidden: true
+  action_state_intersection:
+    triage_trip_operation:
+      from: ["detected"]
+      to: "triaged"
+    request_trip_domain_action:
+      from: ["triaged", "coordinating"]
+      to: "awaiting_authoritative_result"
+  required_command_fields:
+    - idempotency_key
+    - request_digest
+    - expected_trip_version
+    - reason_code
+    - correlation_id
+
+support_cases:
+  states:
+    - open
+    - assigned
+    - investigating
+    - awaiting_user
+    - awaiting_internal
+    - escalated
+    - resolved
+    - closed
+    - reopened
+  categories:
+    - trip_service
+    - schedule
+    - cancellation
+    - communication
+    - operator_coordination
+    - eligibility
+    - safety_referral
+    - finance_referral
+  direct_finance_resolution_forbidden: true
+  direct_safety_resolution_forbidden: true
+  free_text_domain_mutation_forbidden: true
+
+safety_collaboration:
+  authoritative_case_states:
+    - open_frozen
+    - appealing
+    - restored
+    - upheld
+  investigation_task_states:
+    - unassigned
+    - assigned
+    - investigating
+    - awaiting_independent_review
+    - completed
+  severity_levels:
+    - sev4
+    - sev3
+    - sev2
+    - sev1
+  restoration_requires_independent_reviewer: true
+  freezer_cannot_restore: true
+  severe_restoration_required_checks:
+    - emergency_response_closed
+    - evidence_hold_confirmed
+    - eligibility_sync_confirmed
+    - no_open_blocker
+
+cross_organization_visibility:
+  trip_operator_snapshot_immutable: true
+  operator_scope_mode: "same_trip_operator_snapshot"
+  platform_scope_mode: "authorized_operator_scope"
+  cross_operator_case_owner: "platform"
+  partitioned_collaboration_tasks_required: true
+  operator_may_view_other_operator_internal_notes: false
+  operator_may_view_other_operator_staff_identity: false
+  operator_may_view_raw_chat: false
+  operator_may_view_full_location_trace: false
+  operator_may_view_safety_reasoning: false
+
+evidence_access:
+  grant_states:
+    - requested
+    - approved
+    - active
+    - expired
+    - revoked
+    - denied
+  required_fields:
+    - case_id
+    - ticket_id
+    - purpose_code
+    - requested_fields
+    - requested_by
+    - expires_at
+  normal_ttl_minutes: 30
+  break_glass_ttl_minutes: 15
+  dual_approval_for:
+    - raw_chat
+    - full_location_trace
+    - evidence_export
+  revoke_on:
+    - membership_change
+    - organization_context_change
+    - case_change
+    - role_change
+    - ttl_expiry
+  real_evidence_allowed: false
+  bulk_reveal_forbidden: true
+
+unknown_result_recovery:
+  command_result_states:
+    - accepted
+    - succeeded
+    - failed
+    - unknown
+  recovery_task_states:
+    - open
+    - querying_idempotency_result
+    - reconciling_authoritative_state
+    - awaiting_outbox_confirmation
+    - recovered_succeeded
+    - recovered_failed
+    - escalated
+  duplicate_command_on_unknown_forbidden: true
+  replacement_request_forbidden: true
+  technical_operations_business_decision_forbidden: true
+
+prohibited:
+  real_trip_operations: true
+  real_support_cases: true
+  real_safety_evidence: true
+  real_emergency_response: true
+  direct_trip_table_update: true
+  direct_chat_table_read: true
+  production_admin_enabled: true

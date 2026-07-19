@@ -1,0 +1,41 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.persistence"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+
+runtime:
+  default_adapter: "memory"
+  postgres_activation: "explicit_environment_variable"
+  database_url_variable: "POLLYCAR_DATABASE_URL"
+  local_database_only: true
+  automatic_production_enablement: false
+
+migrations:
+  directory: "apps/server/migrations"
+  command: "pnpm --filter @pollycar/server db:migrate"
+  ordered: true
+  transaction_required: true
+  history_table: "pollycar_schema_migrations"
+
+storage:
+  aggregate_table: "pollycar_records"
+  review_task_table: "pollycar_review_tasks"
+  optimistic_concurrency: true
+  synthetic_constraint_required: true
+
+outbox:
+  table: "pollycar_outbox"
+  same_transaction_as_aggregate: true
+  idempotent_event_id: true
+  claim_mode: "for_update_skip_locked"
+  retry_supported: true
+  production_publisher_enabled: false
+
+forbidden:
+  - "remote_database"
+  - "real_user_data"
+  - "production_credentials"
+  - "automatic_schema_push"
+  - "outbox_event_loss"

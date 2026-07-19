@@ -1,0 +1,454 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.executive-dashboard"
+language: "zh-CN"
+status: "implementation_approved"
+production_enabled: false
+source_document: "docs/product/admin/23-阶段五高层驾驶舱契约.md"
+decision: "docs/decisions/0019-运营控制台高层驾驶舱与指标治理.md"
+
+design_approval:
+  approved: true
+  approved_on: "2026-07-14"
+  implementation_approved: true
+  implementation_approved_on: "2026-07-14"
+  implementation_approval_required: true
+  synthetic_only: true
+  internal_sandbox_only: true
+
+feature_gate:
+  id: "synthetic_admin_executive_dashboard"
+  default_enabled: false
+  required_dependencies:
+    - "internal_sandbox"
+    - "synthetic_admin_multi_organization"
+    - "synthetic_admin_operator_management"
+    - "synthetic_admin_trip_operations"
+    - "synthetic_admin_case_management"
+    - "synthetic_admin_finance_operations"
+
+productized_admin_api:
+  bearer_session_required: true
+  organization_scope_reauthorization_required: true
+  routes:
+    - "GET /v1/internal-sandbox/admin/executive"
+    - "GET /v1/internal-sandbox/admin/executive/:kind/:resource_id"
+    - "POST /v1/internal-sandbox/admin/executive/:kind/:resource_id/actions/:action"
+  directory:
+    resource_kinds: ["decision_item", "export_request", "operator_health", "metric"]
+    capabilities: ["server_summary", "search", "kind_filter", "domain_filter", "blocking_filter", "sort", "signed_cursor_pagination"]
+    return_filter_cursor_scroll_restoration_required: true
+  detail:
+    allowed_actions_server_authoritative: true
+    organization_scope_required: true
+    governance_boundaries_required: true
+    append_only_audit_required: true
+  commands:
+    actions: ["record_decision_opinion", "create_export_request", "privacy_approve_export", "privacy_reject_export", "domain_approve_export", "domain_reject_export", "revoke_export", "download_export"]
+    expected_resource_version_required: true
+    idempotency_key_required: true
+    confirming_state_required: true
+    confirmed_result_required: true
+  direct_business_approval_allowed: false
+  person_level_drilldown_allowed: false
+  real_data_allowed: false
+
+authoritative_sources:
+  operators: "operator_management"
+  trips: "trip_domain"
+  dispatch: "dispatch_domain"
+  support_cases: "admin_support_cases"
+  safety_cases: "admin_safety_cases"
+  payments: "payment_aggregate"
+  ledger: "pollycar_finance"
+  reconciliation: "pollycar_finance.reconciliation_runs"
+  operator_funds: "pollycar_finance.operator_funds"
+  dashboard_is_authoritative: false
+  copied_balance_forbidden: true
+  copied_business_state_forbidden: true
+
+derived_records:
+  allowed:
+    - "executive_metric_definition"
+    - "executive_metric_snapshot"
+    - "executive_decision_summary"
+    - "executive_export_request"
+    - "executive_export_grant"
+  rebuildable: true
+  source_reference_required: true
+  source_version_required: true
+  freshness_timestamp_required: true
+  immutable_snapshot_key:
+    - "metric_id"
+    - "metric_version"
+    - "window_start"
+    - "window_end"
+    - "dimension_key"
+    - "organization_scope_digest"
+    - "as_of"
+  historical_snapshot_overwrite_forbidden: true
+
+functional_roles:
+  platform:
+    - "executive_sponsor"
+    - "operations_lead"
+    - "finance_lead"
+    - "safety_lead"
+    - "privacy_compliance"
+  operator:
+    - "operator_executive"
+  universal_admin_role_forbidden: true
+  inherited_write_access_forbidden: true
+  executive_operational_approval_forbidden: true
+  governance_opinion_recording_allowed: true
+
+organization_scope:
+  platform_scope_source: "server_session_operator_and_city_scopes"
+  operator_scope_fixed: true
+  operator_cross_scope_forbidden: true
+  request_filters_cannot_expand_scope: true
+  aggregate_scope_filter_required: true
+  drilldown_reauthorization_required: true
+  export_scope_equals_page_scope: true
+
+modules:
+  - id: "executive_overview"
+    roles: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+  - id: "executive_operations_health"
+    roles: ["executive_sponsor", "operations_lead", "operator_executive"]
+  - id: "executive_operator_health"
+    roles: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+  - id: "executive_finance_safety"
+    roles: ["executive_sponsor", "finance_lead", "operator_executive"]
+  - id: "executive_safety_compliance"
+    roles: ["executive_sponsor", "safety_lead", "privacy_compliance", "operator_executive"]
+  - id: "executive_decisions_metrics"
+    roles: ["executive_sponsor", "operations_lead", "finance_lead", "safety_lead", "privacy_compliance", "operator_executive"]
+
+metric_contract:
+  timezone: "Asia/Shanghai"
+  client_recalculation_forbidden: true
+  metric_version_required: true
+  source_timestamp_required: true
+  source_status_required: true
+  close_status_required: true
+  allowed_dimensions: ["city", "operator", "product", "time"]
+  person_ranking_forbidden: true
+  sensitive_attribute_ranking_forbidden: true
+  small_sample_suppression_required: true
+  minimum_publishable_sample: 10
+  zero_denominator_result: "not_applicable"
+  ratio_transport: "basis_points_integer"
+  ratio_display_decimal_places: 1
+  money_transport: "decimal_minor_unit_string"
+  duration_transport: "integer_seconds"
+  composite_as_of_rule: "oldest_source_timestamp"
+  late_correction_creates_new_snapshot: true
+
+metrics:
+  - id: "trip_completion_rate"
+    name: "行程完成率"
+    definition: "完成行程数除以已进入匹配的有效行程数"
+    numerator: "completed_valid_trips"
+    denominator: "matched_valid_trips"
+    source: "trip_domain"
+    close_required: false
+    freshness_target: "PT5M"
+  - id: "dispatch_acceptance_rate"
+    name: "接单率"
+    definition: "被车主接受的有效派单数除以有效派单数"
+    numerator: "accepted_valid_offers"
+    denominator: "valid_offers"
+    source: "dispatch_domain"
+    close_required: false
+    freshness_target: "PT5M"
+  - id: "trip_cancellation_rate"
+    name: "取消率"
+    definition: "有效取消行程数除以已确认行程数"
+    numerator: "valid_cancelled_trips"
+    denominator: "confirmed_trips"
+    source: "trip_domain"
+    close_required: false
+    freshness_target: "PT5M"
+  - id: "payout_timeliness_rate"
+    name: "付款及时率"
+    definition: "截止期限前提交的付款项除以到期付款项"
+    numerator: "on_time_payout_items"
+    denominator: "due_payout_items"
+    source: "operator_funds"
+    close_required: true
+    freshness_target: "PT1M"
+  - id: "reconciliation_difference_rate"
+    name: "对账差异率"
+    definition: "差异绝对金额除以对账实际金额"
+    numerator: "absolute_difference_minor"
+    denominator: "reconciled_actual_minor"
+    source: "reconciliation"
+    close_required: true
+    freshness_target: "PT1M"
+  - id: "business_day_close_rate"
+    name: "关账完成率"
+    definition: "已关闭账务日除以应关闭账务日"
+    numerator: "closed_business_days"
+    denominator: "due_business_days"
+    source: "reconciliation"
+    close_required: true
+    freshness_target: "PT1M"
+  - id: "operator_health"
+    name: "主体健康度"
+    definition: "服务、资金、安全和合规指标的规则化结果"
+    numerator: "not_applicable"
+    denominator: "not_applicable"
+    source: "multi_domain_rule"
+    close_required: false
+    freshness_target: "PT5M"
+  - id: "safety_incident_rate"
+    name: "安全事件率"
+    definition: "有效安全事件数除以完成行程数"
+    numerator: "validated_safety_incidents"
+    denominator: "completed_trips"
+    source: "safety_and_trip_domains"
+    close_required: false
+    freshness_target: "PT1M"
+  - id: "valid_trip_count"
+    name: "有效行程数"
+    definition: "时间窗口内进入匹配的有效行程数量"
+    value_type: "integer_count"
+    source: "trip_domain"
+    close_required: false
+    freshness_target: "PT5M"
+  - id: "major_blocker_count"
+    name: "重大阻断数"
+    definition: "资金、安全、合规和生产启用中的开放硬阻断数量"
+    value_type: "integer_count"
+    source: "multi_domain_rule"
+    close_required: false
+    freshness_target: "PT1M"
+  - id: "executive_decision_item_count"
+    name: "待高层判断事项数"
+    definition: "当前组织范围内开放的高层待决事项数量"
+    value_type: "integer_count"
+    source: "executive_decision_summary"
+    close_required: false
+    freshness_target: "PT1M"
+  - id: "matching_duration_p50"
+    name: "匹配时长中位数"
+    definition: "有效行程从进入匹配到首次接受的时长中位数"
+    value_type: "integer_seconds"
+    source: "trip_and_dispatch_domains"
+    close_required: false
+    freshness_target: "PT5M"
+  - id: "allocated_amount_minor"
+    name: "已分配金额"
+    definition: "时间窗口内已生成资金分配的金额合计"
+    value_type: "decimal_minor_unit_string"
+    source: "operator_funds"
+    close_required: true
+    freshness_target: "PT1M"
+  - id: "nonzero_difference_minor"
+    name: "非零差异金额"
+    definition: "开放对账差异绝对金额合计"
+    value_type: "decimal_minor_unit_string"
+    source: "reconciliation"
+    close_required: true
+    freshness_target: "PT1M"
+  - id: "unknown_payout_count"
+    name: "未知付款结果数"
+    definition: "权威结果仍未知的付款请求数量"
+    value_type: "integer_count"
+    source: "operator_funds"
+    close_required: true
+    freshness_target: "PT1M"
+  - id: "open_major_safety_case_count"
+    name: "开放重大安全案件数"
+    definition: "仍处于开放状态的一级和二级安全案件数量"
+    value_type: "integer_count"
+    source: "safety_cases"
+    close_required: false
+    freshness_target: "PT1M"
+  - id: "restoration_review_count"
+    name: "恢复待复核数"
+    definition: "等待独立恢复复核的安全案件数量"
+    value_type: "integer_count"
+    source: "safety_cases"
+    close_required: false
+    freshness_target: "PT1M"
+  - id: "permission_anomaly_count"
+    name: "权限异常数"
+    definition: "进入治理复核的异常权限访问数量"
+    value_type: "integer_count"
+    source: "audit_and_access_control"
+    close_required: false
+    freshness_target: "PT1M"
+  - id: "privacy_request_overdue_count"
+    name: "隐私请求超时数"
+    definition: "超过处理时限且未关闭的隐私请求数量"
+    value_type: "integer_count"
+    source: "privacy_governance"
+    close_required: false
+    freshness_target: "PT1M"
+
+operator_health_rule:
+  version: "operator-health-v1"
+  dimensions: ["service", "finance", "safety", "compliance"]
+  states: ["healthy", "attention", "blocked", "unavailable"]
+  hard_block_dimensions: ["finance", "safety", "compliance"]
+  hard_block_result: "blocked"
+  any_attention_result: "attention"
+  all_healthy_result: "healthy"
+  required_source_unavailable_result: "unavailable"
+  weighted_average_forbidden: true
+  returned_explanation_required: true
+  returned_dimension_states_required: true
+
+freshness:
+  stale_value_display_allowed: true
+  stale_warning_required: true
+  stale_value_must_keep_original_timestamp: true
+  stale_value_cannot_be_labeled_realtime: true
+  weekly_monthly_reports_require_closed_period: true
+  unclosed_data_prominent_label_required: true
+  partial_source_failure_allowed: true
+  formal_report_fail_closed: true
+  export_fail_closed: true
+
+drilldown:
+  aggregate_dimensions_only: true
+  original_domain_authorization_required: true
+  original_field_disclosure_required: true
+  full_phone_forbidden: true
+  full_bank_account_forbidden: true
+  payment_credential_forbidden: true
+  identity_document_forbidden: true
+  chat_body_forbidden: true
+  precise_location_forbidden: true
+
+decision_items:
+  allowed_categories:
+    - "operator_lifecycle"
+    - "major_safety"
+    - "long_overdue_payout"
+    - "unresolved_finance_difference"
+    - "production_enablement"
+    - "legal_finance_compliance"
+  direct_decision_action_forbidden: true
+  original_workbench_link_required: true
+  responsible_role_required: true
+  due_time_required: true
+  opinion_recording:
+    append_only: true
+    original_item_required: true
+    decision_code_required: true
+    reason_code_required: true
+    responsible_role_required: true
+    due_time_required: true
+    sensitive_free_text_forbidden: true
+    mutation_forbidden: true
+    replacement_requires_supersedes_reference: true
+    business_state_change_forbidden: true
+
+export:
+  request_path: "/v1/internal-sandbox/admin/executive-dashboard/export-requests"
+  business_state_write_forbidden: true
+  idempotency_key_required: true
+  request_digest_required: true
+  purpose_required: true
+  field_set_required: true
+  time_range_required: true
+  expiry_required: true
+  requester_and_approver_must_differ: true
+  approval_cannot_expand_scope: true
+  single_use_download: true
+  strict_sensitive_data_forbidden: true
+  person_ranking_forbidden: true
+  single_domain_per_request: true
+  cross_domain_export_forbidden: true
+  states:
+    - "draft"
+    - "awaiting_privacy_review"
+    - "awaiting_domain_review"
+    - "approved"
+    - "downloaded"
+    - "rejected"
+    - "revoked"
+    - "expired"
+  privacy_approver_role: "privacy_compliance"
+  domain_approver_by_domain:
+    operations: "operations_lead"
+    finance: "finance_lead"
+    safety_compliance: "safety_lead"
+  both_approvers_must_differ_from_requester: true
+  encrypted_storage_required: true
+  approved_file_ttl: "PT30M"
+  delete_after_download_required: true
+  delete_after_expiry_required: true
+
+finance_disclosure:
+  executive_sponsor: "status_band_and_trend_l2"
+  operator_executive: "status_band_and_trend_l2"
+  finance_lead: "exact_aggregate_l3"
+  exact_amount_requires_separate_authorization: true
+  exact_amount_export_for_non_finance_roles_forbidden: true
+
+query_architecture:
+  service: "ExecutiveDashboardQueryService"
+  direct_admin_http_reuse_forbidden: true
+  ports:
+    - "OperatorExecutiveMetricsPort"
+    - "TripExecutiveMetricsPort"
+    - "DispatchExecutiveMetricsPort"
+    - "SupportExecutiveMetricsPort"
+    - "SafetyExecutiveMetricsPort"
+    - "FinanceExecutiveMetricsPort"
+  source_adapter_must_filter_scope: true
+  source_adapter_must_deidentify: true
+
+api:
+  query_paths:
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/overview"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/operations-health"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/operator-health"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/finance-safety"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/safety-compliance"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/decision-items"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/metrics"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/drilldowns/{dimension}/{dimension_id}"
+  governance_write_paths:
+    - "POST /v1/internal-sandbox/admin/executive-dashboard/decision-opinions"
+    - "POST /v1/internal-sandbox/admin/executive-dashboard/export-requests"
+    - "POST /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/privacy-decision"
+    - "POST /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/domain-decision"
+    - "POST /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/revocation"
+    - "GET /v1/internal-sandbox/admin/executive-dashboard/export-requests/{export_request_id}/download"
+  business_write_path_forbidden: true
+
+page_states:
+  required:
+    - "ready"
+    - "partial"
+    - "stale"
+    - "unclosed"
+    - "suppressed"
+    - "unavailable"
+    - "scope_denied"
+    - "feature_disabled"
+
+audit:
+  append_only: true
+  dashboard_access_required: true
+  filter_change_required: true
+  drilldown_required: true
+  metric_definition_view_required: true
+  export_request_required: true
+  export_approval_required: true
+  export_download_required: true
+  denied_access_required: true
+  decision_opinion_record_required: true
+
+implementation_gate:
+  implementation_allowed: true
+  explicit_approval_required: true
+  runtime_code_forbidden_before_approval: false
+  http_api_forbidden_before_approval: false
+  admin_module_forbidden_before_approval: false
+  real_data_allowed: false
+  production_enablement_allowed: false

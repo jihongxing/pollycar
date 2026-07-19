@@ -1,0 +1,40 @@
+spec_version: "1.0"
+spec_id: "pollycar.payment.zero-money"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+source_documents:
+  - "docs/decisions/0004-支付退款与取消责任.md"
+  - "docs/09-state-machines.md"
+feature_flags:
+  zero_money_payment: true
+  real_payment: false
+  paid_flex_trial: false
+  user_invitation: false
+  shanghai_pilot: false
+funding_mode: "zero_money"
+amount_minor: 0
+currency: "CNY"
+production_credentials_allowed: false
+financial_ledger_allowed: false
+tax_invoice_allowed: false
+matching_guard:
+  required_state: "paid_pending_match"
+implementation_scope:
+  internal_sandbox_only: true
+  synthetic_trip_creation: true
+  driver_acceptance: true
+  trip_fulfillment: true
+  production_enablement: false
+states: ["pending_payment", "processing", "unknown", "failed", "paid_pending_match", "pending_refund", "refund_processing", "refunded", "pending_settlement", "closed", "orphaned_payment"]
+required_scenarios:
+  - "gate_failure_blocks_matching"
+  - "unknown_state_queries_original_attempt"
+  - "no_driver_records_zero_refund_semantics"
+  - "platform_cancel_records_zero_refund_semantics"
+  - "safety_termination_blocks_closure"
+  - "orphaned_payment_is_closed_without_financial_flow"
+idempotency:
+  payment_required: true
+  refund_required: true
+  duplicate_returns_original_result: true

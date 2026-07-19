@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/authentication-session.schema.json",
+  "title": "运营后台账号认证与工作身份会话契约",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "spec_id",
+    "language",
+    "production_enabled",
+    "status",
+    "source_document",
+    "decision",
+    "design_approval",
+    "feature_gate",
+    "authoritative_sources",
+    "internal_user",
+    "admin_account",
+    "login_identifier",
+    "organization_membership",
+    "work_identity",
+    "invitation",
+    "credential",
+    "mfa",
+    "authentication",
+    "session",
+    "work_identity_switch",
+    "account_recovery",
+    "revocation",
+    "audit",
+    "implementation_gate",
+    "real_capabilities"
+  ],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.admin.authentication-session"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "design_frozen"},
+    "source_document": {"const": "docs/product/admin/27-后台账号认证与工作身份契约.md"},
+    "decision": {"const": "docs/decisions/0020-运营后台账号认证与工作身份会话.md"},
+    "design_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["design_frozen", "frozen_on", "implementation_approved", "explicit_implementation_approval_required", "synthetic_only", "internal_sandbox_only"],
+      "properties": {
+        "design_frozen": {"const": true},
+        "frozen_on": {"const": "2026-07-15"},
+        "implementation_approved": {"const": true},
+        "explicit_implementation_approval_required": {"const": true},
+        "synthetic_only": {"const": true},
+        "internal_sandbox_only": {"const": true}
+      }
+    },
+    "feature_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "default_enabled", "dependencies", "deny_on_missing_dependency", "production_enable_forbidden"],
+      "properties": {
+        "id": {"const": "synthetic_admin_authentication"},
+        "default_enabled": {"const": false},
+        "dependencies": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["internal_sandbox", "synthetic_admin_multi_organization"]}
+        },
+        "deny_on_missing_dependency": {"const": true},
+        "production_enable_forbidden": {"const": true}
+      }
+    },
+    "authoritative_sources": {
+      "type": "object",
+      "required": ["internal_user", "admin_account", "organization_membership", "role_binding", "scope_binding", "invitation", "mfa_enrollment", "recovery_code", "session_family", "admin_session", "audit_event", "work_identity_is_permission_source", "client_claim_is_authoritative", "per_operator_account_store_forbidden"],
+      "properties": {
+        "work_identity_is_permission_source": {"const": false},
+        "client_claim_is_authoritative": {"const": false},
+        "per_operator_account_store_forbidden": {"const": true}
+      }
+    },
+    "internal_user": {
+      "type": "object",
+      "required": ["natural_person_unique", "product_account_separate", "direct_permission_binding_forbidden", "one_admin_account_per_internal_user", "multiple_memberships_allowed"],
+      "properties": {
+        "natural_person_unique": {"const": true},
+        "product_account_separate": {"const": true},
+        "direct_permission_binding_forbidden": {"const": true},
+        "one_admin_account_per_internal_user": {"const": true},
+        "multiple_memberships_allowed": {"const": true}
+      }
+    },
+    "admin_account": {
+      "type": "object",
+      "required": ["one_to_one_internal_user", "public_registration_allowed", "shared_account_allowed", "normalized_work_email_unique", "business_role_storage_forbidden", "states", "terminal_states", "direct_terminal_reactivation_forbidden", "rehire_requires_new_membership_and_invitation", "failed_authentication_limit", "automatic_lock_duration"],
+      "properties": {
+        "one_to_one_internal_user": {"const": true},
+        "public_registration_allowed": {"const": false},
+        "shared_account_allowed": {"const": false},
+        "normalized_work_email_unique": {"const": true},
+        "business_role_storage_forbidden": {"const": true},
+        "states": {"type": "array", "minItems": 7, "maxItems": 7, "uniqueItems": true, "items": {"enum": ["invited", "pending_activation", "active", "locked", "suspended", "departed", "revoked"]}},
+        "terminal_states": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["departed", "revoked"]}},
+        "direct_terminal_reactivation_forbidden": {"const": true},
+        "rehire_requires_new_membership_and_invitation": {"const": true},
+        "failed_authentication_limit": {"const": 5},
+        "automatic_lock_duration": {"const": "PT30M"}
+      }
+    },
+    "login_identifier": {
+      "type": "object",
+      "required": ["type", "normalization_required", "uniqueness_scope", "account_enumeration_protection_required", "personal_phone_required"],
+      "properties": {
+        "type": {"const": "work_email"},
+        "normalization_required": {"const": true},
+        "uniqueness_scope": {"const": "global"},
+        "account_enumeration_protection_required": {"const": true},
+        "personal_phone_required": {"const": false}
+      }
+    },
+    "organization_membership": {
+      "type": "object",
+      "required": ["reuses_internal_access_control", "one_organization_per_membership", "allowed_organization_types", "governance_product_account_type_forbidden", "operator_id_fixed_for_operator_membership", "states", "terminal_states", "role_binding_to_account_forbidden", "role_or_scope_change_revokes_affected_sessions"],
+      "properties": {
+        "reuses_internal_access_control": {"const": true},
+        "one_organization_per_membership": {"const": true},
+        "allowed_organization_types": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["platform", "operator"]}},
+        "governance_product_account_type_forbidden": {"const": true},
+        "operator_id_fixed_for_operator_membership": {"const": true},
+        "states": {"type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true, "items": {"enum": ["invited", "active", "suspended", "departed", "revoked"]}},
+        "terminal_states": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["departed", "revoked"]}},
+        "role_binding_to_account_forbidden": {"const": true},
+        "role_or_scope_change_revokes_affected_sessions": {"const": true}
+      }
+    },
+    "work_identity": {"type": "object"},
+    "invitation": {
+      "type": "object",
+      "required": ["public_signup_forbidden", "identifier", "single_use", "default_ttl", "token_digest_only", "resend_revokes_previous", "accept_revalidates_membership_role_scope_and_organization", "platform_inviter_explicit_scope_required", "operator_inviter_same_operator_required", "inviter_scope_expansion_forbidden", "terminal_states", "replay_forbidden"],
+      "properties": {
+        "public_signup_forbidden": {"const": true},
+        "identifier": {"const": "normalized_work_email"},
+        "single_use": {"const": true},
+        "default_ttl": {"const": "PT72H"},
+        "token_digest_only": {"const": true},
+        "resend_revokes_previous": {"const": true},
+        "accept_revalidates_membership_role_scope_and_organization": {"const": true},
+        "platform_inviter_explicit_scope_required": {"const": true},
+        "operator_inviter_same_operator_required": {"const": true},
+        "inviter_scope_expansion_forbidden": {"const": true},
+        "terminal_states": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["accepted", "expired", "revoked"]}},
+        "replay_forbidden": {"const": true}
+      }
+    },
+    "credential": {
+      "type": "object",
+      "required": ["password_minimum_length", "common_password_forbidden", "breached_password_forbidden", "password_digest_algorithm", "reversible_password_storage_forbidden", "password_reset_token_ttl", "password_reset_token_digest_only", "password_reset_revokes_all_sessions"],
+      "properties": {
+        "password_minimum_length": {"const": 14},
+        "common_password_forbidden": {"const": true},
+        "breached_password_forbidden": {"const": true},
+        "password_digest_algorithm": {"const": "Argon2id"},
+        "reversible_password_storage_forbidden": {"const": true},
+        "password_reset_token_ttl": {"const": "PT30M"},
+        "password_reset_token_digest_only": {"const": true},
+        "password_reset_revokes_all_sessions": {"const": true}
+      }
+    },
+    "mfa": {
+      "type": "object",
+      "required": ["required", "method", "sms_as_admin_mfa_forbidden", "activation_requires_verified_enrollment", "secret_encrypted_at_rest", "code_replay_forbidden", "recovery_codes_single_use", "recovery_code_digest_only", "recovery_codes_display_once", "reset_requires_independent_platform_approval", "reset_revokes_all_sessions", "reset_requires_reenrollment", "high_risk_freshness"],
+      "properties": {
+        "required": {"const": true},
+        "method": {"const": "totp"},
+        "sms_as_admin_mfa_forbidden": {"const": true},
+        "activation_requires_verified_enrollment": {"const": true},
+        "secret_encrypted_at_rest": {"const": true},
+        "code_replay_forbidden": {"const": true},
+        "recovery_codes_single_use": {"const": true},
+        "recovery_code_digest_only": {"const": true},
+        "recovery_codes_display_once": {"const": true},
+        "reset_requires_independent_platform_approval": {"const": true},
+        "reset_revokes_all_sessions": {"const": true},
+        "reset_requires_reenrollment": {"const": true},
+        "high_risk_freshness": {"const": "PT15M"}
+      }
+    },
+    "authentication": {"type": "object"},
+    "session": {
+      "type": "object",
+      "required": ["access_token_ttl", "absolute_ttl", "idle_timeout", "remember_me_allowed", "max_active_sessions_per_account", "revoke_oldest_on_limit", "refresh_token_rotation_required", "refresh_token_digest_only", "refresh_token_replay_revokes_family", "one_work_identity_per_session", "cookie_http_only", "cookie_secure", "cookie_same_site", "csrf_protection_required", "device_digest_is_authentication_factor", "every_request_reauthorization_required"],
+      "properties": {
+        "access_token_ttl": {"const": "PT15M"},
+        "absolute_ttl": {"const": "PT8H"},
+        "idle_timeout": {"const": "PT30M"},
+        "remember_me_allowed": {"const": false},
+        "max_active_sessions_per_account": {"const": 3},
+        "revoke_oldest_on_limit": {"const": true},
+        "refresh_token_rotation_required": {"const": true},
+        "refresh_token_digest_only": {"const": true},
+        "refresh_token_replay_revokes_family": {"const": true},
+        "one_work_identity_per_session": {"const": true},
+        "cookie_http_only": {"const": true},
+        "cookie_secure": {"const": true},
+        "cookie_same_site": {"const": "Strict"},
+        "csrf_protection_required": {"const": true},
+        "device_digest_is_authentication_factor": {"const": false},
+        "every_request_reauthorization_required": {"const": true}
+      }
+    },
+    "work_identity_switch": {"type": "object"},
+    "account_recovery": {"type": "object"},
+    "revocation": {"type": "object"},
+    "audit": {
+      "type": "object",
+      "required": ["append_only", "allowed_and_denied_events_required", "invitation_events_required", "account_state_events_required", "login_and_mfa_events_required", "session_events_required", "work_identity_events_required", "revocation_events_required", "secret_plaintext_forbidden"],
+      "properties": {
+        "append_only": {"const": true},
+        "allowed_and_denied_events_required": {"const": true},
+        "secret_plaintext_forbidden": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "implementation_gate": {
+      "type": "object",
+      "required": ["implementation_allowed", "explicit_approval_required", "runtime_code_forbidden_before_approval", "database_migration_forbidden_before_approval", "http_api_forbidden_before_approval", "admin_ui_forbidden_before_approval", "real_email_allowed", "real_identity_data_allowed", "real_credential_allowed", "production_enablement_allowed"],
+      "properties": {
+        "implementation_allowed": {"const": true},
+        "explicit_approval_required": {"const": true},
+        "runtime_code_forbidden_before_approval": {"const": false},
+        "database_migration_forbidden_before_approval": {"const": false},
+        "http_api_forbidden_before_approval": {"const": false},
+        "admin_ui_forbidden_before_approval": {"const": false},
+        "real_email_allowed": {"const": false},
+        "real_identity_data_allowed": {"const": false},
+        "real_credential_allowed": {"const": false},
+        "production_enablement_allowed": {"const": false}
+      }
+    },
+    "real_capabilities": {
+      "type": "object",
+      "required": ["real_admin_organization_accounts", "real_email_delivery", "real_employee_identity_data", "real_identity_provider", "production_authentication", "production_admin_enabled"],
+      "properties": {
+        "real_admin_organization_accounts": {"const": false},
+        "real_email_delivery": {"const": false},
+        "real_employee_identity_data": {"const": false},
+        "real_identity_provider": {"const": false},
+        "production_authentication": {"const": false},
+        "production_admin_enabled": {"const": false}
+      }
+    }
+  }
+}

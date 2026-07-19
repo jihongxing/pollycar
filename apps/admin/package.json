@@ -1,0 +1,31 @@
+{
+  "name": "@pollycar/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.config.ts --host 127.0.0.1",
+    "dev:sandbox": "vite --config vite.config.ts --host 127.0.0.1 --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node scripts/build-admin-environment.mjs sandbox",
+    "build:sandbox": "node scripts/build-admin-environment.mjs sandbox",
+    "build:legacy": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@pollycar/contracts": "workspace:*",
+    "@vitejs/plugin-react": "5.1.1",
+    "vite": "7.3.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/react": "latest",
+    "@testing-library/user-event": "latest",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "latest",
+    "jsdom": "latest"
+  }
+}

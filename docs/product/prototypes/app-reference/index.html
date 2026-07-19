@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PollyCar 单 App 多身份与车辆准入高保真设计参考"
+    />
+    <title>PollyCar App 设计参考</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="reference-header">
+      <div>
+        <p class="eyebrow">PollyCar · 产品设计参考</p>
+        <h1>雾白编辑夜行</h1>
+        <p class="reference-summary">
+          单一 App、多身份上下文、车辆准入闭环。所有内容均为合成数据，真实能力保持关闭。
+        </p>
+      </div>
+      <nav class="screen-nav" aria-label="原型页面">
+        <button type="button" data-screen-target="sandbox-start">启动</button>
+        <button type="button" data-screen-target="passenger-workbench">乘客</button>
+        <button type="button" data-screen-target="identity-sheet">身份切换</button>
+        <button type="button" data-screen-target="owner-apply-intro">申请说明</button>
+        <button type="button" data-screen-target="owner-profile">车主资料</button>
+        <button type="button" data-screen-target="vehicle-form">车辆资料</button>
+        <button type="button" data-screen-target="submission-review">提交确认</button>
+        <button type="button" data-screen-target="review-pending">审核中</button>
+        <button type="button" data-screen-target="review-needs-material">需补充</button>
+        <button type="button" data-screen-target="review-approved">已批准</button>
+        <button type="button" data-screen-target="owner-workbench">车主</button>
+      </nav>
+    </header>
+
+    <main class="prototype-stage">
+      <aside class="design-notes" aria-label="设计说明">
+        <p class="eyebrow">已批准方向</p>
+        <h2>克制，而不是炫耀</h2>
+        <ul>
+          <li>雾白背景与夜蓝文字承担主要层级。</li>
+          <li>琥珀只用于主行动、进度和普通待办。</li>
+          <li>乘客蓝与车主梅紫同时配合文字和图标。</li>
+          <li>审核流程使用分区、行项目和真实时间线。</li>
+          <li>所有一级页面持续显示内部沙箱。</li>
+        </ul>
+        <div class="token-row" aria-label="核心色彩">
+          <span style="--token: #111827" title="夜蓝黑"></span>
+          <span style="--token: #f7f6f2" title="暖雾白"></span>
+          <span style="--token: #c9873a" title="路灯琥珀"></span>
+          <span style="--token: #356e91" title="乘客城市蓝"></span>
+          <span style="--token: #72536f" title="车主梅紫"></span>
+        </div>
+        <p class="note">
+          通过顶部页面索引或页面内按钮体验完整流程。原型不会上传真实资料，也不会产生真实订单。
+        </p>
+      </aside>
+
+      <section class="device-shell" aria-label="PollyCar 手机原型">
+        <div class="device-status">
+          <span>09:41</span>
+          <span aria-hidden="true">● ● ◒</span>
+        </div>
+
+        <div class="screen is-active" data-screen="sandbox-start">
+          <div class="sandbox-hero">
+            <div class="brand-mark" aria-hidden="true">P</div>
+            <p class="eyebrow">PollyCar</p>
+            <h2>内部沙箱</h2>
+            <p>在真实能力启用前，先用合成账户验证完整产品体验。</p>
+          </div>
+          <section class="section-block">
+            <div class="capability-row">
+              <span class="row-icon">◇</span>
+              <div><strong>合成数据</strong><small>账户、车辆与附件均为预置内容</small></div>
+              <span class="status-chip success">可用</span>
+            </div>
+            <div class="capability-row">
+              <span class="row-icon">—</span>
+              <div><strong>真实支付与接单</strong><small>当前不处理真实资金或订单</small></div>
+              <span class="status-chip neutral">关闭</span>
+            </div>
+            <div class="capability-row">
+              <span class="row-icon">⌁</span>
+              <div><strong>真实身份与材料</strong><small>请勿输入任何真实个人信息</small></div>
+              <span class="status-chip neutral">关闭</span>
+            </div>
+          </section>
+          <div class="screen-actions">
+            <button class="primary-button" type="button" data-go="passenger-workbench">
+              进入乘客工作台
+            </button>
+            <button class="text-button" type="button">查看安全说明</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="passenger-workbench">
+          <header class="app-header">
+            <button class="identity-control passenger" type="button" data-go="identity-sheet">
+              <span class="identity-icon">人</span>
+              <span><small>当前身份</small><strong>乘客</strong></span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="screen-scroll">
+            <p class="eyebrow">晚上好</p>
+            <h2 class="page-title">一次真实行程，<br />不预设之后。</h2>
+            <section class="hero-card passenger-card">
+              <span class="status-chip info">上海试点未开放</span>
+              <h3>当前暂不能发起真实行程</h3>
+              <p>你仍可以体验身份申请、安全说明和合成审核流程。</p>
+              <button class="secondary-button" type="button" disabled>发起行程</button>
+            </section>
+            <section class="section-block">
+              <div class="section-heading">
+                <div><p class="eyebrow">下一步</p><h3>继续完善账户</h3></div>
+                <span class="task-badge">1 项</span>
+              </div>
+              <button class="task-row" type="button" data-go="owner-apply-intro">
+                <span class="row-icon owner-tone">车</span>
+                <span><strong>申请车主身份</strong><small>提交合成资料并完成车辆审核</small></span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </section>
+            <section class="section-block compact">
+              <div class="section-heading"><h3>共享入口</h3></div>
+              <div class="shared-grid">
+                <button type="button">通知</button>
+                <button type="button">安全中心</button>
+                <button type="button">隐私</button>
+              </div>
+            </section>
+          </div>
+          <nav class="bottom-nav passenger-nav" aria-label="乘客导航">
+            <button class="active" type="button">首页</button><button type="button">行程</button>
+            <button type="button">消息</button><button type="button">我的</button>
+          </nav>
+        </div>
+
+        <div class="screen overlay-screen" data-screen="identity-sheet">
+          <div class="backdrop" data-go="passenger-workbench"></div>
+          <section class="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <p class="eyebrow">合成账户 · PC-0007</p>
+            <h2>切换身份</h2>
+            <p class="supporting-copy">切换只改变工作台，不改变审核、资格和安全限制。</p>
+            <button class="identity-option current" type="button" data-go="passenger-workbench">
+              <span class="identity-icon passenger">人</span>
+              <span><strong>乘客</strong><small>当前使用 · 状态正常</small></span>
+              <span class="status-chip info">当前</span>
+            </button>
+            <button class="identity-option" type="button" data-go="review-needs-material">
+              <span class="identity-icon owner">车</span>
+              <span><strong>车主</strong><small>车辆审核需要补充材料</small></span>
+              <span class="task-badge">1</span>
+            </button>
+            <button class="text-button full" type="button" data-go="passenger-workbench">取消</button>
+          </section>
+        </div>
+
+        <div class="screen" data-screen="owner-apply-intro">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="passenger-workbench" aria-label="返回">‹</button>
+            <span class="header-title">申请车主身份</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="screen-scroll">
+            <p class="eyebrow owner-text">车主准入</p>
+            <h2 class="page-title">偶发参与，<br />从清晰审核开始。</h2>
+            <p class="lead">车主身份需要独立完成个人资料与车辆审核，不因已有乘客身份自动获得。</p>
+            <ol class="step-list">
+              <li><span>01</span><div><strong>填写车主资料</strong><small>驾驶资格与安全声明</small></div></li>
+              <li><span>02</span><div><strong>添加合成车辆</strong><small>权属、保险与预置附件</small></div></li>
+              <li><span>03</span><div><strong>等待独立审核</strong><small>结果不会自动开放真实接单</small></div></li>
+            </ol>
+            <div class="status-banner warning">
+              <span>◇</span><div><strong>仅限合成材料</strong><p>请勿输入真实姓名、证件、车牌或保险信息。</p></div>
+            </div>
+          </div>
+          <div class="fixed-footer">
+            <button class="primary-button" type="button" data-go="owner-profile">开始申请</button>
+            <button class="text-button" type="button" data-go="passenger-workbench">稍后返回乘客工作台</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="owner-profile">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="owner-apply-intro">‹</button>
+            <span class="header-title">车主资料</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="progress-line"><span style="width: 34%"></span></div>
+          <div class="screen-scroll form-scroll">
+            <p class="eyebrow">步骤 1 / 3</p>
+            <h2>确认参与资格</h2>
+            <label class="form-field"><span>合成姓名</span><input value="林屿（合成）" readonly /></label>
+            <label class="form-field"><span>驾驶资格状态</span><select><option>合成驾驶资格有效</option></select></label>
+            <label class="form-field"><span>合成联系方式</span><input value="138 0000 0007" readonly /></label>
+            <label class="check-row"><input type="checkbox" checked /><span>我理解车主为非职业、偶发参与，平台不保证订单或收入。</span></label>
+            <div class="status-banner subtle"><span>◇</span><div><strong>数据用途</strong><p>这些合成字段只用于验证审核和身份切换流程。</p></div></div>
+          </div>
+          <div class="fixed-footer horizontal">
+            <button class="secondary-button" type="button">保存草稿</button>
+            <button class="primary-button" type="button" data-go="vehicle-form">继续</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="vehicle-form">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="owner-profile">‹</button>
+            <span class="header-title">车辆资料</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="progress-line"><span style="width: 67%"></span></div>
+          <div class="screen-scroll form-scroll">
+            <p class="eyebrow">步骤 2 / 3</p>
+            <h2>添加合成车辆</h2>
+            <label class="form-field"><span>合成车辆类型</span><select><option>中大型轿车 · 示例 A</option></select></label>
+            <label class="form-field error">
+              <span>保险有效期</span><input value="2027/8" aria-invalid="true" />
+              <small>请输入完整日期，例如“2027 年 8 月 31 日”。</small>
+            </label>
+            <label class="form-field"><span>车辆使用权</span><select><option>合成稳定使用权材料</option></select></label>
+            <section class="synthetic-attachment">
+              <div class="attachment-preview" aria-hidden="true">DOC</div>
+              <div><strong>合成保险材料 A</strong><small>预置示意 · 已选择</small></div>
+              <button type="button">重选</button>
+            </section>
+            <div class="status-banner warning"><span>◇</span><div><strong>不要上传真实文件</strong><p>原型只允许选择系统预置的合成附件。</p></div></div>
+          </div>
+          <div class="fixed-footer horizontal">
+            <button class="secondary-button" type="button">保存草稿</button>
+            <button class="primary-button" type="button" data-go="submission-review">继续</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="submission-review">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="vehicle-form">‹</button>
+            <span class="header-title">提交确认</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="progress-line"><span style="width: 100%"></span></div>
+          <div class="screen-scroll">
+            <p class="eyebrow">步骤 3 / 3</p>
+            <h2>确认审核材料</h2>
+            <section class="summary-section">
+              <div class="summary-heading"><strong>车主资料</strong><button type="button" data-go="owner-profile">修改</button></div>
+              <p>林屿（合成） · 合成驾驶资格有效</p>
+            </section>
+            <section class="summary-section">
+              <div class="summary-heading"><strong>车辆资料</strong><button type="button" data-go="vehicle-form">修改</button></div>
+              <p>中大型轿车 · 示例 A</p><p>合成保险材料 A</p>
+            </section>
+            <div class="status-banner subtle"><span>⌁</span><div><strong>提交后</strong><p>系统将创建审核任务。你可以离开页面，并从通知或身份切换器恢复进度。</p></div></div>
+          </div>
+          <div class="fixed-footer">
+            <button class="primary-button" type="button" data-go="review-pending">提交审核</button>
+            <button class="text-button" type="button" data-go="vehicle-form">返回修改</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="review-pending">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="passenger-workbench">‹</button>
+            <span class="header-title">车辆审核</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="screen-scroll">
+            <div class="status-heading">
+              <span class="status-orb pending">⌁</span>
+              <p class="eyebrow">正在审核</p>
+              <h2>资料已安全提交</h2>
+              <p>你不需要停留在此页。审核状态会保留，并在发生变化时显示在通知和身份入口。</p>
+            </div>
+            <ol class="timeline">
+              <li class="complete"><span></span><div><strong>资料已提交</strong><small>2026 年 7 月 11 日 09:36</small></div></li>
+              <li class="current"><span></span><div><strong>等待审核任务认领</strong><small>等待处理</small></div></li>
+              <li><span></span><div><strong>审核决定</strong><small>尚未发生</small></div></li>
+            </ol>
+            <button class="task-row" type="button"><span class="row-icon">文</span><span><strong>查看已提交资料</strong><small>全部为合成内容</small></span><span>›</span></button>
+          </div>
+          <div class="fixed-footer">
+            <button class="secondary-button" type="button" data-go="review-needs-material">模拟状态更新</button>
+            <button class="text-button" type="button" data-go="passenger-workbench">返回乘客工作台</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="review-needs-material">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="passenger-workbench">‹</button>
+            <span class="header-title">车辆审核</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="screen-scroll">
+            <div class="status-heading aligned">
+              <div><span class="task-badge">需补充 · 1</span><h2>补充保险有效期</h2></div>
+              <p>审核员只开放了这一项。其他已提交字段保持只读。</p>
+            </div>
+            <section class="reason-list">
+              <div class="reason-icon">!</div>
+              <div><strong>保险日期不完整</strong><p>请选择系统提供的完整合成有效期，例如“2027 年 8 月 31 日”。</p></div>
+            </section>
+            <label class="form-field">
+              <span>保险有效期</span>
+              <select><option>2027 年 8 月 31 日（合成）</option></select>
+              <small>仅允许选择预置合成日期。</small>
+            </label>
+            <section class="synthetic-attachment">
+              <div class="attachment-preview" aria-hidden="true">DOC</div>
+              <div><strong>合成保险材料 B</strong><small>预置示意 · 已选择</small></div>
+              <button type="button">重选</button>
+            </section>
+            <ol class="timeline compact-timeline">
+              <li class="complete"><span></span><div><strong>首次提交</strong><small>2026 年 7 月 11 日 09:36</small></div></li>
+              <li class="current warning-node"><span></span><div><strong>要求补充材料</strong><small>2026 年 7 月 11 日 10:12</small></div></li>
+            </ol>
+          </div>
+          <div class="fixed-footer">
+            <button class="primary-button" type="button" data-go="review-approved">重新提交审核</button>
+            <button class="text-button" type="button" data-go="passenger-workbench">保存并稍后处理</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="review-approved">
+          <header class="app-header">
+            <button class="icon-button" type="button" data-go="passenger-workbench">‹</button>
+            <span class="header-title">审核结果</span>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="screen-scroll result-layout">
+            <span class="status-orb approved">✓</span>
+            <p class="eyebrow success-text">审核已批准</p>
+            <h2>车主身份已激活</h2>
+            <p>你可以进入车主工作台查看资格和车辆状态。真实接单仍保持关闭。</p>
+            <section class="summary-section">
+              <div class="summary-heading"><strong>合成车辆</strong><span class="status-chip success">有效</span></div>
+              <p>中大型轿车 · 示例 A</p>
+              <small>决定时间：2026 年 7 月 11 日 10:24</small>
+            </section>
+            <div class="status-banner warning"><span>◇</span><div><strong>真实接单未开放</strong><p>审核通过不代表上海试点、邀请或真实订单已经启用。</p></div></div>
+          </div>
+          <div class="fixed-footer">
+            <button class="primary-button owner-button" type="button" data-go="owner-workbench">切换到车主身份</button>
+            <button class="text-button" type="button" data-go="passenger-workbench">继续使用乘客身份</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="owner-workbench">
+          <header class="app-header">
+            <button class="identity-control owner" type="button" data-go="identity-sheet">
+              <span class="identity-icon">车</span>
+              <span><small>当前身份</small><strong>车主</strong></span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+            <span class="sandbox-indicator">◇ 内部沙箱</span>
+          </header>
+          <div class="screen-scroll">
+            <p class="eyebrow owner-text">车主工作台</p>
+            <h2 class="page-title">资格清楚，<br />参与才有边界。</h2>
+            <section class="hero-card owner-card">
+              <span class="status-chip success">车主资格有效</span>
+              <h3>合成车辆已通过审核</h3>
+              <p>当前可以查看资格与车辆状态，但不能接受真实订单。</p>
+            </section>
+            <section class="section-block">
+              <div class="capability-row"><span class="row-icon owner-tone">车</span><div><strong>车辆状态</strong><small>示例 A · 审核有效</small></div><span class="status-chip success">有效</span></div>
+              <div class="capability-row"><span class="row-icon">配</span><div><strong>资格与配额</strong><small>仅展示合成权威状态</small></div><span>›</span></div>
+              <div class="capability-row"><span class="row-icon">—</span><div><strong>真实接单</strong><small>上海试点与邀请尚未开放</small></div><span class="status-chip neutral">关闭</span></div>
+            </section>
+            <button class="text-button full" type="button" data-go="passenger-workbench">返回乘客身份</button>
+          </div>
+          <nav class="bottom-nav owner-nav" aria-label="车主导航">
+            <button class="active" type="button">接单</button><button type="button">行程</button>
+            <button type="button">资格</button><button type="button">我的</button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <script src="./prototype.js"></script>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.vehicle-review-decisions"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_document: "docs/product/admin/04-车辆审核工作流.md"
+decisions:
+  request_material:
+    roles: [reviewer, senior_reviewer]
+    structured_reason_required: true
+    user_message_preview_required: true
+    allowed_statuses: [under_review]
+  approve:
+    roles: [reviewer, senior_reviewer]
+    structured_reason_required: true
+    user_message_preview_required: true
+    allowed_statuses: [under_review]
+    blocked_by_open_risk: true
+  reject:
+    roles: [reviewer, senior_reviewer]
+    structured_reason_required: true
+    user_message_preview_required: true
+    appeal_policy_required: true
+    allowed_statuses: [under_review]
+  escalate:
+    roles: [reviewer, senior_reviewer]
+    structured_reason_required: true
+    user_message_preview_required: false
+    allowed_statuses: [under_review]
+    escalation_types:
+      - senior_review
+      - physical_inspection
+      - suspected_forgery
+      - vehicle_substitution
+      - duplicate_binding
+      - major_safety_risk
+  reconsider:
+    roles: [senior_reviewer]
+    original_actor_must_differ: true
+    outcomes: [uphold, overturn, return, escalate_safety]
+reason_codes:
+  material:
+    - insurance_expiry_incomplete
+    - authorization_evidence_incomplete
+    - synthetic_attachment_invalid
+  rejection:
+    - vehicle_age_exceeded
+    - vehicle_mileage_exceeded
+    - insurance_requirement_not_met
+    - authorization_remaining_insufficient
+  escalation:
+    - suspected_forgery
+    - vehicle_substitution
+    - duplicate_binding
+    - structural_safety_concern
+

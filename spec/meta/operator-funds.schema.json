@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "spec_id",
+    "language",
+    "status",
+    "production_enabled",
+    "synthetic_data_only",
+    "feature_gate",
+    "primary_operator",
+    "allocation",
+    "settlement",
+    "payout",
+    "early_settlement",
+    "fund_cases",
+    "balance_authority",
+    "database",
+    "implementation"
+  ],
+  "properties": {
+    "spec_version": { "const": "1.0" },
+    "spec_id": { "const": "pollycar.finance.operator-funds" },
+    "language": { "const": "zh-CN" },
+    "status": { "const": "approved_for_internal_sandbox" },
+    "production_enabled": { "const": false },
+    "synthetic_data_only": { "const": true },
+    "feature_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "default_enabled", "required_context", "ledger_required", "reconciliation_required", "real_operator_allowed", "real_settlement_allowed", "real_payout_allowed"],
+      "properties": {
+        "id": { "const": "synthetic_operator_funds" },
+        "default_enabled": { "const": false },
+        "required_context": { "const": "internal_sandbox" },
+        "ledger_required": { "const": true },
+        "reconciliation_required": { "const": true },
+        "real_operator_allowed": { "const": false },
+        "real_settlement_allowed": { "const": false },
+        "real_payout_allowed": { "const": false }
+      }
+    },
+    "primary_operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "uniqueness_scope", "one_active_membership_required", "trip_operator_snapshot_immutable", "historical_reassignment_allowed"],
+      "properties": {
+        "table": { "const": "pollycar_finance.driver_operator_memberships" },
+        "uniqueness_scope": { "const": ["driver_account_id", "city_code", "vehicle_id"] },
+        "one_active_membership_required": { "const": true },
+        "trip_operator_snapshot_immutable": { "const": true },
+        "historical_reassignment_allowed": { "const": false }
+      }
+    },
+    "allocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "rule_version", "platform_rate_bps", "operator_rate_bps", "driver_rate_bps", "total_rate_bps", "platform_rounding", "operator_rounding", "remainder_recipient", "amount_conservation_required", "ledger_transaction_type", "reconciliation_gate_required", "database_reconciliation_gate_required"],
+      "properties": {
+        "table": { "const": "pollycar_finance.financial_allocations" },
+        "rule_version": { "const": "allocation-15-45-40-v1" },
+        "platform_rate_bps": { "const": 1500 },
+        "operator_rate_bps": { "const": 4500 },
+        "driver_rate_bps": { "const": 4000 },
+        "total_rate_bps": { "const": 10000 },
+        "platform_rounding": { "const": "floor" },
+        "operator_rounding": { "const": "floor" },
+        "remainder_recipient": { "const": "driver" },
+        "amount_conservation_required": { "const": true },
+        "ledger_transaction_type": { "const": "ALLOCATION_15_45_40" },
+        "reconciliation_gate_required": { "const": true }
+        ,"database_reconciliation_gate_required": { "const": true }
+      }
+    },
+    "settlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["batch_table", "item_table", "amount_formula", "server_calculated_only", "allocation_once_only", "prepared_and_reviewed_by_must_differ", "reconciliation_gate_required", "database_reconciliation_gate_required"],
+      "properties": {
+        "batch_table": { "const": "pollycar_finance.operator_settlement_batches" },
+        "item_table": { "const": "pollycar_finance.operator_settlement_batch_items" },
+        "amount_formula": { "const": "operator_share_minor_plus_driver_share_minor" },
+        "server_calculated_only": { "const": true },
+        "allocation_once_only": { "const": true },
+        "prepared_and_reviewed_by_must_differ": { "const": true },
+        "reconciliation_gate_required": { "const": true }
+        ,"database_reconciliation_gate_required": { "const": true }
+      }
+    },
+    "payout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["batch_table", "item_table", "standard_cycle", "previous_business_date_allocations_only", "batch_generation_deadline", "review_and_submit_deadline", "prepared_and_reviewed_by_must_differ", "allocation_once_only", "request_transaction_type", "completed_transaction_type", "payout_fee_borne_by", "payout_fee_reduces_driver_payable", "reconciliation_gate_required", "database_reconciliation_gate_required"],
+      "properties": {
+        "batch_table": { "const": "pollycar_finance.driver_payout_batches" },
+        "item_table": { "const": "pollycar_finance.driver_payout_batch_items" },
+        "standard_cycle": { "const": "T+1" },
+        "previous_business_date_allocations_only": { "const": true },
+        "batch_generation_deadline": { "const": "12:00" },
+        "review_and_submit_deadline": { "const": "18:00" },
+        "prepared_and_reviewed_by_must_differ": { "const": true },
+        "allocation_once_only": { "const": true },
+        "request_transaction_type": { "const": "DRIVER_PAYOUT_REQUESTED" },
+        "completed_transaction_type": { "const": "DRIVER_PAYOUT_COMPLETED" },
+        "payout_fee_borne_by": { "const": "operator" },
+        "payout_fee_reduces_driver_payable": { "const": false },
+        "reconciliation_gate_required": { "const": true }
+        ,"database_reconciliation_gate_required": { "const": true }
+      }
+    },
+    "early_settlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "error_code", "wallet_created", "driver_fee_allowed"],
+      "properties": {
+        "enabled": { "const": false },
+        "error_code": { "const": "DRIVER_EARLY_SETTLEMENT_DISABLED" },
+        "wallet_created": { "const": false },
+        "driver_fee_allowed": { "const": false }
+      }
+    },
+    "fund_cases": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "types", "evidence_reference_required", "balance_source_allowed"],
+      "properties": {
+        "table": { "const": "pollycar_finance.operator_fund_cases" },
+        "types": { "const": ["settlement_blocked", "payout_overdue", "payout_unknown", "funds_insufficient", "refund_recovery"] },
+        "evidence_reference_required": { "const": true },
+        "balance_source_allowed": { "const": false }
+      }
+    },
+    "balance_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritative_source", "projection_source", "operator_balance_table_allowed", "driver_balance_table_allowed", "wallet_table_allowed", "direct_balance_mutation_allowed"],
+      "properties": {
+        "authoritative_source": { "const": "pollycar_finance.ledger_entries" },
+        "projection_source": { "const": "pollycar_finance.ledger_balance_projections" },
+        "operator_balance_table_allowed": { "const": false },
+        "driver_balance_table_allowed": { "const": false },
+        "wallet_table_allowed": { "const": false },
+        "direct_balance_mutation_allowed": { "const": false }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command_entrypoint", "security_definer_required", "runtime_direct_write_allowed", "command_function_bypass_allowed", "migration_file"],
+      "properties": {
+        "command_entrypoint": { "const": "pollycar_finance.apply_operator_funds_command(p_command jsonb)" },
+        "security_definer_required": { "const": true },
+        "runtime_direct_write_allowed": { "const": false },
+        "command_function_bypass_allowed": { "const": false },
+        "migration_file": { "const": "apps/server/migrations/0009_operator_funds_orchestration.sql" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_8_status", "service_file", "repository_file", "integration_test_file", "proof_command", "result", "app_or_api_integration_allowed", "real_data_allowed", "production_enablement_allowed"],
+      "properties": {
+        "stage_8_status": { "const": "completed" },
+        "service_file": { "const": "apps/server/src/application/synthetic-operator-funds-service.ts" },
+        "repository_file": { "const": "apps/server/src/persistence/postgres-operator-funds-repository.ts" },
+        "integration_test_file": { "const": "apps/server/src/persistence/ledger-stage8-operator-funds.integration.test.ts" },
+        "proof_command": { "const": "pnpm test:ledger:stage8" },
+        "result": { "const": "16_passed" },
+        "app_or_api_integration_allowed": { "const": false },
+        "real_data_allowed": { "const": false },
+        "production_enablement_allowed": { "const": false }
+      }
+    }
+  }
+}

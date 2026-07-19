@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "spec_id",
+    "language",
+    "status",
+    "production_enabled",
+    "synthetic_data_only",
+    "feature_gate",
+    "fact_model",
+    "matching",
+    "runs",
+    "differences",
+    "recovery",
+    "financial_action_gate",
+    "business_day_close",
+    "database_entrypoints",
+    "implementation"
+  ],
+  "properties": {
+    "spec_version": { "const": "1.0" },
+    "spec_id": { "const": "pollycar.finance.reconciliation" },
+    "language": { "const": "zh-CN" },
+    "status": { "const": "approved_for_internal_sandbox" },
+    "production_enabled": { "const": false },
+    "synthetic_data_only": { "const": true },
+    "feature_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "default_enabled",
+        "required_context",
+        "ledger_required",
+        "real_provider_statement_allowed",
+        "remote_database_allowed"
+      ],
+      "properties": {
+        "id": { "const": "synthetic_financial_reconciliation" },
+        "default_enabled": { "const": false },
+        "required_context": { "const": "internal_sandbox" },
+        "ledger_required": { "const": true },
+        "real_provider_statement_allowed": { "const": false },
+        "remote_database_allowed": { "const": false }
+      }
+    },
+    "fact_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "sources",
+        "record_types",
+        "amount_format",
+        "currency",
+        "stable_reference_required",
+        "amount_and_time_only_matching_allowed",
+        "late_provider_event_recorded"
+      ],
+      "properties": {
+        "table": { "const": "pollycar_finance.reconciliation_facts" },
+        "sources": {
+          "type": "array",
+          "const": ["business_order", "payment_aggregate", "ledger", "provider_statement"]
+        },
+        "record_types": {
+          "type": "array",
+          "const": ["payment", "refund", "settlement", "fee"]
+        },
+        "amount_format": { "const": "decimal_integer_string" },
+        "currency": { "const": "CNY" },
+        "stable_reference_required": { "const": true },
+        "amount_and_time_only_matching_allowed": { "const": false },
+        "late_provider_event_recorded": { "const": true }
+      }
+    },
+    "matching": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priority",
+        "individual_matching_required",
+        "aggregate_count_matching_required",
+        "aggregate_amount_matching_required",
+        "fee_matching_required"
+      ],
+      "properties": {
+        "priority": {
+          "type": "array",
+          "const": [
+            "provider_order_id",
+            "internal_order_id",
+            "provider_event_id",
+            "merchant_id",
+            "currency_and_amount"
+          ]
+        },
+        "individual_matching_required": { "const": true },
+        "aggregate_count_matching_required": { "const": true },
+        "aggregate_amount_matching_required": { "const": true },
+        "fee_matching_required": { "const": true }
+      }
+    },
+    "runs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "states",
+        "source_file_digest_unique",
+        "duplicate_file_behavior",
+        "close_requires_state",
+        "close_requires_zero_difference_count",
+        "close_requires_zero_difference_amount",
+        "close_requires_four_sources",
+        "statement_signature_required",
+        "control_totals_required"
+      ],
+      "properties": {
+        "table": { "const": "pollycar_finance.reconciliation_runs" },
+        "states": {
+          "type": "array",
+          "const": ["created", "validating", "matching", "differences_found", "balanced", "failed", "closed"]
+        },
+        "source_file_digest_unique": { "const": true },
+        "duplicate_file_behavior": { "const": "return_original_run" },
+        "close_requires_state": { "const": "balanced" },
+        "close_requires_zero_difference_count": { "const": true },
+        "close_requires_zero_difference_amount": { "const": true },
+        "close_requires_four_sources": { "const": true },
+        "statement_signature_required": { "const": true },
+        "control_totals_required": { "const": true }
+      }
+    },
+    "differences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "states",
+        "types",
+        "nonzero_difference_auto_writeoff_allowed",
+        "unresolved_difference_persisted",
+        "resolution_reason_required",
+        "resolution_evidence_reference_required"
+      ],
+      "properties": {
+        "table": { "const": "pollycar_finance.reconciliation_items" },
+        "states": { "type": "array", "const": ["open", "resolved"] },
+        "types": { "type": "array", "minItems": 12, "uniqueItems": true, "items": { "type": "string" } },
+        "nonzero_difference_auto_writeoff_allowed": { "const": false },
+        "unresolved_difference_persisted": { "const": true },
+        "resolution_reason_required": { "const": true },
+        "resolution_evidence_reference_required": { "const": true }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "action_types",
+        "states",
+        "retry_same_original_request_only",
+        "blind_second_charge_allowed",
+        "original_financial_record_mutation_allowed",
+        "completed_recovery_automatically_clears_difference",
+        "difference_resolution_requires_independent_review"
+      ],
+      "properties": {
+        "table": { "const": "pollycar_finance.reconciliation_recovery_actions" },
+        "action_types": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "type": "string" } },
+        "states": { "type": "array", "const": ["pending", "failed", "completed"] },
+        "retry_same_original_request_only": { "const": true },
+        "blind_second_charge_allowed": { "const": false },
+        "original_financial_record_mutation_allowed": { "const": false },
+        "completed_recovery_automatically_clears_difference": { "const": false }
+        ,
+        "difference_resolution_requires_independent_review": { "const": true }
+      }
+    },
+    "financial_action_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "function",
+        "actions",
+        "requires_closed_run",
+        "nonzero_difference_blocks_all_actions",
+        "unresolved_zero_amount_case_blocks_all_actions",
+        "direct_table_bypass_allowed"
+      ],
+      "properties": {
+        "function": { "const": "pollycar_finance.assert_reconciliation_action_allowed(p_run_id text, p_action text)" },
+        "actions": { "type": "array", "const": ["settlement", "payout", "close"] },
+        "requires_closed_run": { "const": true },
+        "nonzero_difference_blocks_all_actions": { "const": true },
+        "unresolved_zero_amount_case_blocks_all_actions": { "const": true },
+        "direct_table_bypass_allowed": { "const": false }
+      }
+    },
+    "business_day_close": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "timezone",
+        "intraday_scan_interval_minutes",
+        "provisional_check_deadline",
+        "formal_close_target",
+        "prepared_and_reviewed_by_must_differ",
+        "all_runs_must_be_closed",
+        "missing_statement_blocks_close",
+        "invalid_statement_blocks_close",
+        "nonzero_difference_blocks_close"
+      ],
+      "properties": {
+        "table": { "const": "pollycar_finance.financial_business_days" },
+        "timezone": { "const": "Asia/Shanghai" },
+        "intraday_scan_interval_minutes": { "const": 15 },
+        "provisional_check_deadline": { "const": "06:00" },
+        "formal_close_target": { "const": "12:00" },
+        "prepared_and_reviewed_by_must_differ": { "const": true },
+        "all_runs_must_be_closed": { "const": true },
+        "missing_statement_blocks_close": { "const": true },
+        "invalid_statement_blocks_close": { "const": true },
+        "nonzero_difference_blocks_close": { "const": true }
+      }
+    },
+    "database_entrypoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_evaluation",
+        "close_run",
+        "assert_action",
+        "close_business_date",
+        "record_recovery",
+        "resolve_difference",
+        "security_definer_required",
+        "public_execute_revoked",
+        "runtime_direct_write_allowed"
+      ],
+      "properties": {
+        "record_evaluation": { "type": "string" },
+        "close_run": { "type": "string" },
+        "assert_action": { "type": "string" },
+        "close_business_date": { "type": "string" },
+        "record_recovery": { "type": "string" },
+        "resolve_difference": { "type": "string" },
+        "security_definer_required": { "const": true },
+        "public_execute_revoked": { "const": true },
+        "runtime_direct_write_allowed": { "const": false }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_7_status",
+        "migration_file",
+        "service_file",
+        "repository_file",
+        "unit_test_file",
+        "integration_test_file",
+        "runner_file",
+        "proof_command",
+        "result",
+        "stage_8_synthetic_implementation_allowed",
+        "real_settlement_allowed",
+        "real_payout_allowed",
+        "production_enablement_allowed"
+      ],
+      "properties": {
+        "stage_7_status": { "const": "completed" },
+        "migration_file": { "const": "apps/server/migrations/0008_financial_reconciliation.sql" },
+        "service_file": { "const": "apps/server/src/application/financial-reconciliation-service.ts" },
+        "repository_file": { "const": "apps/server/src/persistence/postgres-reconciliation-repository.ts" },
+        "unit_test_file": { "const": "apps/server/src/application/financial-reconciliation-service.test.ts" },
+        "integration_test_file": { "const": "apps/server/src/persistence/ledger-stage7-reconciliation.integration.test.ts" },
+        "runner_file": { "const": "scripts/test/run-ledger-stage7-reconciliation.ps1" },
+        "proof_command": { "const": "pnpm test:ledger:stage7" },
+        "result": { "const": "12_passed" },
+        "stage_8_synthetic_implementation_allowed": { "const": true },
+        "real_settlement_allowed": { "const": false },
+        "real_payout_allowed": { "const": false },
+        "production_enablement_allowed": { "const": false }
+      }
+    }
+  }
+}

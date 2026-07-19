@@ -1,0 +1,360 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-product-experience-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/29-运营后台产品化高保真方案.md"
+
+scenarios:
+  - id: "ADMIN-UX-001"
+    category: entry
+    title: "密码验证通过但 MFA 未完成时不进入工作台"
+    expected: "totp_required"
+  - id: "ADMIN-UX-002"
+    category: entry
+    title: "登录失败不披露工作邮箱是否存在"
+    expected: "generic_authentication_failure"
+  - id: "ADMIN-UX-003"
+    category: entry
+    title: "邀请激活页不能修改组织和初始角色"
+    expected: "invitation_summary_read_only"
+  - id: "ADMIN-UX-004"
+    category: entry
+    title: "恢复码只显示一次并要求确认保存"
+    expected: "recovery_codes_display_once"
+  - id: "ADMIN-UX-005"
+    category: identity
+    title: "多个成员关系按平台和运营公司分组"
+    expected: "grouped_work_identities"
+  - id: "ADMIN-UX-006"
+    category: identity
+    title: "选择工作身份后服务端签发单身份会话"
+    expected: "single_identity_session"
+  - id: "ADMIN-UX-007"
+    category: identity
+    title: "运营公司身份不显示其他运营公司选择器"
+    expected: "fixed_operator_context"
+  - id: "ADMIN-UX-008"
+    category: navigation
+    title: "前端只渲染服务端授权菜单"
+    expected: "server_authorized_navigation"
+  - id: "ADMIN-UX-009"
+    category: navigation
+    title: "无权菜单完全隐藏"
+    expected: "unauthorized_menu_hidden"
+  - id: "ADMIN-UX-010"
+    category: navigation
+    title: "无权路由显示统一无权限页"
+    expected: "forbidden_page"
+  - id: "ADMIN-UX-011"
+    category: navigation
+    title: "资源越权不披露资源是否存在"
+    expected: "resource_existence_hidden"
+  - id: "ADMIN-UX-012"
+    category: navigation
+    title: "角色或范围变化后旧导航清单失效"
+    expected: "stale_navigation_rejected"
+  - id: "ADMIN-UX-013"
+    category: shell
+    title: "顶栏持续显示工作身份组织和范围"
+    expected: "persistent_context"
+  - id: "ADMIN-UX-014"
+    category: shell
+    title: "平台范围切换只能缩小授权范围"
+    expected: "scope_narrowing_only"
+  - id: "ADMIN-UX-015"
+    category: shell
+    title: "角色工作台只展示相关待办和风险"
+    expected: "role_specific_workbench"
+  - id: "ADMIN-UX-016"
+    category: pagination
+    title: "列表默认每页二十五条且最大一百条"
+    expected: "page_size_policy"
+  - id: "ADMIN-UX-017"
+    category: pagination
+    title: "前后游标不能同时提交"
+    expected: "cursor_direction_exclusive"
+  - id: "ADMIN-UX-018"
+    category: pagination
+    title: "游标签名并绑定查询和组织范围摘要"
+    expected: "signed_bound_cursor"
+  - id: "ADMIN-UX-019"
+    category: pagination
+    title: "搜索筛选或排序变化后清空旧游标"
+    expected: "cursor_reset_on_query_change"
+  - id: "ADMIN-UX-020"
+    category: pagination
+    title: "排序包含稳定唯一键"
+    expected: "stable_unique_sort"
+  - id: "ADMIN-UX-021"
+    category: pagination
+    title: "返回列表恢复查询游标和滚动位置"
+    expected: "list_state_restored"
+  - id: "ADMIN-UX-022"
+    category: pagination
+    title: "数据变化导致游标失效时从首屏恢复"
+    expected: "cursor_expiry_recovery"
+  - id: "ADMIN-UX-023"
+    category: pagination
+    title: "高敏感列表默认不返回精确总数"
+    expected: "approximate_or_no_total"
+  - id: "ADMIN-UX-024"
+    category: pagination
+    title: "批量选择不能选择全部查询结果"
+    expected: "explicit_rows_only"
+  - id: "ADMIN-UX-025"
+    category: language
+    title: "普通页面不显示门禁和架构术语"
+    expected: "business_language_only"
+  - id: "ADMIN-UX-026"
+    category: language
+    title: "未知结果表达为结果确认中"
+    expected: "recoverable_unknown_result_copy"
+  - id: "ADMIN-UX-027"
+    category: responsive
+    title: "一千四百四十像素和一千零二十四像素无页面级横向溢出"
+    expected: "desktop_no_overflow"
+  - id: "ADMIN-UX-028"
+    category: responsive
+    title: "登录激活身份和异常页在三百九十像素可用"
+    expected: "entry_mobile_usable"
+  - id: "ADMIN-UX-029"
+    category: accessibility
+    title: "所有交互支持键盘和可见焦点"
+    expected: "keyboard_focus_supported"
+  - id: "ADMIN-UX-030"
+    category: accessibility
+    title: "页面缩放二百百分比不产生页面级横向溢出"
+    expected: "zoom_no_page_overflow"
+  - id: "ADMIN-UX-031"
+    category: recovery
+    title: "会话过期提供重新登录路径"
+    expected: "session_reauthentication"
+  - id: "ADMIN-UX-032"
+    category: recovery
+    title: "结果确认中只能查询原请求不能重复提交"
+    expected: "original_request_recovery"
+  - id: "ADMIN-UX-033"
+    category: operations_task
+    title: "负责人只能将待分派任务分派为处理中"
+    expected: "assign_transition_confirmed"
+  - id: "ADMIN-UX-034"
+    category: operations_task
+    title: "经办角色只能将处理中或受阻任务提交复核"
+    expected: "process_transition_confirmed"
+  - id: "ADMIN-UX-035"
+    category: operations_task
+    title: "负责人只能将待复核任务复核为已完成"
+    expected: "review_transition_confirmed"
+  - id: "ADMIN-UX-036"
+    category: operations_task
+    title: "越权角色和非法状态转换均由服务端拒绝"
+    expected: "server_action_reauthorization"
+  - id: "ADMIN-UX-037"
+    category: operations_task
+    title: "过期资源版本不能覆盖其他人员的更新"
+    expected: "resource_version_conflict"
+  - id: "ADMIN-UX-038"
+    category: operations_task
+    title: "同一幂等键重试返回原操作结果且不重复追加审计"
+    expected: "idempotent_operation_replay"
+  - id: "ADMIN-UX-039"
+    category: operations_task
+    title: "每次成功操作追加角色、状态变化、时间和备注审计"
+    expected: "append_only_operation_audit"
+  - id: "ADMIN-UX-040"
+    category: operator_management
+    title: "运营公司菜单仅在服务端闭环门禁开启后可点击"
+    expected: "operator_domain_server_availability"
+  - id: "ADMIN-UX-041"
+    category: operator_management
+    title: "运营公司名录支持摘要搜索筛选排序签名游标和返回恢复"
+    expected: "operator_directory_complete_list"
+  - id: "ADMIN-UX-042"
+    category: operator_management
+    title: "运营公司详情按 Bearer 工作身份和组织范围重新授权"
+    expected: "operator_detail_scope_reauthorization"
+  - id: "ADMIN-UX-043"
+    category: operator_management
+    title: "平台运营负责人可将正常运营主体限制为受限"
+    expected: "operator_restrict_confirmed"
+  - id: "ADMIN-UX-044"
+    category: operator_management
+    title: "平台运营负责人可将受限主体恢复为正常运营"
+    expected: "operator_reactivate_confirmed"
+  - id: "ADMIN-UX-045"
+    category: operator_management
+    title: "运营公司负责人仅查看本主体且审计角色保持只读"
+    expected: "operator_role_scope_and_read_only"
+  - id: "ADMIN-UX-046"
+    category: operator_management
+    title: "主体操作执行版本幂等确认中和追加式审计控制"
+    expected: "operator_action_control_closure"
+  - id: "ADMIN-UX-047"
+    category: driver_vehicle
+    title: "车主与车辆菜单仅在独立服务端闭环门禁开启后可点击"
+    expected: "fleet_domain_server_availability"
+  - id: "ADMIN-UX-048"
+    category: driver_vehicle
+    title: "车主和车辆名录均支持摘要搜索筛选排序签名游标和返回恢复"
+    expected: "fleet_directories_complete_lists"
+  - id: "ADMIN-UX-049"
+    category: driver_vehicle
+    title: "车主与车辆详情复用现有三百六十度视图并按组织范围重新授权"
+    expected: "fleet_detail_scope_reauthorization"
+  - id: "ADMIN-UX-050"
+    category: driver_vehicle
+    title: "审核员允许动作等于角色权限与现有审核任务状态的交集"
+    expected: "fleet_review_role_state_intersection"
+  - id: "ADMIN-UX-051"
+    category: driver_vehicle
+    title: "运营公司运力专员仅查看本主体且审计角色保持只读"
+    expected: "fleet_operator_scope_and_auditor_read_only"
+  - id: "ADMIN-UX-052"
+    category: driver_vehicle
+    title: "车辆审核操作执行双版本幂等确认中和追加式审计控制"
+    expected: "fleet_review_action_control_closure"
+  - id: "ADMIN-UX-053"
+    category: trip_operations
+    title: "行程运营菜单仅在独立服务端闭环门禁开启后可点击"
+    expected: "trip_domain_server_availability"
+  - id: "ADMIN-UX-054"
+    category: trip_operations
+    title: "行程名录支持服务端摘要搜索双状态筛选排序签名游标和返回恢复"
+    expected: "trip_directory_complete_list"
+  - id: "ADMIN-UX-055"
+    category: trip_operations
+    title: "行程详情复用权威三百六十度视图并按工作身份和组织范围重新授权"
+    expected: "trip_detail_scope_reauthorization"
+  - id: "ADMIN-UX-056"
+    category: trip_operations
+    title: "行程操作等于角色权限与现有运营任务状态的交集且不直接改写行程"
+    expected: "trip_operation_role_state_intersection"
+  - id: "ADMIN-UX-057"
+    category: trip_operations
+    title: "运营公司仅查看本主体且客服安全和审计角色保持只读"
+    expected: "trip_role_scope_and_read_only"
+  - id: "ADMIN-UX-058"
+    category: trip_operations
+    title: "行程操作执行任务版本行程版本幂等确认中和追加式审计控制"
+    expected: "trip_action_control_closure"
+  - id: "ADMIN-UX-059"
+    category: support_safety
+    title: "客服与安全菜单仅在案件和行程详情双门禁开启后可点击"
+    expected: "case_domain_server_availability"
+  - id: "ADMIN-UX-060"
+    category: support_safety
+    title: "案件名录支持服务端摘要搜索类型状态筛选排序签名游标和返回恢复"
+    expected: "case_directory_complete_list"
+  - id: "ADMIN-UX-061"
+    category: support_safety
+    title: "客服和安全详情复用现有案件状态机与关联行程三百六十度视图"
+    expected: "case_detail_existing_kernel_reuse"
+  - id: "ADMIN-UX-062"
+    category: support_safety
+    title: "客服安全审计和运营公司角色按组织范围看到不同案件与操作"
+    expected: "case_role_scope_and_action_intersection"
+  - id: "ADMIN-UX-063"
+    category: support_safety
+    title: "安全恢复独立复核和证据授权继续执行阻断职责分离和时效约束"
+    expected: "safety_review_and_evidence_controls"
+  - id: "ADMIN-UX-064"
+    category: support_safety
+    title: "案件操作执行资源版本幂等确认中结果和追加式审计控制"
+    expected: "case_action_control_closure"
+  - id: "ADMIN-UX-065"
+    category: finance_operations
+    title: "财务与对账菜单仅在统一认证权限和财务门禁开启后可点击"
+    expected: "finance_domain_server_availability"
+  - id: "ADMIN-UX-066"
+    category: finance_operations
+    title: "财务名录提供服务端摘要搜索类型状态阻断筛选排序签名游标和返回恢复"
+    expected: "finance_directory_complete_list"
+  - id: "ADMIN-UX-067"
+    category: finance_operations
+    title: "财务详情复用结算付款退款对账关账和账本权威内核且金额只读"
+    expected: "finance_detail_existing_kernel_reuse"
+  - id: "ADMIN-UX-068"
+    category: finance_operations
+    title: "平台财务运营公司财务和审计角色按组织范围看到不同记录与操作"
+    expected: "finance_role_scope_and_action_intersection"
+  - id: "ADMIN-UX-069"
+    category: finance_operations
+    title: "财务经办与独立复核保持职责分离且对账解决必须引用证据"
+    expected: "finance_separation_of_duties"
+  - id: "ADMIN-UX-070"
+    category: finance_operations
+    title: "财务操作执行资源版本幂等确认中结果和追加式审计控制且真实资金关闭"
+    expected: "finance_action_control_closure"
+  - id: "ADMIN-UX-071"
+    category: executive_dashboard
+    title: "高层驾驶舱仅在统一认证权限和全部依赖门禁开启后可点击"
+    expected: "executive_domain_server_availability"
+  - id: "ADMIN-UX-072"
+    category: executive_dashboard
+    title: "驾驶舱名录提供经营摘要搜索类型职责域阻断筛选排序签名游标和返回恢复"
+    expected: "executive_directory_complete_list"
+  - id: "ADMIN-UX-073"
+    category: executive_dashboard
+    title: "待决导出主体健康和指标口径四类详情复用阶段五权威聚合与治理内核"
+    expected: "executive_detail_existing_kernel_reuse"
+  - id: "ADMIN-UX-074"
+    category: executive_dashboard
+    title: "平台角色与运营主体负责人按组织范围和职责看到不同记录与治理动作"
+    expected: "executive_role_scope_and_action_intersection"
+  - id: "ADMIN-UX-075"
+    category: executive_dashboard
+    title: "受控导出执行隐私与职责域双人复核申请人单次下载和到期删除"
+    expected: "executive_export_separation_of_duties"
+  - id: "ADMIN-UX-076"
+    category: executive_dashboard
+    title: "治理意见和导出操作执行资源版本幂等确认结果追加审计且禁止直接业务批准"
+    expected: "executive_action_control_closure"
+  - id: "ADMIN-UX-077"
+    category: audit_system
+    title: "审计与系统仅在统一认证权限和独立审计门禁开启后可点击"
+    expected: "audit_domain_server_availability"
+  - id: "ADMIN-UX-078"
+    category: audit_system
+    title: "审计名录提供摘要搜索类型业务域结果筛选排序签名游标和返回恢复"
+    expected: "audit_directory_complete_list"
+  - id: "ADMIN-UX-079"
+    category: audit_system
+    title: "审计详情读取统一事件仓的脱敏元数据关联编号和完整性摘要而不复制业务数据"
+    expected: "audit_detail_unified_event_source"
+  - id: "ADMIN-UX-080"
+    category: audit_system
+    title: "平台审计和运营公司审计按组织范围查看不同事件且审计角色保持只读"
+    expected: "audit_role_scope_and_read_only"
+  - id: "ADMIN-UX-081"
+    category: audit_system
+    title: "技术运维可创建分派记录解决和重新打开调查但不能改变领域业务状态"
+    expected: "audit_investigation_controlled_operations"
+  - id: "ADMIN-UX-082"
+    category: audit_system
+    title: "调查操作执行资源版本幂等确认结果和追加式审计且原始事件不可修改删除"
+    expected: "audit_action_integrity_closure"
+  - id: "ADMIN-UX-083"
+    category: data_reports
+    title: "数据与报表仅在统一审计和独立报表门禁开启后可点击"
+    expected: "data_reports_server_availability"
+  - id: "ADMIN-UX-084"
+    category: data_reports
+    title: "报表名录提供摘要搜索业务域状态筛选排序签名游标和返回恢复"
+    expected: "data_reports_complete_directory"
+  - id: "ADMIN-UX-085"
+    category: data_reports
+    title: "四类报表详情仅展示组织范围内去标识聚合指标和数据边界"
+    expected: "data_reports_aggregate_detail"
+  - id: "ADMIN-UX-086"
+    category: data_reports
+    title: "平台角色和运营公司角色按职责域与组织范围看到不同刷新能力"
+    expected: "data_reports_role_scope_intersection"
+  - id: "ADMIN-UX-087"
+    category: data_reports
+    title: "刷新报表执行资源版本幂等确认结果和追加式统一审计"
+    expected: "data_reports_refresh_control"
+  - id: "ADMIN-UX-088"
+    category: data_reports
+    title: "报表不开放人员级数据真实数据和导出能力且审计角色保持只读"
+    expected: "data_reports_boundary_and_read_only"

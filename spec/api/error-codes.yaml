@@ -1,0 +1,1936 @@
+spec_version: "1.0"
+spec_id: "pollycar.api.error-codes"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_document: "docs/12-error-model.md"
+
+response_schema:
+  required_fields: ["code", "message", "request_id", "retryable", "details"]
+
+errors:
+  - id: "TRIP_PICKUP_TIME_INVALID"
+    http_status: 422
+    message: "预约时间无效"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "select_time"
+  - id: "TRIP_PICKUP_TIME_IN_PAST"
+    http_status: 422
+    message: "选择的上车时间已经过去"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_time"
+  - id: "TRIP_PICKUP_TIME_TOO_SOON"
+    http_status: 422
+    message: "预约时间距离现在太近，请选择尽快出发"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "select_immediate"
+  - id: "TRIP_PICKUP_TIME_TOO_FAR"
+    http_status: 422
+    message: "最多可预约未来三天"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "select_time"
+  - id: "TRIP_PICKUP_TIME_UNAVAILABLE"
+    http_status: 422
+    message: "该时间暂不可预约"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_time"
+  - id: "TRIP_SCHEDULE_CONFLICT"
+    http_status: 409
+    message: "该时间与车主已有行程冲突"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_other_trip"
+  - id: "TRIP_SCHEDULE_CHANGED"
+    http_status: 409
+    message: "预约信息已更新，请确认最新时间"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_state"
+  - id: "TRIP_SCHEDULE_RESULT_UNKNOWN"
+    http_status: 503
+    message: "预约结果尚未确认，请勿重复提交"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_state"
+  - id: "TRIP_SCHEDULE_NOT_READY"
+    http_status: 422
+    message: "尚未进入预约履约准备时间"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait"
+  - id: "PHONE_NUMBER_INVALID"
+    http_status: 422
+    message: "请输入有效手机号"
+    retryable: false
+    disclosure: "public"
+    audit: "none"
+    client_action: "correct_field"
+  - id: "PHONE_AUTH_CONSENT_REQUIRED"
+    http_status: 422
+    message: "请先阅读并同意相关协议"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "accept_consent"
+  - id: "PHONE_CODE_RATE_LIMITED"
+    http_status: 429
+    message: "请求过于频繁，请稍后再试"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "wait"
+  - id: "PHONE_CODE_DELIVERY_UNKNOWN"
+    http_status: 503
+    message: "验证码发送结果暂未确认"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "wait"
+  - id: "PHONE_CODE_INVALID"
+    http_status: 422
+    message: "验证码不正确"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "correct_field"
+  - id: "PHONE_CODE_EXPIRED"
+    http_status: 410
+    message: "验证码已过期，请重新获取"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_new_code"
+  - id: "PHONE_CODE_LOCKED"
+    http_status: 423
+    message: "错误次数过多，请重新获取验证码"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "request_new_code"
+  - id: "PHONE_CODE_REPLAYED"
+    http_status: 409
+    message: "验证码已使用，请重新获取"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "request_new_code"
+  - id: "REAL_PHONE_DATA_FORBIDDEN"
+    http_status: 403
+    message: "当前环境不接收真实手机号"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "stop"
+  - id: "REFRESH_TOKEN_REPLAYED"
+    http_status: 401
+    message: "会话已失效，请重新登录"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "reauthenticate"
+  - id: "REFRESH_SESSION_EXPIRED"
+    http_status: 401
+    message: "登录已过期，请重新登录"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "reauthenticate"
+  - id: "CHAT_NOT_FOUND"
+    http_status: 404
+    message: "行程会话不存在"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "return_to_trip"
+  - id: "DATA_RETENTION_ACTIVE"
+    http_status: 409
+    message: "数据仍在必要保留期内"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "view_retention_date"
+  - id: "DATA_DELETION_BLOCKED_BY_HOLD"
+    http_status: 409
+    message: "安全证据保留期间暂不能删除"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "view_evidence_hold"
+  - id: "TRIP_RATING_NOT_ALLOWED"
+    http_status: 409
+    message: "当前行程不能评价"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_trip"
+  - id: "VALIDATION_INVALID_REQUEST"
+    http_status: 400
+    message: "请求内容无效"
+    retryable: false
+    disclosure: "public"
+    audit: "none"
+    client_action: "correct_request"
+  - id: "VALIDATION_INVALID_FIELD"
+    http_status: 400
+    message: "部分字段不符合要求"
+    retryable: false
+    disclosure: "public"
+    audit: "none"
+    client_action: "correct_field"
+  - id: "AUTHENTICATION_REQUIRED"
+    http_status: 401
+    message: "请先完成身份认证"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "authenticate"
+  - id: "AUTHENTICATION_INVALID_TOKEN"
+    http_status: 401
+    message: "当前登录状态已失效"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "reauthenticate"
+  - id: "AUTHORIZATION_DENIED"
+    http_status: 403
+    message: "当前操作不可用"
+    retryable: false
+    disclosure: "generic"
+    audit: "sensitive"
+    client_action: "stop"
+  - id: "SESSION_EXPIRED"
+    http_status: 401
+    message: "内部会话已过期，请重新连接"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "create_new_session"
+  - id: "SESSION_REVOKED"
+    http_status: 401
+    message: "内部会话已撤销，请重新连接"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "create_new_session"
+  - id: "SESSION_IDENTITY_NOT_AVAILABLE"
+    http_status: 403
+    message: "当前账户尚不能使用该身份"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "complete_driver_eligibility"
+  - id: "SESSION_IDENTITY_MISMATCH"
+    http_status: 403
+    message: "请先切换到对应身份后再执行此操作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "switch_active_identity"
+  - id: "AUTHORIZATION_SCOPE_REQUIRED"
+    http_status: 403
+    message: "当前操作需要关联授权范围"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "request_scope"
+  - id: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+    http_status: 403
+    message: "该操作需要由独立人员处理"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "assign_independent_reviewer"
+  - id: "ELIGIBILITY_INVALID_STATE"
+    http_status: 409
+    message: "当前资格状态不允许执行该操作"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_state"
+  - id: "ELIGIBILITY_REVIEW_REQUIRED"
+    http_status: 422
+    message: "当前资格需要完成审核"
+    retryable: false
+    disclosure: "limited"
+    audit: "sensitive"
+    client_action: "wait_or_submit_material"
+  - id: "ELIGIBILITY_SUSPENDED"
+    http_status: 403
+    message: "弹性参与资格当前已暂停"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "view_appeal_options"
+  - id: "ELIGIBILITY_REVOKED"
+    http_status: 403
+    message: "弹性参与资格当前不可用"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "view_appeal_options"
+  - id: "ELIGIBILITY_EXPIRED"
+    http_status: 409
+    message: "弹性参与资格已到期"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "reapply_if_allowed"
+  - id: "ELIGIBILITY_ACTIVATION_DAYS_EXCEEDED"
+    http_status: 422
+    message: "当前周期暂不可继续启用弹性参与资格"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_until_available"
+  - id: "ELIGIBILITY_PAYMENT_REQUIRED"
+    http_status: 422
+    message: "请先完成资格费用支付"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "complete_payment"
+  - id: "ELIGIBILITY_APPEAL_NOT_ALLOWED"
+    http_status: 422
+    message: "当前决定不满足申诉条件"
+    retryable: false
+    disclosure: "limited"
+    audit: "sensitive"
+    client_action: "stop"
+  - id: "ELIGIBILITY_CONCURRENT_MODIFICATION"
+    http_status: 409
+    message: "资格状态已发生变化，请刷新后重试"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_and_retry"
+  - id: "QUOTA_DRIVER_INELIGIBLE"
+    http_status: 403
+    message: "当前车主资格不可接单"
+    retryable: false
+    disclosure: "limited"
+    audit: "sensitive"
+    client_action: "view_eligibility"
+  - id: "QUOTA_VEHICLE_INELIGIBLE"
+    http_status: 403
+    message: "当前车辆资格不可接单"
+    retryable: false
+    disclosure: "limited"
+    audit: "sensitive"
+    client_action: "update_vehicle_documents"
+  - id: "QUOTA_SAFETY_BLOCKED"
+    http_status: 403
+    message: "当前暂不可接受新行程"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "contact_support"
+  - id: "QUOTA_NOT_WAITING"
+    http_status: 422
+    message: "请先进入有效等单状态"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "enter_waiting_state"
+  - id: "QUOTA_24H_EXCEEDED"
+    http_status: 422
+    message: "已达到连续 24 小时接单上限"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_until_window_releases"
+  - id: "QUOTA_7D_EXCEEDED"
+    http_status: 422
+    message: "已达到连续 7 日接单上限"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_until_window_releases"
+  - id: "QUOTA_30D_EXCEEDED"
+    http_status: 422
+    message: "已达到连续 30 日接单上限"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_until_window_releases"
+  - id: "QUOTA_ORDER_ALREADY_ACCEPTED"
+    http_status: 409
+    message: "该行程已被其他车主接受"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "return_to_available_trips"
+  - id: "QUOTA_CONCURRENT_MODIFICATION"
+    http_status: 409
+    message: "接单状态发生变化，请重新尝试"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "retry_with_same_idempotency_key"
+  - id: "PAYMENT_REQUIRED"
+    http_status: 422
+    message: "需要完成支付后才能继续"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "complete_payment"
+  - id: "PAYMENT_DECLINED"
+    http_status: 422
+    message: "支付未完成，请更换方式或稍后重试"
+    retryable: false
+    disclosure: "limited"
+    audit: "sensitive"
+    client_action: "choose_payment_method"
+  - id: "PAYMENT_PROVIDER_UNAVAILABLE"
+    http_status: 503
+    message: "支付服务暂时不可用"
+    retryable: true
+    disclosure: "generic"
+    audit: "sensitive"
+    client_action: "retry_after"
+  - id: "PAYMENT_PROVIDER_TIMEOUT"
+    http_status: 504
+    message: "支付结果确认超时"
+    retryable: true
+    disclosure: "generic"
+    audit: "sensitive"
+    client_action: "query_status_before_retry"
+  - id: "PAYMENT_DUPLICATE_REQUEST"
+    http_status: 409
+    message: "该支付请求已处理"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "query_status"
+  - id: "PAYMENT_REFUND_NOT_ALLOWED"
+    http_status: 422
+    message: "当前支付不满足退款条件"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "view_refund_policy"
+  - id: "TRIP_INVALID_STATE"
+    http_status: 409
+    message: "当前行程状态不允许执行该操作"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_trip"
+  - id: "TRIP_ALREADY_ASSIGNED"
+    http_status: 409
+    message: "该行程已由其他车主接受"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "remove_offer"
+  - id: "DRIVER_ALREADY_BUSY"
+    http_status: 409
+    message: "你已有正在进行的即时行程"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "open_active_trip"
+  - id: "TRIP_OFFER_EXPIRED"
+    http_status: 409
+    message: "接单邀请已过期或撤回"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "remove_offer"
+  - id: "DRIVER_LOCATION_STALE"
+    http_status: 409
+    message: "车主位置已过期，请重新定位上线"
+    retryable: true
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "refresh_location"
+  - id: "TRIP_ACCEPT_RESULT_UNKNOWN"
+    http_status: 503
+    message: "接单结果尚未确认，请使用原请求标识查询或重试"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "retry_same_idempotency_key"
+  - id: "TRIP_NOT_FOUND"
+    http_status: 404
+    message: "未找到该行程"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "return_to_list"
+  - id: "TRIP_TIMEOUT_NOT_REACHED"
+    http_status: 422
+    message: "尚未达到合成超时边界"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_or_refresh"
+  - id: "SAFETY_ACTION_BLOCKED"
+    http_status: 403
+    message: "出于安全原因，当前操作不可用"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "contact_support"
+  - id: "SAFETY_CASE_SCOPE_REQUIRED"
+    http_status: 403
+    message: "该操作需要关联安全案件"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "link_safety_case"
+  - id: "CONFLICT_IDEMPOTENCY_KEY_REUSED"
+    http_status: 409
+    message: "请求标识已被用于其他操作"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "create_new_request_key"
+  - id: "CONFLICT_VERSION_MISMATCH"
+    http_status: 409
+    message: "数据已更新，请刷新后重试"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_and_retry"
+  - id: "RATE_LIMIT_TOO_MANY_REQUESTS"
+    http_status: 429
+    message: "操作过于频繁，请稍后再试"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "retry_after"
+  - id: "INTERNAL_UNEXPECTED_ERROR"
+    http_status: 500
+    message: "系统暂时无法完成该操作"
+    retryable: false
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "contact_support_with_request_id"
+  - id: "INTERNAL_DEPENDENCY_ERROR"
+    http_status: 502
+    message: "外部服务返回异常结果"
+    retryable: true
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "retry_after"
+  - id: "ADMIN_TASK_ALREADY_CLAIMED"
+    http_status: 409
+    message: "该任务已由其他审核员认领"
+    retryable: true
+    disclosure: "limited"
+    audit: "sensitive"
+    client_action: "refresh_queue"
+  - id: "ADMIN_TASK_OWNERSHIP_LOST"
+    http_status: 409
+    message: "当前任务所有权已失效"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_queue"
+  - id: "ADMIN_SELF_REVIEW_FORBIDDEN"
+    http_status: 403
+    message: "不能审核本人或关联申请"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "assign_independent_reviewer"
+  - id: "ADMIN_SELF_RECONSIDERATION_FORBIDDEN"
+    http_status: 403
+    message: "复核必须由独立审核人员完成"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "assign_independent_reviewer"
+  - id: "ADMIN_DISCLOSURE_PURPOSE_REQUIRED"
+    http_status: 422
+    message: "查看敏感字段前需要说明访问目的"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "provide_access_purpose"
+  - id: "ADMIN_DISCLOSURE_EXPIRED"
+    http_status: 403
+    message: "敏感字段临时访问已到期"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "request_temporary_access"
+  - id: "ADMIN_OPEN_RISK_BLOCKS_APPROVAL"
+    http_status: 422
+    message: "存在未关闭风险，当前不能批准"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_or_escalate_risk"
+  - id: "ADMIN_DECISION_REASON_REQUIRED"
+    http_status: 422
+    message: "审核决定需要选择结构化原因"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "select_decision_reason"
+  - id: "ADMIN_TASK_NOT_FOUND"
+    http_status: 404
+    message: "审核任务不存在"
+    retryable: false
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "refresh_queue"
+  - id: "IDEMPOTENT_RESULT_NOT_FOUND"
+    http_status: 404
+    message: "尚未找到原命令结果"
+    retryable: true
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "retry_with_same_idempotency_key"
+  - id: "ADMIN_LEASE_RENEWAL_TOO_EARLY"
+    http_status: 422
+    message: "尚未进入租约续期窗口"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_for_renewal_window"
+  - id: "ADMIN_OPERATOR_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "当前组织范围不能访问该运营主体"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_authorized_scope"
+  - id: "ADMIN_CITY_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "当前组织范围不能访问该城市"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_authorized_scope"
+  - id: "ADMIN_ORGANIZATION_CONTEXT_FIXED"
+    http_status: 403
+    message: "运营主体组织上下文不可切换"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "keep_current_organization"
+  - id: "ADMIN_TEMPORARY_GRANT_REQUIRED"
+    http_status: 403
+    message: "该数据需要有效的临时授权"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "request_temporary_access"
+  - id: "ADMIN_TEMPORARY_GRANT_TTL_EXCEEDED"
+    http_status: 422
+    message: "临时授权有效期超过允许上限"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "shorten_temporary_access"
+  - id: "ADMIN_TEMPORARY_GRANT_EXPIRED"
+    http_status: 403
+    message: "临时授权已到期"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "request_temporary_access"
+  - id: "ADMIN_SESSION_PURPOSE_CONFLICT"
+    http_status: 403
+    message: "当前会话目的不能同时承担高层查看与日常经办"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "start_separate_session"
+  - id: "ADMIN_AUDIT_IMMUTABLE"
+    http_status: 403
+    message: "审计记录不可修改或删除"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "view_read_only_audit"
+  - id: "ADMIN_OPERATOR_RESOURCE_NOT_FOUND"
+    http_status: 404
+    message: "未找到指定的运营主体管理资源"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_authorized_directory"
+  - id: "ADMIN_OPERATOR_INVALID_TRANSITION"
+    http_status: 422
+    message: "运营主体当前生命周期状态不允许此操作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_operator_profile"
+  - id: "ADMIN_OPERATOR_OPEN_ONBOARDING_EXISTS"
+    http_status: 409
+    message: "该运营主体已有未关闭入驻案件"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "open_existing_case"
+  - id: "ADMIN_OPERATOR_CHECKLIST_INCOMPLETE"
+    http_status: 422
+    message: "入驻案件必需检查项尚未完成"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "complete_required_checks"
+  - id: "ADMIN_OPERATOR_ACTIVE_CAPABILITY_REQUIRED"
+    http_status: 422
+    message: "运营主体至少需要一项有效城市能力才能进入运营中"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "review_city_capabilities"
+  - id: "ADMIN_OPERATOR_WILDCARD_SCOPE_FORBIDDEN"
+    http_status: 422
+    message: "运营主体城市与能力必须逐项明确授权"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_explicit_scope"
+  - id: "ADMIN_OPERATOR_OPEN_MIGRATION_EXISTS"
+    http_status: 409
+    message: "该车主、城市和车辆范围已有未关闭迁移案件"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "open_existing_migration"
+  - id: "ADMIN_OPERATOR_TARGET_CAPABILITY_MISSING"
+    http_status: 422
+    message: "目标运营主体缺少接收该关系所需的城市能力"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "review_target_capability"
+  - id: "ADMIN_OPERATOR_MIGRATION_BLOCKED"
+    http_status: 422
+    message: "存在未关闭的行程、安全、对账或资金阻断，当前不能迁移"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_migration_blockers"
+  - id: "ADMIN_OPERATOR_EFFECTIVE_TIME_INVALID"
+    http_status: 422
+    message: "主运营关系迁移必须安排未来生效时间"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_future_effective_time"
+  - id: "ADMIN_OPERATOR_MIGRATION_ALREADY_EFFECTIVE"
+    http_status: 422
+    message: "已生效迁移不能回滚，反向变更必须创建新迁移案件"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "create_reverse_migration"
+  - id: "ADMIN_OPERATOR_EXIT_BLOCKED"
+    http_status: 422
+    message: "运营主体仍有未关闭关系、任务、案件或资金阻断"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_exit_blockers"
+  - id: "ADMIN_OPERATOR_REENTRY_REQUIRES_NEW_PROFILE"
+    http_status: 422
+    message: "已退出运营主体不能重新激活，重新合作必须新建档案"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "create_new_operator_profile"
+  - id: "ADMIN_TRIP_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "当前组织范围不能访问该行程"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_authorized_trip_queue"
+  - id: "ADMIN_TRIP_DIRECT_MUTATION_FORBIDDEN"
+    http_status: 403
+    message: "后台禁止直接修改行程权威状态"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_domain_command"
+  - id: "ADMIN_TRIP_OPERATOR_SNAPSHOT_IMMUTABLE"
+    http_status: 403
+    message: "历史行程运营主体快照不可改写"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "keep_historical_snapshot"
+  - id: "ADMIN_SUPPORT_DOMAIN_BOUNDARY_FORBIDDEN"
+    http_status: 403
+    message: "客服案件不能直接修改其他领域结论"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "create_domain_referral"
+  - id: "ADMIN_SUPPORT_SAFETY_BOUNDARY_FORBIDDEN"
+    http_status: 403
+    message: "客服角色不能执行安全调查或查看安全证据"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "use_safety_referral_status"
+  - id: "ADMIN_SAFETY_REVIEWER_CONFLICT"
+    http_status: 403
+    message: "冻结经办人不能复核自己的恢复建议"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "assign_independent_safety_lead"
+  - id: "ADMIN_SAFETY_RESTORATION_BLOCKED"
+    http_status: 422
+    message: "安全恢复仍存在未完成检查或未关闭风险"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_safety_blockers"
+  - id: "ADMIN_CASE_ACTION_INVALID"
+    http_status: 409
+    message: "当前案件状态或角色不允许执行该操作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_case_and_choose_allowed_action"
+  - id: "ADMIN_EVIDENCE_TICKET_REQUIRED"
+    http_status: 422
+    message: "证据访问必须关联有效工单"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "provide_evidence_ticket"
+  - id: "ADMIN_EVIDENCE_PURPOSE_REQUIRED"
+    http_status: 422
+    message: "证据访问必须声明明确目的"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_evidence_purpose"
+  - id: "ADMIN_EVIDENCE_TTL_EXCEEDED"
+    http_status: 422
+    message: "证据访问时长超过允许上限"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "shorten_evidence_access"
+  - id: "ADMIN_EVIDENCE_DUAL_APPROVAL_REQUIRED"
+    http_status: 403
+    message: "该证据字段或导出需要双人批准"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_second_approval"
+  - id: "ADMIN_EVIDENCE_FIELD_FORBIDDEN"
+    http_status: 403
+    message: "当前角色和案件目的不能访问该证据字段"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "use_masked_case_summary"
+  - id: "ADMIN_EVIDENCE_GRANT_EXPIRED"
+    http_status: 403
+    message: "证据访问授权已到期或被撤销"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_new_evidence_grant"
+  - id: "ADMIN_CROSS_OPERATOR_DISCLOSURE_FORBIDDEN"
+    http_status: 403
+    message: "跨主体协作不得披露另一主体内部信息"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "use_partitioned_collaboration_task"
+  - id: "ADMIN_COMMAND_RECOVERY_IN_PROGRESS"
+    http_status: 409
+    message: "原命令结果仍在恢复中，禁止重复提交"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "open_command_recovery_task"
+  - id: "ADMIN_TRIP_OPERATION_ACTION_INVALID"
+    http_status: 409
+    message: "当前任务状态或角色不允许执行该行程操作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_trip_operation_task"
+  - id: "ADMIN_RECOVERY_BUSINESS_DECISION_FORBIDDEN"
+    http_status: 403
+    message: "技术恢复人员不能替代业务角色作决定"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "return_to_business_owner"
+  - id: "ADMIN_FINANCE_IMPLEMENTATION_NOT_APPROVED"
+    http_status: 403
+    message: "阶段四资金运营尚未获得代码实现批准"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "complete_design_approval"
+  - id: "ADMIN_RESOURCE_VERSION_CONFLICT"
+    http_status: 409
+    message: "资源版本已变化，请刷新后重试"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_resource"
+  - id: "ADMIN_FINANCE_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "当前组织范围不能访问该资金记录"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_authorized_finance_scope"
+  - id: "ADMIN_FINANCE_OPERATOR_PAYMENT_DATA_FORBIDDEN"
+    http_status: 403
+    message: "运营主体不能访问其他主体的车主付款数据"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_own_operator_payouts"
+  - id: "ADMIN_FINANCE_AMOUNT_EDIT_FORBIDDEN"
+    http_status: 403
+    message: "资金金额只能由 Server 计算，后台不得编辑"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_server_amount"
+  - id: "ADMIN_FINANCE_BALANCE_MUTATION_FORBIDDEN"
+    http_status: 403
+    message: "后台禁止修改账本余额或余额投影"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_ledger_command"
+  - id: "ADMIN_FINANCE_DIRECT_LEDGER_POST_FORBIDDEN"
+    http_status: 403
+    message: "后台禁止直接创建任意账本分录"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_approved_finance_template"
+  - id: "ADMIN_FINANCE_ALLOCATION_IMMUTABLE"
+    http_status: 403
+    message: "历史分配金额、比例和规则版本不可修改"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "open_read_only_allocation"
+  - id: "ADMIN_FINANCE_REVIEWER_CONFLICT"
+    http_status: 403
+    message: "资金经办人与复核人必须不同"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "assign_independent_reviewer"
+  - id: "ADMIN_FINANCE_SETTLEMENT_BLOCKED"
+    http_status: 422
+    message: "运营主体清算被对账差异或资金案件阻断"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_settlement_blockers"
+  - id: "ADMIN_FINANCE_PAYOUT_NOT_T_PLUS_ONE"
+    http_status: 422
+    message: "车主付款批次只能包含上一业务日合格分配"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_previous_business_date_allocations"
+  - id: "ADMIN_FINANCE_PAYOUT_BLOCKED"
+    http_status: 422
+    message: "车主付款被对账差异或资金案件阻断"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_payout_blockers"
+  - id: "DRIVER_EARLY_SETTLEMENT_DISABLED"
+    http_status: 403
+    message: "车主提前结算能力尚未启用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_standard_t_plus_one_payout"
+  - id: "ADMIN_FINANCE_REFUND_INELIGIBLE"
+    http_status: 422
+    message: "退款缺少合格原支付或责任结论"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_eligible_original_payment"
+  - id: "ADMIN_FINANCE_PROVIDER_RESULT_REQUIRED"
+    http_status: 409
+    message: "退款完成状态必须来自支付机构权威结果"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "query_provider_result"
+  - id: "ADMIN_FINANCE_REVERSAL_INVALID"
+    http_status: 422
+    message: "完整冲正缺少有效原交易或金额方向不一致"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_reversible_original_transaction"
+  - id: "ADMIN_FINANCE_RECONCILIATION_BLOCKED"
+    http_status: 422
+    message: "非零对账差异不得自动核销"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "investigate_reconciliation_difference"
+  - id: "ADMIN_FINANCE_RESOLUTION_EVIDENCE_REQUIRED"
+    http_status: 422
+    message: "对账差异解决必须提供证据引用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "attach_resolution_evidence"
+  - id: "ADMIN_FINANCE_DAY_CLOSE_BLOCKED"
+    http_status: 422
+    message: "账务日仍有未关闭对账、缺失账单或差异"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "resolve_business_day_blockers"
+  - id: "ADMIN_FINANCE_LEDGER_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "当前运营主体范围不能访问该账本记录"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_scoped_ledger_results"
+  - id: "ADMIN_FINANCE_EXPORT_FORBIDDEN"
+    http_status: 403
+    message: "当前角色或组织范围不能导出该资金数据"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "request_scoped_export"
+  - id: "ADMIN_FINANCE_UNKNOWN_RESULT_IN_PROGRESS"
+    http_status: 409
+    message: "原资金命令结果仍未知，禁止创建第二笔请求"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "open_finance_command_recovery"
+  - id: "ADMIN_FINANCE_RECOVERY_BUSINESS_DECISION_FORBIDDEN"
+    http_status: 403
+    message: "技术运维不能替代财务角色作资金决定"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "return_to_finance_owner"
+  - id: "ADMIN_FINANCE_RESOURCE_NOT_FOUND"
+    http_status: 404
+    message: "未找到该财务记录或当前组织无权查看"
+    retryable: false
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "return_to_finance_directory"
+  - id: "ADMIN_FINANCE_ACTION_INVALID"
+    http_status: 422
+    message: "当前财务记录状态或角色不允许执行该操作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_finance_detail"
+  - id: "FEATURE_DISABLED"
+    http_status: 403
+    message: "该合成功能门禁当前关闭"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "keep_feature_closed"
+  - id: "ELIGIBILITY_INVALID_TRANSITION"
+    http_status: 422
+    message: "当前资格状态不允许此操作"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "refresh_eligibility"
+  - id: "ELIGIBILITY_PAID_PATH_FROZEN"
+    http_status: 422
+    message: "付费资格路径仍处于冻结状态"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_free_trial_only"
+  - id: "SERVICE_UNAVAILABLE"
+    http_status: 503
+    message: "内部沙箱服务暂不可用"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "retry_after"
+  - id: "VEHICLE_REVIEW_FORBIDDEN"
+    http_status: 403
+    message: "无权访问该车辆审核申请"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_dashboard"
+  - id: "VEHICLE_REVIEW_NOT_FOUND"
+    http_status: 404
+    message: "车辆审核申请不存在"
+    retryable: false
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "return_to_dashboard"
+  - id: "VEHICLE_REVIEW_INCOMPLETE"
+    http_status: 422
+    message: "车辆资料尚未完整"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "complete_required_fields"
+  - id: "VEHICLE_REVIEW_INVALID_STATE"
+    http_status: 422
+    message: "当前审核状态不允许此操作"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "refresh_application"
+  - id: "STORAGE_CONCURRENT_MODIFICATION"
+    http_status: 409
+    message: "审核状态已变化，请刷新后重试"
+    retryable: true
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "refresh_application"
+  - id: "REAL_DATA_FORBIDDEN"
+    http_status: 422
+    message: "内部沙箱只允许合成数据"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "replace_with_synthetic_data"
+  - id: "TRIP_FORBIDDEN"
+    http_status: 403
+    message: "当前账户无权操作该行程"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "return_to_dashboard"
+  - id: "TRIP_SELF_ACCEPT_FORBIDDEN"
+    http_status: 403
+    message: "车主不能接受自己创建的行程"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_another_trip"
+  - id: "TRIP_PASSENGER_CAPACITY_EXCEEDED"
+    http_status: 422
+    message: "乘车人数超过当前车辆单次人数上限"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_another_trip"
+  - id: "TRIP_PAYMENT_REQUIRED"
+    http_status: 422
+    message: "必须先完成零金额支付前置"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "complete_zero_money_payment"
+  - id: "DRIVER_AVAILABILITY_INVALID_STATE"
+    http_status: 422
+    message: "当前车主可用状态不允许此操作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_driver_availability"
+  - id: "TRIP_BOARDING_CODE_INVALID"
+    http_status: 422
+    message: "上车确认码不正确"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "retry_boarding_code"
+  - id: "TRIP_BOARDING_CODE_EXPIRED"
+    http_status: 422
+    message: "上车确认码已过期"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_trip_support"
+  - id: "TRIP_CANCELLATION_WINDOW_EXPIRED"
+    http_status: 422
+    message: "车主接单后三分钟取消窗口已结束"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "continue_trip_or_request_support"
+  - id: "TRIP_CANCELLATION_REASON_REQUIRED"
+    http_status: 422
+    message: "已超过三分钟自由取消窗口，请选择取消原因"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_cancellation_reason"
+  - id: "GOODWILL_CANCELLATION_DISABLED"
+    http_status: 503
+    message: "善意取消额度当前不可用"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "retry_or_continue_with_responsibility"
+  - id: "GOODWILL_CANCELLATION_TRIP_STATE_EXCEEDED"
+    http_status: 422
+    message: "当前履约阶段不能使用善意取消额度"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "continue_with_responsibility"
+  - id: "GOODWILL_CANCELLATION_HOURS24_EXCEEDED"
+    http_status: 422
+    message: "近 24 小时善意取消额度已用完"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "continue_with_responsibility"
+  - id: "GOODWILL_CANCELLATION_DAYS7_EXCEEDED"
+    http_status: 422
+    message: "近 7 日善意取消额度已用完"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "continue_with_responsibility"
+  - id: "GOODWILL_CANCELLATION_DAYS30_EXCEEDED"
+    http_status: 422
+    message: "近 30 日善意取消额度已用完"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "continue_with_responsibility"
+  - id: "TRIP_CANCELLATION_REASON_INVALID"
+    http_status: 400
+    message: "取消原因无效"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "correct_request"
+  - id: "TRIP_CANCELLATION_NOTE_TOO_LONG"
+    http_status: 400
+    message: "取消补充说明过长"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "shorten_cancellation_note"
+  - id: "TRIP_COMPLETION_INTENT_INVALID"
+    http_status: 422
+    message: "行程完成确认意图无效"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "restart_slide_confirmation"
+  - id: "TRIP_COMPLETION_INTENT_EXPIRED"
+    http_status: 422
+    message: "行程完成确认意图已过期"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "restart_slide_confirmation"
+  - id: "TRIP_COMPLETION_INTENT_CONSUMED"
+    http_status: 409
+    message: "行程完成确认意图已被使用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "refresh_trip"
+  - id: "REAL_PAYMENT_GATE_CLOSED"
+    http_status: 422
+    message: "真实支付与资金能力尚未启用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "stop"
+  - id: "CHAT_NOT_OPEN"
+    http_status: 422
+    message: "临时对话尚未开放"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_for_trip_acceptance"
+  - id: "CHAT_FROZEN"
+    http_status: 403
+    message: "临时对话已因安全举报冻结"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "view_safety_case"
+  - id: "CHAT_MESSAGE_INVALID"
+    http_status: 400
+    message: "行程消息为空或超过 500 字"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "edit_message"
+  - id: "SAFETY_CASE_ALREADY_OPEN"
+    http_status: 409
+    message: "该行程已有未结安全案件"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "view_safety_case"
+  - id: "SAFETY_CASE_NOT_FOUND"
+    http_status: 404
+    message: "安全案件不存在"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "return_to_trip"
+  - id: "SAFETY_APPEAL_FORBIDDEN"
+    http_status: 403
+    message: "只有被举报方可以提交申诉"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "stop"
+  - id: "SAFETY_INVALID_STATE"
+    http_status: 422
+    message: "当前安全案件状态不允许此操作"
+    retryable: false
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "refresh_safety_case"
+  - id: "ADULT_ELIGIBILITY_REQUIRED"
+    http_status: 403
+    message: "请先完成成年资格验证"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "start_adult_eligibility_verification"
+  - id: "ADULT_ELIGIBILITY_DOCUMENT_INCOMPLETE"
+    http_status: 422
+    message: "请补充完整的证件材料"
+    retryable: true
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "upload_document"
+  - id: "ADULT_ELIGIBILITY_UNDERAGE"
+    http_status: 403
+    message: "当前账户未通过成年资格验证"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "view_appeal_options"
+  - id: "ADULT_ELIGIBILITY_LIVENESS_FAILED"
+    http_status: 422
+    message: "本次验证未完成，请重新尝试"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "retry_verification"
+  - id: "ADULT_ELIGIBILITY_FACE_MISMATCH"
+    http_status: 422
+    message: "本次验证未完成，请重新尝试"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "retry_verification"
+  - id: "ADULT_ELIGIBILITY_RESULT_UNKNOWN"
+    http_status: 503
+    message: "验证结果暂未确认，请稍后重试"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "retry_verification"
+  - id: "ADULT_ELIGIBILITY_INVALID_STATE"
+    http_status: 409
+    message: "当前验证状态不允许执行该操作"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_state"
+  - id: "ADULT_ELIGIBILITY_AUTHORIZATION_REQUIRED"
+    http_status: 422
+    message: "请先阅读说明并确认授权"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "review_and_authorize"
+  - id: "ADULT_ELIGIBILITY_APPEAL_INVALID"
+    http_status: 422
+    message: "请补充有效的复核说明"
+    retryable: false
+    disclosure: "public"
+    audit: "sensitive"
+    client_action: "edit_appeal"
+  - id: "ADULT_ELIGIBILITY_APPEAL_NOT_FOUND"
+    http_status: 404
+    message: "未找到待复核的申请"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_state"
+  - id: "ADULT_ELIGIBILITY_VERIFICATION_NOT_FOUND"
+    http_status: 404
+    message: "未找到对应的成年资格验证记录"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "REAL_IDENTITY_DATA_FORBIDDEN"
+    http_status: 403
+    message: "当前环境不接收真实身份材料"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "stop"
+  - id: "EXTERNAL_IDENTITY_PROVIDER_DISABLED"
+    http_status: 403
+    message: "当前环境未启用真实身份核验服务"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "stop"
+  - id: "REAL_BIOMETRIC_DATA_FORBIDDEN"
+    http_status: 403
+    message: "当前环境不接收真实人脸材料"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "stop"
+  - id: "MAP_COORDINATE_SYSTEM_REQUIRED"
+    http_status: 422
+    message: "位置坐标缺少坐标系"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "correct_field"
+  - id: "MAP_COORDINATE_INVALID"
+    http_status: 422
+    message: "位置坐标无效"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "correct_field"
+  - id: "MAP_COORDINATE_PRECISION_EXCEEDED"
+    http_status: 422
+    message: "位置坐标精度超过允许范围"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "reduce_precision"
+  - id: "MAP_COORDINATE_TRANSFORM_UNAVAILABLE"
+    http_status: 422
+    message: "当前环境无法转换该坐标系"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "use_supported_coordinate_system"
+  - id: "MAP_SEARCH_INVALID"
+    http_status: 422
+    message: "请输入至少两个字的地点名称"
+    retryable: false
+    disclosure: "public"
+    audit: "none"
+    client_action: "correct_field"
+  - id: "MAP_SEARCH_RATE_LIMITED"
+    http_status: 429
+    message: "地点搜索过于频繁，请稍后再试"
+    retryable: true
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait"
+  - id: "MAP_REVERSE_GEOCODE_INVALID"
+    http_status: 422
+    message: "地图选点参数无效"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "correct_field"
+  - id: "MAP_ROUTE_INVALID"
+    http_status: 422
+    message: "路线规划参数无效"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "correct_field"
+  - id: "MAP_PROVIDER_TIMEOUT"
+    http_status: 504
+    message: "地图服务响应超时，请稍后重试"
+    retryable: true
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "retry_or_manual"
+  - id: "MAP_PROVIDER_UNAVAILABLE"
+    http_status: 503
+    message: "地图服务暂不可用，可继续手动填写地点"
+    retryable: true
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "manual_fallback"
+  - id: "MAP_QUOTA_DEGRADED"
+    http_status: 503
+    message: "地图搜索服务暂时受限，可使用常用或最近地点"
+    retryable: true
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_cached_places"
+  - id: "VEHICLE_LOCATION_FORBIDDEN"
+    http_status: 403
+    message: "无权读取或更新该车辆位置"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "VEHICLE_LOCATION_ACCURACY_INVALID"
+    http_status: 422
+    message: "车辆位置精度无效"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "wait_for_better_accuracy"
+  - id: "VEHICLE_LOCATION_TOO_FREQUENT"
+    http_status: 429
+    message: "车辆位置更新过于频繁"
+    retryable: true
+    disclosure: "public"
+    audit: "none"
+    client_action: "wait"
+  - id: "VEHICLE_LOCATION_SEQUENCE_INVALID"
+    http_status: 409
+    message: "车辆位置序号已过期"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "refresh_state"
+  - id: "VEHICLE_LOCATION_TIMESTAMP_INVALID"
+    http_status: 422
+    message: "车辆位置时间戳无效"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "refresh_clock"
+  - id: "VEHICLE_LOCATION_STREAM_STOPPED"
+    http_status: 409
+    message: "行程已结束，车辆位置上传已停止"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "stop"
+  - id: "VEHICLE_LOCATION_TRIP_MISMATCH"
+    http_status: 422
+    message: "车辆位置与行程不匹配"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "VEHICLE_LOCATION_STAGE_INVALID"
+    http_status: 422
+    message: "车辆位置阶段无效"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "refresh_state"
+  - id: "AMAP_WEB_SERVICE_DISABLED"
+    http_status: 403
+    message: "高德 Web 服务能力未启用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_synthetic_provider"
+  - id: "AMAP_WEB_SERVICE_KEY_MISSING"
+    http_status: 503
+    message: "地图供应商密钥未配置"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "AMAP_RESPONSE_UNSUPPORTED"
+    http_status: 503
+    message: "地图供应商响应尚未获准解析"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "use_synthetic_provider"
+  - id: "ADMIN_EXECUTIVE_IMPLEMENTATION_NOT_APPROVED"
+    http_status: 403
+    message: "高层驾驶舱尚未获准进入代码实现"
+    retryable: false
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_EXECUTIVE_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "无权访问该组织范围的高层摘要"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_EXECUTIVE_RESOURCE_NOT_FOUND"
+    http_status: 404
+    message: "未找到该驾驶舱记录或当前组织无权查看"
+    retryable: false
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "return_to_executive_directory"
+  - id: "ADMIN_AUDIT_RESOURCE_NOT_FOUND"
+    http_status: 404
+    message: "未找到该审计资源或当前组织无权查看"
+    retryable: false
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "return_to_audit_directory"
+  - id: "ADMIN_AUDIT_OPERATION_FORBIDDEN"
+    http_status: 403
+    message: "当前角色或调查状态不允许执行该操作"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_audit_resource"
+  - id: "ADMIN_DATA_REPORT_NOT_FOUND"
+    http_status: 404
+    message: "未找到该数据报表"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "return_to_data_report_directory"
+  - id: "ADMIN_DATA_REPORT_OPERATION_FORBIDDEN"
+    http_status: 403
+    message: "当前角色无权刷新该数据报表"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_data_report"
+  - id: "ADMIN_EXECUTIVE_FILTER_SCOPE_INVALID"
+    http_status: 403
+    message: "筛选条件超出当前组织范围"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "reset_filter"
+  - id: "ADMIN_EXECUTIVE_METRIC_STALE"
+    http_status: 409
+    message: "指标数据已超过新鲜度目标"
+    retryable: true
+    disclosure: "limited"
+    audit: "standard"
+    client_action: "show_stale_state"
+  - id: "ADMIN_EXECUTIVE_UNCLOSED_DATA_RESTRICTED"
+    http_status: 409
+    message: "未关闭期间不能生成正式报告"
+    retryable: true
+    disclosure: "limited"
+    audit: "strict"
+    client_action: "wait_for_close"
+  - id: "ADMIN_EXECUTIVE_DRILLDOWN_FORBIDDEN"
+    http_status: 403
+    message: "当前角色无权钻取该明细"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_EXECUTIVE_SENSITIVE_DETAIL_FORBIDDEN"
+    http_status: 403
+    message: "高层驾驶舱不披露严格敏感原文"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "use_original_workbench"
+  - id: "ADMIN_EXECUTIVE_OPERATION_FORBIDDEN"
+    http_status: 403
+    message: "高层驾驶舱不允许执行该业务动作"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "use_original_workbench"
+  - id: "ADMIN_EXECUTIVE_EXPORT_PURPOSE_REQUIRED"
+    http_status: 422
+    message: "导出申请必须填写明确用途"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "provide_purpose"
+  - id: "ADMIN_EXECUTIVE_EXPORT_REVIEWER_CONFLICT"
+    http_status: 409
+    message: "导出申请人与批准人必须不同"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "assign_independent_reviewer"
+  - id: "ADMIN_EXECUTIVE_EXPORT_FORBIDDEN"
+    http_status: 403
+    message: "导出范围或字段超出页面授权"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "reduce_scope"
+  - id: "ADMIN_EXECUTIVE_EXPORT_EXPIRED"
+    http_status: 410
+    message: "导出下载授权已过期或已使用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_new_export"
+  - id: "ADMIN_EXECUTIVE_DECISION_OPINION_FORBIDDEN"
+    http_status: 403
+    message: "无权为该待决事项记录高层意见"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_EXECUTIVE_EXACT_AMOUNT_FORBIDDEN"
+    http_status: 403
+    message: "当前高层角色无权读取精确资金金额"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "show_band_only"
+  - id: "ADMIN_EXECUTIVE_EXPORT_DOMAIN_MIXED_FORBIDDEN"
+    http_status: 422
+    message: "单次导出不能混合多个职责域"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "split_export_request"
+  - id: "FEATURE_DEPENDENCY_DISABLED"
+    http_status: 403
+    message: "所需依赖能力未启用"
+    retryable: false
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_AUTH_IMPLEMENTATION_NOT_APPROVED"
+    http_status: 403
+    message: "后台账号认证尚未获准进入代码实现"
+    retryable: false
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_AUTH_INVITATION_REQUIRED"
+    http_status: 403
+    message: "后台账号必须通过有效邀请激活"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "request_invitation"
+  - id: "ADMIN_AUTH_OPERATOR_SCOPE_FORBIDDEN"
+    http_status: 403
+    message: "无权访问或管理该运营公司的后台身份"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_AUTH_INVITER_SCOPE_EXCEEDED"
+    http_status: 403
+    message: "邀请范围超出邀请人的组织或作用域"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "reduce_scope"
+  - id: "ADMIN_AUTH_INVITATION_EXPIRED"
+    http_status: 410
+    message: "后台邀请已过期"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_invitation"
+  - id: "ADMIN_AUTH_INVITATION_REVOKED"
+    http_status: 410
+    message: "后台邀请已撤销"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "request_invitation"
+  - id: "ADMIN_AUTH_INVITATION_REPLAYED"
+    http_status: 409
+    message: "后台邀请已经使用"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "sign_in"
+  - id: "ADMIN_AUTH_PASSWORD_POLICY_VIOLATION"
+    http_status: 422
+    message: "密码不符合后台账号安全要求"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "change_password"
+  - id: "ADMIN_AUTH_MFA_ENROLLMENT_REQUIRED"
+    http_status: 409
+    message: "激活后台账号前必须完成多因素验证登记"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "enroll_mfa"
+  - id: "ADMIN_AUTH_MFA_REQUIRED"
+    http_status: 401
+    message: "需要完成多因素验证"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "verify_mfa"
+  - id: "ADMIN_AUTH_ACCOUNT_LOCKED"
+    http_status: 423
+    message: "后台账号暂时不可登录"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "wait"
+  - id: "ADMIN_AUTH_ACCOUNT_UNAVAILABLE"
+    http_status: 403
+    message: "后台账号当前不可用"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "contact_administrator"
+  - id: "ADMIN_AUTH_MFA_CODE_REPLAYED"
+    http_status: 409
+    message: "多因素验证码无效"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "verify_mfa"
+  - id: "ADMIN_AUTH_RECOVERY_CODE_REPLAYED"
+    http_status: 409
+    message: "多因素恢复码无效"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "use_another_recovery_code"
+  - id: "ADMIN_AUTH_MFA_FRESHNESS_REQUIRED"
+    http_status: 401
+    message: "该操作需要重新完成多因素验证"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "verify_mfa"
+  - id: "ADMIN_AUTH_MFA_RESET_REVIEWER_CONFLICT"
+    http_status: 409
+    message: "多因素验证重置必须由独立人员批准"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "assign_independent_reviewer"
+  - id: "ADMIN_AUTH_RECOVERY_TOKEN_INVALID"
+    http_status: 410
+    message: "账号恢复链接无效或已过期"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "request_recovery"
+  - id: "ADMIN_AUTH_SESSION_REPLAY_DETECTED"
+    http_status: 401
+    message: "会话已失效，请重新登录"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "sign_in"
+  - id: "ADMIN_AUTH_SESSION_EXPIRED"
+    http_status: 401
+    message: "会话已过期，请重新登录"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "sign_in"
+  - id: "ADMIN_AUTH_WORK_IDENTITY_CONFLICT"
+    http_status: 409
+    message: "单个会话只能使用一个工作身份"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "select_work_identity"
+  - id: "ADMIN_AUTH_MEMBERSHIP_INACTIVE"
+    http_status: 403
+    message: "该工作身份当前不可用"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "select_work_identity"
+  - id: "ADMIN_AUTH_AUDIT_SECRET_FORBIDDEN"
+    http_status: 422
+    message: "认证秘密不得写入审计记录"
+    retryable: false
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "remove_secret"
+  - id: "ADMIN_RBAC_IMPLEMENTATION_NOT_APPROVED"
+    http_status: 403
+    message: "后台角色权限矩阵尚未获准进入代码实现"
+    retryable: false
+    disclosure: "internal_only"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_OPERATIONS_TASK_NOT_FOUND"
+    http_status: 404
+    message: "未找到该工作任务"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "return_to_list"
+  - id: "ADMIN_OPERATIONS_TASK_ACTION_INVALID"
+    http_status: 409
+    message: "当前任务状态不允许执行该操作"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_task"
+  - id: "ADMIN_OPERATOR_ACTION_INVALID"
+    http_status: 409
+    message: "当前运营主体状态或角色不允许执行该操作"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_operator"
+  - id: "ADMIN_FLEET_RESOURCE_NOT_FOUND"
+    http_status: 404
+    message: "未找到指定的车主或车辆"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "return_to_fleet_list"
+  - id: "ADMIN_REVIEW_TASK_NOT_FOUND"
+    http_status: 404
+    message: "未找到指定的车辆审核任务"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "refresh_vehicle"
+  - id: "ADMIN_MEMBERSHIP_NOT_FOUND"
+    http_status: 404
+    message: "未找到该成员或当前组织无权查看"
+    retryable: false
+    disclosure: "generic"
+    audit: "standard"
+    client_action: "return_to_membership_list"
+  - id: "ADMIN_MEMBERSHIP_OPERATION_FORBIDDEN"
+    http_status: 403
+    message: "当前角色只能查看成员信息"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"
+  - id: "ADMIN_MEMBERSHIP_STATE_INVALID"
+    http_status: 409
+    message: "成员当前状态不允许执行该操作"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_membership"
+  - id: "ADMIN_MEMBERSHIP_SELF_SUSPEND_FORBIDDEN"
+    http_status: 403
+    message: "不能暂停当前登录成员"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "stop"

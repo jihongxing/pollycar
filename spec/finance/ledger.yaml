@@ -1,0 +1,431 @@
+spec_version: "1.0"
+spec_id: "pollycar.finance.ledger"
+language: "zh-CN"
+status: "approved_for_internal_sandbox"
+production_enabled: false
+synthetic_data_only: true
+source_documents:
+  - "docs/decisions/0013-真实资金架构与复式账本.md"
+  - "docs/finance/02-复式账本设计.md"
+  - "docs/finance/03-资金对账设计.md"
+  - "docs/reviews/0005-真实资金架构评审.md"
+  - "docs/reviews/0008-多运营主体管理与结算系统评审.md"
+
+feature_gate:
+  id: "synthetic_financial_ledger"
+  default_enabled: false
+  required_context: "internal_sandbox"
+  real_payment_required: false
+  production_credentials_allowed: false
+  remote_database_allowed: false
+
+scope:
+  allowed:
+    - "供应商中立账本机器契约"
+    - "本机 PostgreSQL 数据库不变量验证"
+    - "合成资金事件和合成交易模板"
+    - "不可变分录、余额投影和事务 Outbox"
+    - "并发、重启、回滚和余额重建验证"
+  forbidden:
+    - "真实扣款、退款、分账、清算或付款"
+    - "真实商户号、银行账户或支付凭据"
+    - "远程数据库和真实资金数据"
+    - "通过后台直接修改余额或历史分录"
+    - "绕过对账门禁实现多运营主体资金过账"
+
+money:
+  supported_currencies: ["CNY"]
+  api_amount_format: "decimal_integer_string"
+  database_amount_type: "bigint"
+  entry_amount_rule: "greater_than_zero"
+  direction_values: ["debit", "credit"]
+  floating_point_allowed: false
+  rounding_rule_version_required: true
+
+account_model:
+  table: "pollycar_finance.ledger_accounts"
+  id_type: "uuid_generated_by_server"
+  account_types: ["asset", "liability", "revenue", "expense", "equity"]
+  states: ["open", "closed"]
+  required_identity_fields:
+    - "account_code"
+    - "account_type"
+    - "currency"
+    - "owner_type"
+    - "owner_id"
+    - "dimensions"
+    - "dimension_key"
+  dimension_snapshot_required: true
+  dimension_value_type: "non_empty_string"
+  dimension_key_algorithm: "postgres_jsonb_text_v1"
+  dimension_key_definition: "dimensions_jsonb_text"
+  account_uniqueness:
+    - "account_code"
+    - "currency"
+    - "owner_type"
+    - "owner_id"
+    - "dimension_key"
+  immutable_fields:
+    - "ledger_account_id"
+    - "account_code"
+    - "account_type"
+    - "currency"
+    - "owner_type"
+    - "owner_id"
+    - "dimensions"
+    - "dimension_key"
+    - "created_at"
+  state_transition: "open_to_closed_only"
+  close_entrypoint: "pollycar_finance.close_ledger_account(p_ledger_account_id uuid, p_reason text)"
+  close_allowed_role: "pollycar_ledger_maintenance"
+  closed_account_posting_allowed: false
+  account_codes:
+    - "ASSET_PROVIDER_RECEIVABLE"
+    - "ASSET_BANK_CASH"
+    - "ASSET_REFUND_CLEARING"
+    - "LIABILITY_PASSENGER_HELD"
+    - "LIABILITY_REFUND_PAYABLE"
+    - "LIABILITY_OPERATOR_ENTITLEMENT"
+    - "LIABILITY_DRIVER_PAYABLE"
+    - "LIABILITY_PAYOUT_CLEARING"
+    - "LIABILITY_TAX_PAYABLE"
+    - "REVENUE_PLATFORM_SERVICE"
+    - "EXPENSE_PROVIDER_FEE"
+    - "EXPENSE_OPERATOR_PAYOUT_FEE"
+    - "EXPENSE_DISPUTE"
+  dimensions_by_account_code:
+    - account_code: "ASSET_PROVIDER_RECEIVABLE"
+      required_dimensions: ["provider_id", "merchant_account_id"]
+    - account_code: "ASSET_BANK_CASH"
+      required_dimensions: ["legal_entity_id", "bank_account_ref"]
+    - account_code: "ASSET_REFUND_CLEARING"
+      required_dimensions: ["provider_id", "merchant_account_id"]
+    - account_code: "LIABILITY_PASSENGER_HELD"
+      required_dimensions: ["payment_order_id", "trip_id"]
+    - account_code: "LIABILITY_REFUND_PAYABLE"
+      required_dimensions: ["refund_order_id", "passenger_account_id"]
+    - account_code: "LIABILITY_OPERATOR_ENTITLEMENT"
+      required_dimensions: ["operator_id", "trip_id"]
+    - account_code: "LIABILITY_DRIVER_PAYABLE"
+      required_dimensions: ["driver_account_id", "trip_id"]
+    - account_code: "LIABILITY_PAYOUT_CLEARING"
+      required_dimensions: ["operator_id", "payout_order_id"]
+    - account_code: "LIABILITY_TAX_PAYABLE"
+      required_dimensions: ["tax_type", "accounting_period"]
+    - account_code: "REVENUE_PLATFORM_SERVICE"
+      required_dimensions: ["product_code", "city_code", "accounting_period"]
+    - account_code: "EXPENSE_PROVIDER_FEE"
+      required_dimensions: ["provider_id", "provider_product"]
+    - account_code: "EXPENSE_OPERATOR_PAYOUT_FEE"
+      required_dimensions: ["operator_id", "payout_provider_id"]
+    - account_code: "EXPENSE_DISPUTE"
+      required_dimensions: ["case_id", "provider_id"]
+
+transaction_model:
+  transaction_table: "pollycar_finance.ledger_transactions"
+  entry_table: "pollycar_finance.ledger_entries"
+  projection_table: "pollycar_finance.ledger_balance_projections"
+  id_type: "uuid_generated_by_server"
+  sequence_definition: "bigint_generated_always_as_identity"
+  persisted_states: ["posted"]
+  draft_persistence_allowed: false
+  global_sequence_required: true
+  source_systems:
+    - "payment_aggregate"
+    - "trip_fulfillment"
+    - "refund_aggregate"
+    - "provider_settlement"
+    - "payout_aggregate"
+    - "reconciliation"
+    - "manual_finance"
+  transaction_types:
+    - "PAYMENT_SUCCEEDED"
+    - "PROVIDER_SETTLED_WITH_FEE"
+    - "REFUND_LIABILITY_CREATED"
+    - "REFUND_COMPLETED"
+    - "FULL_REVERSAL"
+    - "ALLOCATION_15_45_40"
+    - "DRIVER_PAYOUT_REQUESTED"
+    - "DRIVER_PAYOUT_COMPLETED"
+  source_identity_fields: ["source_system", "source_event_id", "transaction_type"]
+  idempotency_identity_fields: ["idempotency_key", "transaction_type"]
+  request_digest_required: true
+  request_digest:
+    algorithm: "sha256"
+    encoding: "lowercase_hex"
+    canonicalization: "rfc8785_jcs_utf8"
+    optional_field_rule: "fixed_shape_with_null"
+    included_fields:
+      - "transaction_type"
+      - "business_reference_type"
+      - "business_reference_id"
+      - "source_system"
+      - "source_event_id"
+      - "rule_version"
+      - "occurred_at"
+      - "initiator_type"
+      - "reversal_of_transaction_id"
+      - "reason_code"
+      - "review_reference"
+      - "entries"
+    excluded_fields:
+      - "idempotency_key"
+      - "ledger_transaction_id"
+      - "transaction_sequence"
+      - "posted_at"
+      - "outbox_event_id"
+    entry_sort: "entry_sequence_ascending"
+  rule_version_required: true
+  business_reference_required: true
+  minimum_entries: 2
+  same_currency_balance_group_required: true
+  initiator_types: ["system", "finance_manual"]
+  reversal:
+    mode: "full_only"
+    original_transaction_required: true
+    maximum_full_reversals: 1
+    reversal_of_reversal_allowed: false
+    opposite_entries_required: true
+    caller_supplied_entries_allowed: false
+    entries_copied_by_database: true
+    reason_code_required: true
+    review_reference_required_for_manual_action: true
+
+posting_model:
+  database_entrypoint: "post_runtime_ledger_transaction"
+  function_signature: "pollycar_finance.post_runtime_ledger_transaction(p_request jsonb)"
+  internal_core_function: "pollycar_finance.post_ledger_transaction(p_request jsonb)"
+  runtime_internal_core_execute_allowed: false
+  return_fields: ["ledger_transaction_id", "transaction_sequence", "replayed"]
+  transaction_boundary: "single_database_transaction"
+  direct_application_dml_allowed: false
+  balance_enforcement: "deferrable_constraint_trigger"
+  balance_constraint_function: "pollycar_finance.assert_ledger_transaction_balanced"
+  balance_constraint_timing: "deferrable_initially_deferred"
+  immutability_enforcement: "database_trigger_and_privilege"
+  immutability_trigger_function: "pollycar_finance.reject_ledger_mutation"
+  projection_update: "same_transaction"
+  outbox_append: "same_transaction"
+  outbox_table: "public.pollycar_outbox"
+  outbox_event_type: "finance.ledger.transaction_posted"
+  outbox_event_id_format: "ledger-posted:{ledger_transaction_id}"
+  transaction_client_required: true
+  autocommit_posting_allowed: false
+  security_mode: "security_definer"
+  search_path: "pg_catalog,pollycar_finance"
+  public_execute_revoked: true
+  existing_idempotency_behavior: "same_digest_returns_original_result"
+  conflicting_idempotency_behavior: "reject"
+  account_resolution: "upsert_open_account_by_full_identity"
+  reversal_entry_generation: "database_from_original_entries"
+
+database_invariants:
+  - "entry_amount_minor_greater_than_zero"
+  - "currency_in_allowed_set"
+  - "at_least_two_entries_per_transaction"
+  - "debit_total_equals_credit_total_per_currency"
+  - "source_system_event_and_transaction_type_unique"
+  - "idempotency_key_and_transaction_type_unique"
+  - "same_idempotency_key_requires_same_request_digest"
+  - "account_and_entry_currency_match"
+  - "posted_transaction_update_forbidden"
+  - "posted_transaction_delete_forbidden"
+  - "ledger_entry_update_forbidden"
+  - "ledger_entry_delete_forbidden"
+  - "single_full_reversal_per_original_transaction"
+  - "reversal_target_cannot_be_reversal"
+  - "closed_account_cannot_receive_entry"
+  - "dimension_keys_match_account_code"
+  - "projection_and_outbox_atomic_with_entries"
+
+balance_projection:
+  authoritative: false
+  formula: "debit_total_minor_minus_credit_total_minor"
+  global_sequence_field: "last_transaction_sequence"
+  rebuild_source: "all_posted_entries"
+  rebuild_entrypoint: "pollycar_finance.rebuild_ledger_balance_projections()"
+  rebuild_must_match_incremental_projection: true
+  direct_balance_adjustment_allowed: false
+  account_locking: "select_for_update_in_account_id_order"
+  overflow_behavior: "reject"
+
+database_roles:
+  owner:
+    id: "pollycar_ledger_owner"
+    login_allowed: false
+    owns_schema_and_functions: true
+    runtime_membership_allowed: false
+  runtime:
+    id: "pollycar_ledger_runtime"
+    login_allowed: true
+    allowed:
+      - "schema_usage"
+      - "ledger_select"
+      - "execute_post_runtime_ledger_transaction"
+    forbidden:
+      - "table_insert"
+      - "table_update"
+      - "table_delete"
+      - "trigger_disable"
+      - "role_membership_change"
+      - "function_replace"
+  maintenance:
+    id: "pollycar_ledger_maintenance"
+    login_allowed: false
+    allowed:
+      - "schema_usage"
+      - "ledger_select"
+      - "execute_rebuild_balance_projections"
+      - "execute_close_ledger_account"
+    forbidden: ["transaction_or_entry_mutation"]
+  auditor:
+    id: "pollycar_ledger_auditor"
+    login_allowed: false
+    allowed: ["ledger_select"]
+    forbidden:
+      - "function_execute"
+      - "table_mutation"
+
+database_errors:
+  - "LEDGER_TRANSACTION_UNBALANCED"
+  - "LEDGER_MINIMUM_ENTRIES_REQUIRED"
+  - "LEDGER_SOURCE_EVENT_CONFLICT"
+  - "LEDGER_IDEMPOTENCY_CONFLICT"
+  - "LEDGER_ACCOUNT_CLOSED"
+  - "LEDGER_ACCOUNT_DIMENSIONS_INVALID"
+  - "LEDGER_CURRENCY_MISMATCH"
+  - "LEDGER_IMMUTABLE"
+  - "LEDGER_REVERSAL_INVALID"
+  - "LEDGER_AMOUNT_OVERFLOW"
+
+transaction_templates:
+  - id: "payment_succeeded"
+    transaction_type: "PAYMENT_SUCCEEDED"
+    implementation_stage: 6
+    implementation_status: "implemented"
+    posting_service_method: "postPaymentSucceeded"
+    posting_allowed_before_reconciliation_gate: true
+  - id: "provider_settled_with_fee"
+    transaction_type: "PROVIDER_SETTLED_WITH_FEE"
+    implementation_stage: 6
+    implementation_status: "implemented"
+    posting_service_method: "postProviderSettledWithFee"
+    posting_allowed_before_reconciliation_gate: true
+  - id: "refund_liability_created"
+    transaction_type: "REFUND_LIABILITY_CREATED"
+    implementation_stage: 6
+    implementation_status: "implemented"
+    posting_service_method: "postRefundLiabilityCreated"
+    posting_allowed_before_reconciliation_gate: true
+  - id: "refund_completed"
+    transaction_type: "REFUND_COMPLETED"
+    implementation_stage: 6
+    implementation_status: "implemented"
+    posting_service_method: "postRefundCompleted"
+    posting_allowed_before_reconciliation_gate: true
+  - id: "full_reversal"
+    transaction_type: "FULL_REVERSAL"
+    implementation_stage: 6
+    implementation_status: "implemented"
+    posting_service_method: "postFullReversal"
+    posting_allowed_before_reconciliation_gate: true
+  - id: "allocation_15_45_40"
+    transaction_type: "ALLOCATION_15_45_40"
+    implementation_stage: 8
+    implementation_status: "implemented"
+    posting_service_method: "postAllocation154540"
+    posting_allowed_before_reconciliation_gate: false
+  - id: "driver_payout_requested"
+    transaction_type: "DRIVER_PAYOUT_REQUESTED"
+    implementation_stage: 8
+    implementation_status: "implemented"
+    posting_service_method: "postDriverPayoutRequested"
+    posting_allowed_before_reconciliation_gate: false
+  - id: "driver_payout_completed"
+    transaction_type: "DRIVER_PAYOUT_COMPLETED"
+    implementation_stage: 8
+    implementation_status: "implemented"
+    posting_service_method: "postDriverPayoutCompleted"
+    posting_allowed_before_reconciliation_gate: false
+
+implementation_readiness:
+  frozen_model_version: "ledger_model_v1"
+  stage_2_model_and_write_path_freeze: "completed"
+  stage_3_database_invariant_prototype: "completed"
+  stage_4_persistence_kernel: "completed"
+  stage_5_resilience_verification: "completed"
+  stage_6_synthetic_templates: "completed"
+  formal_runtime_implementation_allowed: true
+  prototype:
+    database: "isolated_local_postgresql_17"
+    runtime_integration_allowed: false
+    migration_integration_allowed: true
+    real_data_allowed: false
+    sql_file: "apps/server/migrations/0007_financial_ledger.sql"
+    test_file: "apps/server/src/persistence/ledger-stage3-prototype.integration.test.ts"
+    proof_command: "pnpm test:ledger:stage3"
+    result: "10_passed"
+  formal_implementation:
+    migration_file: "apps/server/migrations/0007_financial_ledger.sql"
+    repository_file: "apps/server/src/persistence/postgres-ledger-repository.ts"
+    runtime_factory_file: "apps/server/src/persistence/postgres-runtime.ts"
+    integration_test_file: "apps/server/src/persistence/postgres-ledger-repository.integration.test.ts"
+    proof_command: "pnpm test:ledger:stage4"
+    result: "2_passed"
+    explicit_transaction_required: true
+    unified_posting_function_required: true
+    outbox_atomic_with_posting: true
+    direct_balance_mutation_allowed: false
+    app_or_api_integration_allowed: false
+    real_data_allowed: false
+    production_enablement_allowed: false
+  resilience_verification:
+    database: "isolated_local_postgresql_17"
+    migration_file: "apps/server/migrations/0007_financial_ledger.sql"
+    test_file: "apps/server/src/persistence/ledger-stage5-resilience.integration.test.ts"
+    runner_file: "scripts/test/run-ledger-stage5-resilience.ps1"
+    proof_command: "pnpm test:ledger:stage5"
+    result: "6_passed_across_restart_phases"
+    concurrency_lock: "transaction_scoped_advisory_lock"
+    concurrent_same_request_returns_original: true
+    concurrent_source_event_unique: true
+    concurrent_idempotency_key_unique: true
+    duplicate_call_creates_second_transaction: false
+    rollback_leaves_ledger_effects: false
+    rebuilt_projection_matches_incremental: true
+    database_restart_preserves_posted_state: true
+    real_data_allowed: false
+    production_enablement_allowed: false
+  synthetic_template_implementation:
+    service_file: "apps/server/src/application/synthetic-ledger-template-service.ts"
+    unit_test_file: "apps/server/src/application/synthetic-ledger-template-service.test.ts"
+    integration_test_file: "apps/server/src/persistence/ledger-stage6-templates.integration.test.ts"
+    runner_file: "scripts/test/run-ledger-stage6-templates.ps1"
+    proof_command: "pnpm test:ledger:stage6"
+    result: "8_passed"
+    implemented_transaction_types:
+      - "PAYMENT_SUCCEEDED"
+      - "PROVIDER_SETTLED_WITH_FEE"
+      - "REFUND_LIABILITY_CREATED"
+      - "REFUND_COMPLETED"
+      - "FULL_REVERSAL"
+    contract_only_transaction_types:
+      - "ALLOCATION_15_45_40"
+      - "DRIVER_PAYOUT_REQUESTED"
+      - "DRIVER_PAYOUT_COMPLETED"
+    refund_completion_clearing_choice_required: true
+    real_data_allowed: false
+    production_enablement_allowed: false
+  formal_runtime_implementation_requires:
+    - "stage_1_contract_and_schema"
+    - "stage_2_model_and_write_path_freeze"
+    - "stage_3_database_invariant_prototype"
+  stage_3_required_proofs:
+    - "database_rejects_unbalanced_transaction"
+    - "database_rejects_single_entry_transaction"
+    - "database_rejects_duplicate_source_event"
+    - "database_rejects_idempotency_digest_conflict"
+    - "database_rejects_posted_record_mutation"
+    - "database_rejects_invalid_reversal"
+  real_postgresql_required: true
+  mocked_database_proof_allowed: false

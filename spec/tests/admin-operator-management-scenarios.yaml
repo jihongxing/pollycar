@@ -1,0 +1,251 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-operator-management-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "approved"
+source_document: "docs/product/admin/17-阶段二组织与运力契约.md"
+
+scenarios:
+  - id: "ADMIN-OPS-001"
+    category: lifecycle
+    title: "候选主体只能通过入驻案件进入审查"
+    initial_state: candidate
+    actor: operations_lead
+    command: admin_operator.onboarding.submit
+    expected_events: ["onboarding_case_submitted", "operator_lifecycle_changed"]
+    expected_state: onboarding_review
+    expected_error: null
+  - id: "ADMIN-OPS-002"
+    category: lifecycle
+    title: "禁止直接把候选主体改为运营中"
+    initial_state: candidate
+    actor: operations_lead
+    command: admin_operator.lifecycle.activate
+    expected_events: ["access_denied"]
+    expected_state: candidate
+    expected_error: "ADMIN_OPERATOR_INVALID_TRANSITION"
+  - id: "ADMIN-OPS-003"
+    category: onboarding
+    title: "同一候选主体只能有一个未关闭入驻案件"
+    initial_state: onboarding_review
+    actor: operations_lead
+    command: admin_operator.onboarding.create
+    expected_events: ["access_denied"]
+    expected_state: onboarding_review
+    expected_error: "ADMIN_OPERATOR_OPEN_ONBOARDING_EXISTS"
+  - id: "ADMIN-OPS-004"
+    category: onboarding
+    title: "入驻案件材料不完整时不能提交独立复核"
+    initial_state: under_review
+    actor: operations_lead
+    command: admin_operator.onboarding.request_review
+    expected_events: ["onboarding_decision_blocked"]
+    expected_state: under_review
+    expected_error: "ADMIN_OPERATOR_CHECKLIST_INCOMPLETE"
+  - id: "ADMIN-OPS-005"
+    category: separation_of_duties
+    title: "入驻经办人不能复核自己的决定"
+    initial_state: awaiting_independent_review
+    actor: operations_lead
+    command: admin_operator.onboarding.approve
+    expected_events: ["access_denied"]
+    expected_state: awaiting_independent_review
+    expected_error: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+  - id: "ADMIN-OPS-006"
+    category: onboarding
+    title: "入驻通过只进入待激活"
+    initial_state: awaiting_independent_review
+    actor: senior_reviewer
+    command: admin_operator.onboarding.approve
+    expected_events: ["onboarding_decision_recorded", "operator_lifecycle_changed"]
+    expected_state: pending_activation
+    expected_error: null
+  - id: "ADMIN-OPS-007"
+    category: capability
+    title: "待激活主体必须取得明确城市能力后才能运营"
+    initial_state: pending_activation
+    actor: operations_lead
+    command: admin_operator.lifecycle.activate
+    expected_events: ["operator_lifecycle_change_blocked"]
+    expected_state: pending_activation
+    expected_error: "ADMIN_OPERATOR_ACTIVE_CAPABILITY_REQUIRED"
+  - id: "ADMIN-OPS-008"
+    category: capability
+    title: "禁止授予通配城市能力"
+    initial_state: pending_activation
+    actor: operations_lead
+    command: admin_operator.capability.grant
+    expected_events: ["access_denied"]
+    expected_state: pending_activation
+    expected_error: "ADMIN_OPERATOR_WILDCARD_SCOPE_FORBIDDEN"
+  - id: "ADMIN-OPS-009"
+    category: authorization
+    title: "运营主体人员不能自行授予城市能力"
+    initial_state: active
+    actor: operations_officer
+    command: admin_operator.capability.grant
+    expected_events: ["access_denied"]
+    expected_state: active
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-OPS-010"
+    category: boundary
+    title: "运营主体 360 度不复制资金余额"
+    initial_state: active
+    actor: operations_lead
+    command: admin_operator.profile.read
+    expected_events: ["operator_profile_viewed"]
+    expected_state: active
+    expected_error: null
+  - id: "ADMIN-OPS-011"
+    category: data_protection
+    title: "车主 360 度默认遮蔽严格敏感字段"
+    initial_state: active
+    actor: operations_officer
+    command: admin_operator.driver_360.read
+    expected_events: ["entity_360_viewed"]
+    expected_state: active
+    expected_error: null
+  - id: "ADMIN-OPS-012"
+    category: authorization
+    title: "运营主体人员不能访问其他主体车主"
+    initial_state: active
+    actor: operations_officer
+    command: admin_operator.driver_360.read
+    expected_events: ["access_denied"]
+    expected_state: active
+    expected_error: "ADMIN_OPERATOR_SCOPE_FORBIDDEN"
+  - id: "ADMIN-OPS-013"
+    category: boundary
+    title: "车辆 360 度沿用车辆审核权威状态"
+    initial_state: active
+    actor: reviewer
+    command: admin_operator.vehicle_360.read
+    expected_events: ["entity_360_viewed"]
+    expected_state: active
+    expected_error: null
+  - id: "ADMIN-OPS-014"
+    category: migration
+    title: "同一关系范围只能有一个未关闭迁移案件"
+    initial_state: active
+    actor: operations_lead
+    command: admin_operator.migration.create
+    expected_events: ["migration_blocked"]
+    expected_state: active
+    expected_error: "ADMIN_OPERATOR_OPEN_MIGRATION_EXISTS"
+  - id: "ADMIN-OPS-015"
+    category: migration
+    title: "目标主体缺少城市能力时迁移被阻止"
+    initial_state: checks_pending
+    actor: operations_lead
+    command: admin_operator.migration.request_acknowledgement
+    expected_events: ["migration_blocked"]
+    expected_state: checks_pending
+    expected_error: "ADMIN_OPERATOR_TARGET_CAPABILITY_MISSING"
+  - id: "ADMIN-OPS-016"
+    category: migration
+    title: "进行中行程阻止迁移安排"
+    initial_state: awaiting_independent_review
+    actor: senior_reviewer
+    command: admin_operator.migration.schedule
+    expected_events: ["migration_blocked"]
+    expected_state: awaiting_independent_review
+    expected_error: "ADMIN_OPERATOR_MIGRATION_BLOCKED"
+  - id: "ADMIN-OPS-017"
+    category: migration
+    title: "非零对账差异阻止迁移安排"
+    initial_state: awaiting_independent_review
+    actor: senior_reviewer
+    command: admin_operator.migration.schedule
+    expected_events: ["migration_blocked"]
+    expected_state: awaiting_independent_review
+    expected_error: "ADMIN_OPERATOR_MIGRATION_BLOCKED"
+  - id: "ADMIN-OPS-018"
+    category: separation_of_duties
+    title: "迁移经办人不能担任独立复核人"
+    initial_state: awaiting_independent_review
+    actor: operations_lead
+    command: admin_operator.migration.approve
+    expected_events: ["access_denied"]
+    expected_state: awaiting_independent_review
+    expected_error: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+  - id: "ADMIN-OPS-019"
+    category: migration
+    title: "迁移只能安排未来生效时间"
+    initial_state: awaiting_independent_review
+    actor: senior_reviewer
+    command: admin_operator.migration.schedule
+    expected_events: ["migration_blocked"]
+    expected_state: awaiting_independent_review
+    expected_error: "ADMIN_OPERATOR_EFFECTIVE_TIME_INVALID"
+  - id: "ADMIN-OPS-020"
+    category: concurrency
+    title: "资源版本变化时迁移安排失败"
+    initial_state: awaiting_independent_review
+    actor: senior_reviewer
+    command: admin_operator.migration.schedule
+    expected_events: ["migration_blocked"]
+    expected_state: awaiting_independent_review
+    expected_error: "STORAGE_CONCURRENT_MODIFICATION"
+  - id: "ADMIN-OPS-021"
+    category: migration
+    title: "迁移生效原子结束旧关系并建立新关系"
+    initial_state: scheduled
+    actor: operations_lead
+    command: admin_operator.migration.apply
+    expected_events: ["primary_operator_relationship_ended", "primary_operator_relationship_created", "migration_effective"]
+    expected_state: effective
+    expected_error: null
+  - id: "ADMIN-OPS-022"
+    category: boundary
+    title: "迁移生效不修改历史行程快照"
+    initial_state: effective
+    actor: auditor
+    command: admin_operator.migration.read
+    expected_events: ["entity_360_viewed"]
+    expected_state: effective
+    expected_error: null
+  - id: "ADMIN-OPS-023"
+    category: migration
+    title: "生效后的迁移不能回滚历史"
+    initial_state: effective
+    actor: operations_lead
+    command: admin_operator.migration.cancel
+    expected_events: ["access_denied"]
+    expected_state: effective
+    expected_error: "ADMIN_OPERATOR_MIGRATION_ALREADY_EFFECTIVE"
+  - id: "ADMIN-OPS-024"
+    category: lifecycle
+    title: "存在未关闭资金案件时主体不能退出"
+    initial_state: exit_pending
+    actor: senior_reviewer
+    command: admin_operator.lifecycle.exit
+    expected_events: ["operator_lifecycle_change_blocked"]
+    expected_state: exit_pending
+    expected_error: "ADMIN_OPERATOR_EXIT_BLOCKED"
+  - id: "ADMIN-OPS-025"
+    category: lifecycle
+    title: "已退出主体不能重新激活"
+    initial_state: exited
+    actor: operations_lead
+    command: admin_operator.lifecycle.activate
+    expected_events: ["access_denied"]
+    expected_state: exited
+    expected_error: "ADMIN_OPERATOR_REENTRY_REQUIRES_NEW_PROFILE"
+  - id: "ADMIN-OPS-026"
+    category: audit
+    title: "迁移阻断和拒绝均写入追加式审计"
+    initial_state: checks_pending
+    actor: operations_lead
+    command: admin_operator.migration.request_acknowledgement
+    expected_events: ["migration_blocked", "access_decision_recorded"]
+    expected_state: checks_pending
+    expected_error: "ADMIN_OPERATOR_MIGRATION_BLOCKED"
+  - id: "ADMIN-OPS-027"
+    category: feature_gate
+    title: "阶段二门禁关闭时保持阶段一只读名录"
+    initial_state: active
+    actor: operations_lead
+    command: admin_operator.profile.read
+    expected_events: ["access_denied"]
+    expected_state: active
+    expected_error: "FEATURE_DISABLED"

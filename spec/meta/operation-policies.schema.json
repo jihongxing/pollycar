@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/operation-policies.schema.json",
+  "title": "OpenAPI 操作策略规范",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_documents", "operations", "global_rules"],
+  "properties": {
+    "spec_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "spec_id": {"const": "pollycar.api.operation-policies"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"enum": ["draft", "review", "approved", "rejected", "superseded"]},
+    "source_documents": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation_id", "method", "path", "authorization_action", "actors", "request_classification", "response_classification", "idempotency_required", "audit", "allowed_errors", "acceptance_scenarios"],
+        "properties": {
+          "operation_id": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]+$"},
+          "method": {"enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+          "path": {"type": "string", "pattern": "^/v1/"},
+          "authorization_action": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+          "actors": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+          "request_classification": {"enum": ["L0", "L1", "L2", "L3", "L4"]},
+          "response_classification": {"enum": ["L0", "L1", "L2", "L3", "L4"]},
+          "idempotency_required": {"type": "boolean"},
+          "audit": {"enum": ["none", "standard", "sensitive", "strict"]},
+          "allowed_errors": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$"}},
+          "acceptance_scenarios": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z]+(?:-[A-Z]+)*-[0-9]{3}$"}}
+        }
+      }
+    },
+    "global_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["write_methods", "all_operations_require_authentication", "all_write_operations_require_idempotency", "all_operations_require_operation_id", "all_operations_require_error_response", "forbidden_actions", "forbidden_response_fields"],
+      "properties": {
+        "write_methods": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["POST", "PUT", "PATCH", "DELETE"]}},
+        "all_operations_require_authentication": {"const": true},
+        "all_write_operations_require_idempotency": {"const": true},
+        "all_operations_require_operation_id": {"const": true},
+        "all_operations_require_error_response": {"const": true},
+        "forbidden_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "forbidden_response_fields": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,289 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.role-access-matrix"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/28-后台角色权限与授权导航契约.md"
+decision: "docs/decisions/0021-运营后台角色权限与授权导航.md"
+
+design_approval:
+  design_frozen: true
+  frozen_on: "2026-07-15"
+  implementation_approved: true
+  explicit_implementation_approval_required: true
+
+feature_gate:
+  id: "synthetic_admin_role_access_matrix"
+  default_enabled: false
+  dependencies: ["internal_sandbox", "synthetic_admin_multi_organization", "synthetic_admin_authentication"]
+  deny_on_missing_dependency: true
+  production_enable_forbidden: true
+
+authorization:
+  default_effect: "deny"
+  platform_identity_implies_all_permissions: false
+  universal_administrator_forbidden: true
+  client_role_claim_trusted: false
+  server_navigation_authoritative: true
+  every_route_reauthorized: true
+  every_operation_reauthorized: true
+  field_level_server_filter_required: true
+  export_reauthorization_required: true
+
+platform_roles:
+  - id: "platform_access_administrator"
+    menus: ["workbench", "organization_accounts", "audit_system"]
+    operation_bundles: ["identity_access_governance", "audit_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "audit_reference_controlled"
+  - id: "operations_officer"
+    menus: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"]
+    operation_bundles: ["operator_read", "fleet_read", "trip_operations", "analytics_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "operations_lead"
+    menus: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports", "executive_dashboard"]
+    operation_bundles: ["operator_governance", "fleet_read", "trip_operations", "analytics_read", "executive_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "operator_management_officer"
+    menus: ["workbench", "operator_management", "driver_vehicle"]
+    operation_bundles: ["operator_governance", "fleet_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "reviewer"
+    menus: ["workbench", "driver_vehicle"]
+    operation_bundles: ["fleet_review"]
+    field_profile: "assigned_review_l4"
+    export_profile: "review_material_controlled"
+  - id: "senior_reviewer"
+    menus: ["workbench", "operator_management", "driver_vehicle"]
+    operation_bundles: ["operator_review", "fleet_review"]
+    field_profile: "assigned_review_l4"
+    export_profile: "review_material_controlled"
+  - id: "customer_support"
+    menus: ["workbench", "trip_operations", "support_safety"]
+    operation_bundles: ["trip_read", "support_case_management"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "support_lead"
+    menus: ["workbench", "trip_operations", "support_safety", "data_reports"]
+    operation_bundles: ["trip_read", "support_case_management", "analytics_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "safety_officer"
+    menus: ["workbench", "driver_vehicle", "trip_operations", "support_safety"]
+    operation_bundles: ["fleet_read", "trip_read", "safety_investigation"]
+    field_profile: "safety_evidence_l4"
+    export_profile: "safety_evidence_controlled"
+  - id: "safety_lead"
+    menus: ["workbench", "support_safety", "data_reports", "executive_dashboard"]
+    operation_bundles: ["safety_investigation", "analytics_read", "executive_read"]
+    field_profile: "safety_evidence_l4"
+    export_profile: "safety_evidence_controlled"
+  - id: "finance_officer"
+    menus: ["workbench", "finance_operations"]
+    operation_bundles: ["finance_operations"]
+    field_profile: "finance_l3_exact"
+    export_profile: "finance_controlled"
+  - id: "finance_lead"
+    menus: ["workbench", "finance_operations", "data_reports", "executive_dashboard"]
+    operation_bundles: ["finance_operations", "analytics_read", "executive_read"]
+    field_profile: "finance_l3_exact"
+    export_profile: "finance_controlled"
+  - id: "privacy_compliance"
+    menus: ["workbench", "support_safety", "finance_operations", "data_reports", "executive_dashboard", "audit_system"]
+    operation_bundles: ["privacy_governance", "analytics_read", "executive_read", "audit_read"]
+    field_profile: "privacy_case_l4"
+    export_profile: "approval_only"
+  - id: "data_analyst"
+    menus: ["workbench", "data_reports"]
+    operation_bundles: ["analytics_read"]
+    field_profile: "aggregate_l2"
+    export_profile: "aggregate_deidentified"
+  - id: "auditor"
+    menus: ["workbench", "organization_accounts", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"]
+    operation_bundles: ["audit_read"]
+    field_profile: "audit_reference_l3"
+    export_profile: "audit_reference_controlled"
+  - id: "technical_operations"
+    menus: ["workbench", "audit_system"]
+    operation_bundles: ["technical_recovery"]
+    field_profile: "technical_metadata_l2"
+    export_profile: "none"
+  - id: "executive_sponsor"
+    menus: ["workbench", "data_reports", "executive_dashboard"]
+    operation_bundles: ["executive_read"]
+    field_profile: "aggregate_l2"
+    export_profile: "executive_controlled"
+
+operator_roles:
+  - id: "operator_account_administrator"
+    menus: ["workbench", "organization_accounts", "audit_system"]
+    operation_bundles: ["operator_identity_governance", "operator_audit_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "audit_reference_controlled"
+  - id: "operator_operations_lead"
+    menus: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"]
+    operation_bundles: ["operator_read", "fleet_read", "trip_operations", "analytics_read"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "operator_fleet_officer"
+    menus: ["workbench", "operator_management", "driver_vehicle"]
+    operation_bundles: ["operator_read", "fleet_collaboration"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "operator_customer_support"
+    menus: ["workbench", "trip_operations", "support_safety"]
+    operation_bundles: ["trip_read", "support_case_management"]
+    field_profile: "operational_l3_masked"
+    export_profile: "operational_scoped"
+  - id: "operator_safety_liaison"
+    menus: ["workbench", "driver_vehicle", "trip_operations", "support_safety"]
+    operation_bundles: ["fleet_read", "trip_read", "safety_collaboration"]
+    field_profile: "operational_l3_masked"
+    export_profile: "none"
+  - id: "operator_finance_officer"
+    menus: ["workbench", "finance_operations"]
+    operation_bundles: ["operator_finance_operations"]
+    field_profile: "finance_l3_exact"
+    export_profile: "finance_controlled"
+  - id: "operator_finance_lead"
+    menus: ["workbench", "finance_operations", "data_reports"]
+    operation_bundles: ["operator_finance_operations", "analytics_read"]
+    field_profile: "finance_l3_exact"
+    export_profile: "finance_controlled"
+  - id: "operator_auditor"
+    menus: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"]
+    operation_bundles: ["operator_audit_read"]
+    field_profile: "audit_reference_l3"
+    export_profile: "audit_reference_controlled"
+  - id: "operator_executive"
+    menus: ["workbench", "data_reports", "executive_dashboard"]
+    operation_bundles: ["executive_read"]
+    field_profile: "aggregate_l2"
+    export_profile: "executive_controlled"
+
+navigation:
+  - id: "workbench"
+    route_prefix: "/admin/workbench"
+  - id: "organization_accounts"
+    route_prefix: "/admin/organization-accounts"
+  - id: "operator_management"
+    route_prefix: "/admin/operators"
+  - id: "driver_vehicle"
+    route_prefix: "/admin/fleet"
+  - id: "trip_operations"
+    route_prefix: "/admin/trips"
+  - id: "support_safety"
+    route_prefix: "/admin/cases"
+  - id: "finance_operations"
+    route_prefix: "/admin/finance"
+  - id: "data_reports"
+    route_prefix: "/admin/reports"
+  - id: "executive_dashboard"
+    route_prefix: "/admin/executive"
+  - id: "audit_system"
+    route_prefix: "/admin/governance"
+
+route_policy:
+  unauthorized_menu_hidden: true
+  direct_route_reauthorization_required: true
+  unauthorized_module_result: "forbidden_without_resource_disclosure"
+  unauthorized_resource_result: "not_found_without_existence_disclosure"
+  client_side_role_switch_forbidden: true
+  stale_navigation_manifest_forbidden: true
+
+organization_scope:
+  platform_explicit_city_scope_required: true
+  platform_explicit_operator_scope_required: true
+  platform_identity_global_scope_forbidden: true
+  operator_membership_operator_id_fixed: true
+  operator_city_scope_intersects_active_capabilities: true
+  wildcard_operator_scope_forbidden: true
+  request_filters_may_only_narrow_scope: true
+  search_count_aggregate_and_export_share_scope: true
+
+field_profiles:
+  internal_l2:
+    maximum_classification: "L2"
+  operational_l3_masked:
+    maximum_classification: "L3"
+    raw_l3_forbidden: true
+  assigned_review_l4:
+    maximum_classification: "L4"
+    assigned_case_required: true
+    temporary_grant_required: true
+  safety_evidence_l4:
+    maximum_classification: "L4"
+    linked_case_required: true
+    dual_approval_required: true
+  finance_l3_exact:
+    maximum_classification: "L3"
+    full_payment_credential_forbidden: true
+    full_bank_account_forbidden: true
+  privacy_case_l4:
+    maximum_classification: "L4"
+    legal_or_privacy_case_required: true
+    minimum_necessary_required: true
+  aggregate_l2:
+    maximum_classification: "L2"
+    deidentified_only: true
+  audit_reference_l3:
+    maximum_classification: "L3"
+    business_secret_plaintext_forbidden: true
+  technical_metadata_l2:
+    maximum_classification: "L2"
+    business_payload_forbidden: true
+
+export_profiles:
+  none:
+    allowed: false
+  aggregate_deidentified:
+    allowed: true
+    maximum_classification: "L2"
+  operational_scoped:
+    allowed: true
+    purpose_required: true
+    short_lived_encrypted_file_required: true
+  review_material_controlled:
+    allowed: true
+    independent_approval_required: true
+  safety_evidence_controlled:
+    allowed: true
+    dual_approval_required: true
+  finance_controlled:
+    allowed: true
+    reconciliation_and_close_required: true
+    requester_and_approver_must_differ: true
+  executive_controlled:
+    allowed: true
+    single_domain_required: true
+    dual_approval_required: true
+  audit_reference_controlled:
+    allowed: true
+    business_secret_plaintext_forbidden: true
+  approval_only:
+    allowed: false
+    may_approve_other_profiles_without_scope_expansion: true
+
+bulk_actions:
+  allowed: ["task_assign", "task_tag", "controlled_notification", "queue_coordination"]
+  forbidden: ["approve", "reject", "safety_restore", "payout", "refund", "reversal", "reconciliation_writeoff", "business_day_close", "role_grant"]
+
+forbidden_role_combinations:
+  - ["auditor", "business_write_role"]
+  - ["operator_auditor", "business_write_role"]
+  - ["technical_operations", "business_decision_role"]
+  - ["executive_sponsor", "daily_operator_session_purpose"]
+  - ["operator_executive", "daily_operator_session_purpose"]
+  - ["finance_maker", "same_batch_finance_checker"]
+  - ["safety_investigator", "same_case_restoration_reviewer"]
+
+implementation_gate:
+  implementation_allowed: true
+  navigation_api_forbidden_before_approval: false
+  route_guard_code_forbidden_before_approval: false
+  menu_refactor_forbidden_before_approval: false
+  real_accounts_allowed: false
+  production_enablement_allowed: false

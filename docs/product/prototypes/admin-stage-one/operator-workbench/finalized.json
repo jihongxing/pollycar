@@ -1,0 +1,12 @@
+{
+  "source_mockup": null,
+  "source_plan": "docs/product/admin/14-实施阶段与功能门禁.md",
+  "mode": "plan-driven",
+  "html_file": "docs/product/prototypes/admin-stage-one/operator-workbench/index.html",
+  "pretext_tier": "basic-height-computation",
+  "framework": "vanilla",
+  "iterations": 1,
+  "date": "2026-07-14",
+  "screen": "运营主体工作台",
+  "branch": null
+}

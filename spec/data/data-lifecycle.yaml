@@ -1,0 +1,33 @@
+spec_version: "1.0"
+spec_id: "pollycar.data.lifecycle"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_documents:
+  - "docs/decisions/0005-安全证据与数据保留.md"
+  - "docs/11-data-classification.md"
+feature_flags:
+  real_data_ingestion: false
+  user_invitation: false
+  shanghai_pilot: false
+retention_rules:
+  - { id: "identity_raw", data_class: "L4", retention: "P90D", trigger: "review_decided", disposition: "delete_raw_keep_token_and_result" }
+  - { id: "vehicle_raw", data_class: "L4", retention: "P1Y", trigger: "document_expired_or_vehicle_exited", disposition: "delete_raw_keep_review_summary" }
+  - { id: "trip_audit", data_class: "L3", retention: "P3Y", trigger: "trip_closed", disposition: "deidentify" }
+  - { id: "precise_location", data_class: "L4", retention: "P30D", trigger: "trip_closed", disposition: "delete_precise_keep_coarse_aggregate" }
+  - { id: "realtime_location_cache", data_class: "L4", retention: "PT24H", trigger: "trip_closed", disposition: "delete" }
+  - { id: "temporary_chat", data_class: "L4", retention: "PT72H", trigger: "trip_closed", disposition: "close_conversation_delete_content_keep_summary" }
+  - { id: "general_safety_case", data_class: "L4", retention: "P3Y", trigger: "case_closed", disposition: "delete_or_anonymize" }
+  - { id: "severe_safety_case", data_class: "L4", retention: "P5Y", trigger: "case_closed", disposition: "dual_review_delete_or_anonymize" }
+  - { id: "application_log", data_class: "L2", retention: "P30D", trigger: "logged", disposition: "delete_or_aggregate" }
+  - { id: "security_log", data_class: "L3", retention: "P90D", trigger: "logged", disposition: "delete_or_aggregate" }
+  - { id: "sensitive_access_audit", data_class: "L4", retention: "P3Y", trigger: "accessed", disposition: "deidentify_audit_summary" }
+legal_hold:
+  review_interval: "P90D"
+  default_maximum: "P2Y"
+  extension_maximum: "P1Y"
+  dual_approval_for: ["identity_raw", "temporary_chat", "precise_location", "bulk_data"]
+backup_deletion:
+  maximum_delay: "P35D"
+  replay_deletion_after_restore: true

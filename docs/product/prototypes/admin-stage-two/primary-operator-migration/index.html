@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>主运营关系迁移 · PollyCar 运营控制台</title>
+    <link rel="stylesheet" href="../shared/stage-two.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar"><strong>内部合成环境 · 阶段二设计参考</strong><span>历史关系与既有行程快照不可改写</span></div>
+      <header class="topbar">
+        <div class="brand-lockup"><span class="brand-mark">PC</span><span><b>PollyCar</b><small>运营控制台</small></span></div>
+        <div class="scope-bar"><span class="scope-chip">平台组织</span><span class="scope-chip">上海</span><span class="scope-chip">关系范围：车主 + 城市 + 车辆</span><span class="role-chip">迁移经办</span></div>
+        <div class="top-actions"><button class="avatar-button">林</button></div>
+      </header>
+      <aside class="sidebar"><nav><div class="nav-heading">组织与运力</div><a href="#">车主名录</a><a href="#">车辆名录</a><a href="#" aria-current="page">主运营关系 <span class="nav-count">3</span></a><div class="nav-heading">治理</div><a href="#">审计记录</a></nav></aside>
+      <main class="main">
+        <div class="stage-two-banner">
+          <div><span class="eyebrow">主运营关系迁移 · MIG-20260714-009</span><h1>陈* · 上海 · 沪A·7**21</h1><p>来源主体与目标主体分别确认，独立复核后安排未来生效。生效后只能新建反向迁移，不能回滚历史。</p></div>
+          <div><span class="status-chip">检查中</span><span class="fact-source">权威关系：资金编排域</span></div>
+        </div>
+        <section class="stage-card">
+          <h2>迁移路径</h2>
+          <div class="state-rail">
+            <div class="state-node"><b>草稿</b><small>已完成</small></div>
+            <div class="state-node current"><b>检查中</b><small>存在阻断</small></div>
+            <div class="state-node"><b>双方确认</b><small>未开始</small></div>
+            <div class="state-node"><b>独立复核</b><small>未开始</small></div>
+            <div class="state-node"><b>已安排</b><small>未来生效</small></div>
+            <div class="state-node"><b>已生效</b><small>不可回滚</small></div>
+          </div>
+        </section>
+        <div class="stage-grid">
+          <section class="stage-card">
+            <h2>关系变更</h2>
+            <div class="identity-grid">
+              <div class="identity-item"><small>来源主体</small><strong>申城伙伴运营</strong></div>
+              <div class="identity-item"><small>目标主体</small><strong>沪行出行服务</strong></div>
+              <div class="identity-item"><small>资源版本</small><strong>relationship-v7</strong></div>
+            </div>
+            <h2>检查结果</h2>
+            <div class="checklist">
+              <div class="check-item"><span class="check-mark">✓</span><div><b>目标城市能力</b><p>目标主体具备上海车主运营和车辆运营能力。</p></div><span class="status-chip">通过</span></div>
+              <div class="check-item"><span class="check-mark">✓</span><div><b>资格与车辆审核</b><p>车主和车辆当前均可服务。</p></div><span class="status-chip">通过</span></div>
+              <div class="check-item"><span class="check-mark pending">!</span><div><b>进行中行程</b><p>存在 1 笔预约行程，预计 16:40 完成。</p></div><span class="status-chip">阻断</span></div>
+              <div class="check-item"><span class="check-mark">✓</span><div><b>对账与资金</b><p>无非零差异、未知付款结果或阻断资金案件。</p></div><span class="status-chip">通过</span></div>
+            </div>
+            <div class="action-row">
+              <button class="button-secondary" data-toggle-blockers aria-expanded="false">查看全部阻断</button>
+              <button class="button-primary" disabled>发送双方确认</button>
+            </div>
+            <div class="blocker-list" data-blockers hidden>
+              <div class="blocker"><b>ACTIVE_TRIP</b><br /><small>进行中或未完成预约行程阻止迁移安排。</small></div>
+            </div>
+          </section>
+          <aside class="stage-card">
+            <h2>职责分离</h2>
+            <div class="identity-item"><small>迁移经办</small><strong>林序 · 平台运营</strong></div>
+            <div class="identity-item"><small>来源主体确认</small><strong>未分配</strong></div>
+            <div class="identity-item"><small>目标主体确认</small><strong>未分配</strong></div>
+            <div class="identity-item"><small>独立复核</small><strong>必须与以上人员不同</strong></div>
+            <h3>未来生效</h3>
+            <div class="closed-state">阻断关闭并完成双方确认与独立复核后，才可选择未来生效时间。</div>
+          </aside>
+        </div>
+        <section class="stage-card">
+          <h2>历史保护</h2>
+          <p>生效事务只结束旧关系并建立新关系。既有行程的运营主体快照、历史资金分配、清算和付款归属保持不变。</p>
+          <button class="button-danger" disabled>回滚已生效迁移</button>
+        </section>
+      </main>
+    </div>
+    <script src="../shared/stage-two.js"></script>
+  </body>
+</html>

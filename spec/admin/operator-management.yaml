@@ -1,0 +1,283 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.operator-management"
+language: "zh-CN"
+production_enabled: false
+status: "approved"
+source_document: "docs/decisions/0016-运营主体生命周期与主运营关系迁移.md"
+
+implementation_approval:
+  approved: true
+  approved_on: "2026-07-14"
+  synthetic_only: true
+  internal_sandbox_only: true
+  feature_gate_default_enabled: false
+  production_enable_forbidden: true
+  real_data_forbidden: true
+
+feature_gate:
+  id: synthetic_admin_operator_management
+  default_enabled: false
+  dependencies:
+    - internal_sandbox
+    - synthetic_admin_multi_organization
+  production_enable_forbidden: true
+
+authoritative_sources:
+  operator_profile: "operator_management"
+  onboarding_case: "operator_management"
+  city_capability: "operator_management"
+  driver_eligibility: "existing_eligibility_domain"
+  vehicle_review: "spec/domain/vehicle-review.yaml"
+  primary_operator_relationship: "pollycar_finance.driver_operator_memberships"
+  trip_operator_snapshot: "existing_trip_domain"
+  financial_blockers: "spec/finance/reconciliation.yaml and spec/finance/operator-funds.yaml"
+  duplicated_fact_source_forbidden: true
+
+operator_lifecycle:
+  states:
+    - candidate
+    - onboarding_review
+    - pending_activation
+    - active
+    - restricted
+    - suspended
+    - exit_pending
+    - exited
+  terminal_states: ["exited"]
+  direct_state_update_forbidden: true
+  append_only_state_events_required: true
+  allowed_transitions:
+    candidate: ["onboarding_review"]
+    onboarding_review: ["pending_activation", "candidate"]
+    pending_activation: ["active", "restricted", "suspended"]
+    active: ["restricted", "suspended", "exit_pending"]
+    restricted: ["active", "suspended", "exit_pending"]
+    suspended: ["restricted", "active", "exit_pending"]
+    exit_pending: ["exited", "restricted", "suspended"]
+    exited: []
+  exited_reactivation_forbidden: true
+  reentry_requires_new_operator_profile: true
+
+onboarding_case:
+  one_open_case_per_candidate: true
+  states:
+    - draft
+    - submitted
+    - under_review
+    - changes_requested
+    - awaiting_independent_review
+    - approved
+    - rejected
+    - cancelled
+  terminal_states:
+    - approved
+    - rejected
+    - cancelled
+  decisions:
+    - approve
+    - request_changes
+    - reject
+  required_check_groups:
+    - operator_identity_summary
+    - masked_contact_summary
+    - requested_city_capabilities
+    - operational_responsibility
+    - data_processing_readiness
+    - safety_collaboration_readiness
+    - driver_vehicle_governance_readiness
+  maker_checker_required: true
+  approval_resulting_operator_state: pending_activation
+  account_activation_automatic: false
+  production_capability_automatic: false
+  real_material_allowed: false
+
+city_capability:
+  wildcard_city_forbidden: true
+  wildcard_capability_forbidden: true
+  capability_types:
+    - driver_operations
+    - vehicle_operations
+    - trip_coordination
+    - support_coordination
+    - safety_collaboration
+  states:
+    - pending
+    - active
+    - restricted
+    - suspended
+    - expired
+    - revoked
+  required_fields:
+    - operator_entity_id
+    - city_code
+    - capability_type
+    - state
+    - effective_from
+    - rule_version
+    - approval_case_id
+    - approved_by
+  operator_self_grant_forbidden: true
+  append_only_history_required: true
+
+entity_360:
+  source_fact_editing_forbidden: true
+  client_side_scope_filtering_forbidden: true
+  strict_sensitive_plaintext_default_hidden: true
+  operator:
+    sections:
+      - profile_summary
+      - lifecycle_timeline
+      - city_capabilities
+      - onboarding_cases
+      - driver_vehicle_summary
+      - risk_and_blockers
+      - finance_read_only_summary
+  driver:
+    sections:
+      - product_account_summary
+      - eligibility_and_quota
+      - primary_operator_relationships
+      - vehicles
+      - trip_summary
+      - case_references
+  vehicle:
+    sections:
+      - vehicle_profile_summary
+      - review_status
+      - active_driver_relationship
+      - document_expiry
+      - trip_summary
+      - case_references
+
+primary_operator_relationship:
+  authoritative_table: "pollycar_finance.driver_operator_memberships"
+  uniqueness_scope:
+    - driver_account_id
+    - city_code
+    - vehicle_id
+  one_active_relationship_required: true
+  historical_relationship_update_forbidden: true
+  trip_operator_snapshot_immutable: true
+  direct_edit_forbidden: true
+
+migration_case:
+  one_open_case_per_relationship_scope: true
+  states:
+    - draft
+    - checks_pending
+    - awaiting_source_acknowledgement
+    - awaiting_target_acknowledgement
+    - awaiting_independent_review
+    - scheduled
+    - effective
+    - cancelled
+    - rejected
+  terminal_states:
+    - effective
+    - cancelled
+    - rejected
+  required_fields:
+    - migration_case_id
+    - driver_account_id
+    - vehicle_id
+    - city_code
+    - source_operator_entity_id
+    - target_operator_entity_id
+    - structured_reason
+    - requested_by
+    - resource_version
+  source_and_target_must_differ: true
+  source_acknowledgement_required: true
+  target_acknowledgement_required: true
+  independent_review_required: true
+  maker_checker_must_differ: true
+  future_effective_at_required: true
+  cancellation_before_effective_only: true
+  rollback_after_effective_forbidden: true
+  reversal_requires_new_migration_case: true
+  atomic_end_and_create_required: true
+
+migration_blockers:
+  target_driver_operations_capability_required: true
+  target_vehicle_operations_capability_required: true
+  serviceable_driver_eligibility_required: true
+  serviceable_vehicle_review_required: true
+  open_migration_case_forbidden: true
+  active_trip_forbidden: true
+  unresolved_safety_handoff_forbidden: true
+  unresolved_nonzero_reconciliation_difference_forbidden: true
+  unknown_payout_result_forbidden: true
+  blocking_fund_case_forbidden: true
+  stale_resource_version_forbidden: true
+  separation_of_duties_required: true
+
+authorization:
+  platform_actions:
+    - operator_profile.read
+    - operator_onboarding_case.manage
+    - operator_lifecycle.propose
+    - operator_lifecycle.review
+    - operator_city_capability.manage
+    - driver_360.read
+    - vehicle_360.read
+    - primary_operator_relationship.read
+    - primary_operator_migration.manage
+    - primary_operator_migration.review
+  operator_actions:
+    - own_operator_profile.read
+    - own_operator_city_capability.read
+    - own_driver_360.read
+    - own_vehicle_360.read
+    - own_migration_task.acknowledge
+  cross_operator_read_for_operator_forbidden: true
+  operator_lifecycle_write_for_operator_forbidden: true
+  operator_city_capability_self_grant_forbidden: true
+  auditor_write_forbidden: true
+
+audit:
+  append_only_required: true
+  allowed_and_denied_required: true
+  required_event_types:
+    - operator_profile_viewed
+    - onboarding_case_claimed
+    - onboarding_decision_recorded
+    - operator_lifecycle_change_proposed
+    - operator_lifecycle_change_reviewed
+    - city_capability_changed
+    - entity_360_viewed
+    - sensitive_field_disclosed
+    - migration_case_created
+    - migration_acknowledged
+    - migration_reviewed
+    - migration_scheduled
+    - migration_effective
+    - migration_blocked
+  sensitive_plaintext_forbidden: true
+
+productized_domain_closure:
+  bearer_session_required: true
+  server_navigation_availability_required: true
+  list_route: "/v1/internal-sandbox/admin/operators"
+  detail_route: "/v1/internal-sandbox/admin/operators/:operator_id"
+  action_route: "/v1/internal-sandbox/admin/operators/:operator_id/actions/:action"
+  summary_required: true
+  searchable: true
+  lifecycle_filter_required: true
+  sortable: true
+  signed_cursor_pagination_required: true
+  detail_updated_at_required: true
+  platform_operations_lead_actions: ["restrict", "reactivate"]
+  operator_roles_read_only: true
+  auditor_read_only: true
+  expected_version_required: true
+  idempotency_key_required: true
+  confirming_state_required: true
+  append_only_audit_projection_required: true
+
+real_capabilities:
+  real_operator_onboarding: false
+  real_operator_materials: false
+  real_operator_accounts: false
+  real_city_capabilities: false
+  real_primary_operator_migration: false
+  production_admin_enabled: false

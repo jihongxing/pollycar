@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>资金运营中心</title><link rel="stylesheet" href="../shared/stage-four.css"></head><body>
+<div class="shell"><div class="env"><b>内部合成环境 · 阶段四设计原型</b><span>真实支付、清算、付款、退款与生产启用均关闭</span></div>
+<header class="top"><div class="brand"><span class="brand-mark">RE</span><div><b>REGO Operations</b><small>资金运营工作台</small></div></div><div class="context"><b>平台组织</b><b>上海账务日</b><b>平台财务经办</b></div><span class="avatar">周</span></header>
+<aside class="side"><nav><a class="active">资金运营中心</a><a>分配与清算</a><a>车主付款</a><a>退款与冲正</a><a>对账与资金案件</a><a>日终关账</a><a>账本查询</a></nav><div class="scope"><b>服务端组织范围</b><span>组织：平台</span><span>主体：6 个</span><span>金额：Server 只读</span></div></aside>
+<nav class="mobile-nav"><a class="active">资金中心</a><a>清算</a><a>付款</a><a>退款</a><a>对账</a><a>关账</a><a>账本</a></nav>
+<main><div class="heading"><div><span class="eyebrow">阶段四 · 资金运营</span><h1>资金运营中心</h1><p>统一呈现分配、清算、付款、退款、对账与关账任务；后台不复制余额事实，不允许编辑 Server 返回金额。</p></div><span class="badge warning">synthetic_admin_finance_operations 关闭态</span></div>
+<div class="gate"><strong>资金硬门</strong><span>任何非零差异、未解决零金额案件、无效账单或未知结果都会阻止清算、付款和关账。</span></div>
+<section class="metrics"><article><span>非零差异阻断</span><strong>3</strong><small>必须人工解决</small></article><article><span>待独立复核</span><strong>11</strong><small>经办与复核分离</small></article><article><span>未知结果</span><strong>2</strong><small>禁止创建替代命令</small></article><article><span>资金案件</span><strong>7</strong><small>不形成余额事实</small></article></section>
+<div class="grid"><section class="panel"><header><div><h2>阻断优先队列</h2><p>按资金影响和账务日时限排序</p></div><span class="badge danger">5 项阻断</span></header><div class="list">
+<article class="item"><span class="icon danger">差</span><div><b>支付机构账单与账本相差 ¥128.00</b><p>REC-SYN-0714-03 · 四方事实源尚未一致</p></div><span class="badge danger">非零差异</span></article>
+<article class="item"><span class="icon">复</span><div><b>运营主体清算等待独立复核</b><p>SET-SYN-184 · 经办人周敏不可复核本人批次</p></div><span class="badge warning">待独立复核</span></article>
+<article class="item"><span class="icon danger">未</span><div><b>车主付款请求返回未知结果</b><p>只允许查询原幂等请求、Outbox 与权威状态</p></div><span class="badge danger">未知结果</span></article>
+</div></section><section class="panel"><header><div><h2>运行守卫</h2><p>所有金额和状态均来自权威内核</p></div></header><div class="stack"><div class="kv"><span>金额编辑</span><b>禁止</b></div><div class="kv"><span>余额修改</span><b>禁止</b></div><div class="kv"><span>组织范围</span><b>服务端强制过滤</b></div><div class="kv"><span>职责分离</span><b>高风险命令双人复核</b></div><div class="kv"><span>未知结果恢复</span><b>仅查询原请求</b></div></div><div class="actions"><button class="primary">认领资金任务</button><button disabled>直接修改余额</button></div></section></div>
+</main></div></body></html>

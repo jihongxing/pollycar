@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="御驾出行运营后台产品化高保真设计参考" />
+    <title>御驾出行运营工作台｜产品化高保真方案</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="preview-bar"><b>内部设计预览</b><span>演示账号与演示数据，真实账号和生产使用尚未开放</span></div>
+    <nav class="prototype-nav" aria-label="高保真视图导航">
+      <button class="active" data-show-view="login">登录</button>
+      <button data-show-view="activation">邀请激活</button>
+      <button data-show-view="identity">工作身份</button>
+      <button data-show-view="platform">平台工作台</button>
+      <button data-show-view="operator">公司工作台</button>
+      <button data-show-view="list">统一列表</button>
+      <button data-show-view="states">权限与异常</button>
+      <button data-show-view="language">产品语言</button>
+      <span class="spacer"></span>
+      <span class="review-status">设计已冻结 · 尚未批准实现</span>
+    </nav>
+
+    <section class="view active" data-view="login">
+      <div class="auth-layout">
+        <aside class="auth-brand">
+          <div class="wordmark"><span class="mark">RE</span><div><b>御驾出行</b><small>运营工作台</small></div></div>
+          <div class="auth-brand-copy">
+            <span class="eyebrow">REGO OPERATIONS</span>
+            <h1>让每个岗位，只看到该做的事。</h1>
+            <p>平台与运营公司人员使用同一入口，登录后根据组织成员关系选择工作身份。菜单、数据范围和操作权限由服务端统一判定。</p>
+            <div class="trust-list">
+              <span><i></i>每个账号对应一名内部人员</span>
+              <span><i></i>多因素验证保护高风险操作</span>
+              <span><i></i>组织范围和关键操作完整留痕</span>
+            </div>
+          </div>
+          <small>需要开通账号？请联系所属组织的账号管理员。</small>
+        </aside>
+        <main class="auth-main">
+          <form class="auth-card" onsubmit="return false">
+            <h2>登录运营工作台</h2>
+            <p>使用管理员邀请的工作邮箱登录。平台账号和运营公司账号不会混用权限。</p>
+            <div class="field"><label for="email">工作邮箱</label><input id="email" type="email" value="lin.yun@rego.example" autocomplete="username" /></div>
+            <div class="field"><label for="password">密码</label><input id="password" type="password" value="DesignPreviewOnly" autocomplete="current-password" /></div>
+            <div class="row-between"><label><input type="checkbox" /> 保持本页邮箱</label><button class="text-link" type="button" data-notify="密码恢复链接将在验证账号状态后发送，有效期为 30 分钟。">忘记密码</button></div>
+            <button class="primary full" type="button" data-notify="密码验证完成。业务会话将在多因素验证通过后签发。" data-go="activation">继续</button>
+            <div class="auth-footer">无法登录时，系统不会说明邮箱是否存在。连续多次失败后账号会暂时锁定，以保护组织数据。</div>
+          </form>
+        </main>
+      </div>
+    </section>
+
+    <section class="view" data-view="activation">
+      <div class="auth-layout">
+        <aside class="auth-brand">
+          <div class="wordmark"><span class="mark">RE</span><div><b>御驾出行</b><small>账号激活</small></div></div>
+          <div class="auth-brand-copy">
+            <span class="eyebrow">INVITATION ACTIVATION</span>
+            <h1>先确认职责，再激活账号。</h1>
+            <p>邀请确定所属组织和初始角色。受邀人只能确认，不能在激活页面修改组织、角色或数据范围。</p>
+          </div>
+          <small>邀请链接单次有效，过期或重发后旧链接立即失效。</small>
+        </aside>
+        <main class="auth-main">
+          <form class="auth-card" onsubmit="return false">
+            <div class="stepper" aria-label="激活进度"><span class="step done"></span><span class="step done"></span><span class="step active"></span><span class="step"></span></div>
+            <h2>设置多因素验证</h2>
+            <p>使用身份验证器扫描二维码后，输入当前六位验证码。短信不作为后台账号的验证方式。</p>
+            <div class="summary-box">
+              <b>本次邀请</b>
+              <div class="summary-grid"><span>组织</span><strong>平台运营中心</strong><span>初始角色</span><strong>平台运营负责人</strong><span>城市范围</span><strong>上海</strong></div>
+            </div>
+            <div class="field"><label>身份验证器验证码</label><div class="totp-grid"><input value="8" aria-label="第 1 位" /><input value="2" aria-label="第 2 位" /><input value="6" aria-label="第 3 位" /><input value="4" aria-label="第 4 位" /><input value="1" aria-label="第 5 位" /><input value="9" aria-label="第 6 位" /></div><span class="field-hint">验证码在当前时间窗口内只能使用一次。</span></div>
+            <div class="recovery-box" aria-label="一次性恢复码"><code>REGO-7K2P-4M8Q</code><code>REGO-9X3D-6F1L</code><code>REGO-2H5N-8C4V</code><code>REGO-6W1J-3R7T</code></div>
+            <label><input type="checkbox" checked /> 我已将恢复码保存到安全位置</label>
+            <button class="primary full" type="button" data-go="identity" data-notify="账号已完成激活。请选择本次工作的组织身份。">完成激活</button>
+            <div class="auth-footer">恢复码只显示一次。若需要重置多因素验证，必须由独立的平台账号管理员批准，现有会话会全部退出。</div>
+          </form>
+        </main>
+      </div>
+    </section>
+
+    <section class="view" data-view="identity">
+      <main class="identity-layout">
+        <header class="identity-header">
+          <div class="wordmark" style="justify-content:center;color:var(--ink)"><span class="mark">RE</span><div><b>御驾出行运营工作台</b><small>选择本次工作身份</small></div></div>
+          <h1>今天以哪个身份工作？</h1>
+          <p>每次会话只使用一个组织成员关系。切换身份会重新签发会话，不会合并不同组织的权限。</p>
+        </header>
+        <div class="identity-groups">
+          <section class="identity-group">
+            <h2>平台工作身份</h2>
+            <article class="identity-card">
+              <span class="identity-icon">平</span>
+              <div><b>平台运营负责人</b><small>平台运营中心 · 上海 · 可观察 6 家获批运营公司<br />最近使用：今天 09:18</small></div>
+              <button type="button" data-shell-role="platform">进入</button>
+            </article>
+            <article class="identity-card">
+              <span class="identity-icon">审</span>
+              <div><b>运营审计观察</b><small>平台治理中心 · 只读控制证据<br />最近使用：7 月 12 日</small></div>
+              <button type="button" data-go="states" data-notify="审计身份将签发只读菜单，不继承平台运营写权限。">进入</button>
+            </article>
+          </section>
+          <section class="identity-group">
+            <h2>运营公司工作身份</h2>
+            <article class="identity-card operator">
+              <span class="identity-icon">沪</span>
+              <div><b>本公司运营负责人</b><small>沪行出行服务 · 上海<br />组织范围固定，不能切换到其他运营公司</small></div>
+              <button type="button" data-shell-role="operator">进入</button>
+            </article>
+            <article class="identity-card operator">
+              <span class="identity-icon">财</span>
+              <div><b>本公司财务复核</b><small>沪行出行服务 · 仅本公司资金摘要与待复核批次</small></div>
+              <button type="button" data-go="states" data-notify="财务身份需要重新确认多因素验证的新鲜度。">进入</button>
+            </article>
+          </section>
+        </div>
+      </main>
+    </section>
+
+    <section class="view" data-view="platform">
+      <div class="console">
+        <header class="topbar">
+          <div class="topbar-brand">御驾出行运营工作台<small>平台运营</small></div>
+          <div class="context-chips"><span class="chip">平台运营中心</span><span class="chip">上海</span><span class="chip">观察 6 家运营公司</span><span class="chip role">平台运营负责人</span></div>
+          <div class="top-actions"><button class="icon-button" data-notify="当前有 12 条通知，其中 3 条需要今天处理。" aria-label="通知">12</button><button class="icon-button" data-go="identity" aria-label="切换身份">林</button></div>
+        </header>
+        <aside class="sidebar">
+          <div class="side-brand"><span class="mark">RE</span><div><b>REGO</b><small>Operations</small></div></div>
+          <nav aria-label="平台授权导航">
+            <button class="active"><span>工作台</span><span class="count">8</span></button>
+            <button><span>运营公司</span><span class="count">3</span></button>
+            <button><span>车主与车辆</span><span class="count">24</span></button>
+            <button><span>行程运营</span><span class="count">6</span></button>
+            <button data-go="list"><span>数据与报表</span></button>
+            <button><span>高层驾驶舱</span></button>
+          </nav>
+          <div class="sidebar-foot"><b>当前数据范围</b>上海及 6 家获批运营公司。角色允许跨公司协调，但不包含财务、安全或账号管理权限。</div>
+        </aside>
+        <main class="main">
+          <header class="page-heading">
+            <div><span class="eyebrow">平台运营 · 今日优先事项</span><h1>平台运营工作台</h1><p>先处理跨公司阻断、即将超时任务和等待独立复核的事项。</p></div>
+            <div class="heading-actions"><button class="secondary" data-notify="只能选择当前角色已获准的城市和运营公司。">调整观察范围</button><button class="primary" data-go="list">查看任务列表</button></div>
+          </header>
+          <div class="notice">海湾城市服务存在未关闭资金差异。平台运营可以协调处理进度，但不能修改金额或批准清算。</div>
+          <section class="metrics">
+            <article class="metric"><span>我的待办</span><strong>8</strong><small>2 项今天到期</small></article>
+            <article class="metric"><span>跨公司阻断</span><strong>3</strong><small>资金 1 · 安全 2</small></article>
+            <article class="metric"><span>等待独立复核</span><strong>5</strong><small>最长等待 46 分钟</small></article>
+            <article class="metric"><span>结果确认中</span><strong>2</strong><small>请勿重复提交</small></article>
+          </section>
+          <div class="content-grid">
+            <section class="panel">
+              <header class="panel-header"><div><h2>需要优先处理</h2><p>按阻断程度和剩余时间排序</p></div><button class="quiet" data-go="list">全部任务</button></header>
+              <div class="task-list">
+                <article class="task"><span class="task-icon danger">差</span><div><b>海湾城市服务对账差异仍未关闭</b><p>已阻止清算、车主付款和日终关闭 · 需财务工作台处理</p></div><span class="badge danger">已阻断</span></article>
+                <article class="task"><span class="task-icon warn">迁</span><div><b>主运营关系迁移等待目标公司确认</b><p>沪行出行服务 → 申城伙伴运营 · 还剩 1 小时 12 分</p></div><span class="badge warning">即将超时</span></article>
+                <article class="task"><span class="task-icon">行</span><div><b>预约行程未匹配，需要跨公司协调</b><p>浦东新区 · 22:30 出发 · 当前无可用车辆</p></div><span class="badge">处理中</span></article>
+              </div>
+            </section>
+            <section class="panel">
+              <header class="panel-header"><div><h2>当前权限</h2><p>工作身份决定菜单，范围决定数据</p></div></header>
+              <div class="scope-list">
+                <div class="scope-row"><span>组织</span><b>平台运营中心</b></div>
+                <div class="scope-row"><span>城市</span><b>上海</b></div>
+                <div class="scope-row"><span>运营公司</span><b>6 家获批公司</b></div>
+                <div class="scope-row"><span>字段</span><b>高敏感信息已遮蔽</b></div>
+                <div class="scope-row"><span>资金操作</span><b>无权限</b></div>
+                <div class="scope-row"><span>身份有效期</span><b>剩余 6 小时 42 分</b></div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <section class="view" data-view="operator">
+      <div class="console">
+        <header class="topbar">
+          <div class="topbar-brand">御驾出行运营工作台<small>运营公司</small></div>
+          <div class="context-chips"><span class="chip">沪行出行服务</span><span class="chip">上海</span><span class="chip role">本公司运营负责人</span></div>
+          <div class="top-actions"><button class="icon-button" data-notify="当前有 7 条本公司通知。" aria-label="通知">7</button><button class="icon-button" data-go="identity" aria-label="切换身份">林</button></div>
+        </header>
+        <aside class="sidebar">
+          <div class="side-brand"><span class="mark">RE</span><div><b>REGO</b><small>沪行出行服务</small></div></div>
+          <nav aria-label="运营公司授权导航">
+            <button class="active"><span>工作台</span><span class="count">11</span></button>
+            <button><span>运营公司</span></button>
+            <button><span>车主与车辆</span><span class="count">18</span></button>
+            <button><span>行程运营</span><span class="count">4</span></button>
+            <button><span>数据与报表</span></button>
+          </nav>
+          <div class="sidebar-foot"><b>组织范围固定</b>所有列表、搜索、详情和导出仅包含沪行出行服务。没有其他运营公司的入口或数量信息。</div>
+        </aside>
+        <main class="main">
+          <header class="page-heading">
+            <div><span class="eyebrow">沪行出行服务 · 今日运营</span><h1>本公司运营工作台</h1><p>查看本公司的运力、行程、服务质量和需要协作的风险事项。</p></div>
+            <div class="heading-actions"><button class="primary" data-go="list">查看本公司任务</button></div>
+          </header>
+          <div class="notice">当前组织范围固定为沪行出行服务。页面不会展示其他运营公司的菜单、筛选项、数据数量或导出入口。</div>
+          <section class="metrics">
+            <article class="metric"><span>在营车主</span><strong>286</strong><small>资料即将到期 9 人</small></article>
+            <article class="metric"><span>在营车辆</span><strong>312</strong><small>待复核 6 辆</small></article>
+            <article class="metric"><span>今日待协调行程</span><strong>4</strong><small>预约 3 · 异常 1</small></article>
+            <article class="metric"><span>服务案件</span><strong>7</strong><small>2 项即将超时</small></article>
+          </section>
+          <div class="content-grid">
+            <section class="panel">
+              <header class="panel-header"><div><h2>本公司待办</h2><p>只包含本公司关联任务</p></div><button class="quiet" data-go="list">全部任务</button></header>
+              <div class="task-list">
+                <article class="task"><span class="task-icon warn">证</span><div><b>9 名车主的证照将在 30 天内到期</b><p>可发起资料提醒，不能代替平台审核决定</p></div><span class="badge warning">需跟进</span></article>
+                <article class="task"><span class="task-icon">迁</span><div><b>3 项主运营关系迁移等待本公司确认</b><p>确认只代表本公司知悉，最终迁移仍需平台独立复核</p></div><span class="badge">待确认</span></article>
+                <article class="task"><span class="task-icon danger">安</span><div><b>1 项安全协作任务等待补充信息</b><p>只能查看平台允许披露的案件摘要</p></div><span class="badge danger">高优先级</span></article>
+              </div>
+            </section>
+            <section class="panel">
+              <header class="panel-header"><div><h2>组织边界</h2><p>本次会话不可扩大</p></div></header>
+              <div class="scope-list">
+                <div class="scope-row"><span>运营公司</span><b>沪行出行服务</b></div>
+                <div class="scope-row"><span>城市能力</span><b>上海</b></div>
+                <div class="scope-row"><span>跨公司查看</span><b>禁止</b></div>
+                <div class="scope-row"><span>严格证据原文</span><b>禁止</b></div>
+                <div class="scope-row"><span>付款批准</span><b>无权限</b></div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <section class="view" data-view="list">
+      <div class="console">
+        <header class="topbar">
+          <div class="topbar-brand">御驾出行运营工作台<small>统一列表规范</small></div>
+          <div class="context-chips"><span class="chip">平台运营中心</span><span class="chip">上海</span><span class="chip role">平台运营负责人</span></div>
+          <div class="top-actions"><button class="icon-button" data-go="platform" aria-label="返回工作台">返</button></div>
+        </header>
+        <aside class="sidebar">
+          <div class="side-brand"><span class="mark">RE</span><div><b>REGO</b><small>Operations</small></div></div>
+          <nav><button><span>工作台</span></button><button class="active"><span>运营任务</span><span class="count">96</span></button><button><span>行程运营</span></button><button><span>数据与报表</span></button></nav>
+          <div class="sidebar-foot"><b>服务端分页</b>游标绑定当前搜索、筛选、排序和组织范围。条件变化后不能复用旧游标。</div>
+        </aside>
+        <main class="main">
+          <header class="page-heading">
+            <div><span class="eyebrow">运营任务</span><h1>待处理任务</h1><p>统一搜索、筛选、排序和游标分页。返回本页时恢复条件与滚动位置。</p></div>
+            <div class="heading-actions"><button class="secondary" data-notify="导出将使用当前查询和数据范围重新授权，不会导出未显示字段。">申请导出</button><button class="primary" data-notify="新建任务只用于任务编排，不直接修改行程或资金状态。">新建协作任务</button></div>
+          </header>
+          <div class="toolbar">
+            <input type="search" value="浦东" aria-label="搜索任务" placeholder="搜索任务编号、运营公司或业务摘要" />
+            <select aria-label="任务状态"><option>状态：处理中</option><option>全部状态</option></select>
+            <select aria-label="优先级"><option>优先级：全部</option><option>高优先级</option></select>
+            <select aria-label="排序"><option>最早到期优先</option><option>最近更新优先</option></select>
+            <button class="primary" type="button" data-search>查询</button>
+          </div>
+          <div class="filter-tags"><span class="filter-tag">城市：上海<button data-remove-filter aria-label="移除城市筛选">×</button></span><span class="filter-tag">范围：6 家获批公司<button data-remove-filter aria-label="移除范围筛选">×</button></span><span class="filter-tag">状态：处理中<button data-remove-filter aria-label="移除状态筛选">×</button></span></div>
+          <section class="table-card">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th><input type="checkbox" aria-label="选择当前页" /></th><th>任务</th><th>运营公司</th><th>业务域</th><th>负责人</th><th>剩余时间</th><th>状态</th><th>操作</th></tr></thead>
+                <tbody>
+                  <tr><td><input type="checkbox" /></td><td><b>OPS-260715-0182</b><br /><span class="masked">浦东预约行程待协调</span></td><td>沪行出行服务</td><td>行程运营</td><td>林韵</td><td>42 分钟</td><td><span class="badge warning">即将超时</span></td><td><button class="text-link" data-notify="已进入任务详情，返回时将恢复当前列表位置。">查看</button></td></tr>
+                  <tr><td><input type="checkbox" /></td><td><b>OPS-260715-0179</b><br /><span class="masked">主运营关系迁移确认</span></td><td>申城伙伴运营</td><td>车主与车辆</td><td>周恺</td><td>1 小时 12 分</td><td><span class="badge">处理中</span></td><td><button class="text-link">查看</button></td></tr>
+                  <tr><td><input type="checkbox" /></td><td><b>OPS-260715-0171</b><br /><span class="masked">安全协作信息待补充</span></td><td>沪行出行服务</td><td>客服与安全</td><td>安全团队</td><td>2 小时 08 分</td><td><span class="badge danger">高优先级</span></td><td><button class="text-link">查看</button></td></tr>
+                  <tr><td><input type="checkbox" /></td><td><b>OPS-260715-0164</b><br /><span class="masked">车辆材料等待平台复核</span></td><td>海湾城市服务</td><td>车主与车辆</td><td>未分配</td><td>3 小时 21 分</td><td><span class="badge">待分配</span></td><td><button class="text-link">查看</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <footer class="pagination">
+              <span class="pagination-info">约 96 条结果 · 截至 2026-07-15 16:20 · 总数为估算值</span>
+              <div class="pagination-actions"><select class="page-size" aria-label="每页数量"><option>25 条</option><option>50 条</option><option>100 条</option></select><button data-page-previous>上一页</button><b data-page-label></b><button data-page-next>下一页</button></div>
+            </footer>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="view" data-view="states">
+      <main class="identity-layout">
+        <header class="page-heading">
+          <div><span class="eyebrow">统一恢复体验</span><h1>权限、会话与异常状态</h1><p>告诉用户发生了什么、还能做什么。不要把内部错误码扔给运营人员。</p></div>
+          <button class="secondary" data-go="identity">返回身份选择</button>
+        </header>
+        <div class="state-grid">
+          <article class="state-card danger"><span class="state-icon">权</span><h2>当前账号无权访问此页面</h2><p>你的工作身份没有这个业务域的查看权限。页面不会说明目标记录是否存在。</p><div class="actions"><button class="primary" data-go="platform">返回工作台</button><button class="secondary" data-notify="权限申请将提交给账号管理员，不会立即扩大当前会话权限。">申请权限</button></div></article>
+          <article class="state-card warning"><span class="state-icon">时</span><h2>会话已过期</h2><p>为了保护组织数据，长时间未操作后需要重新登录。未提交的普通筛选条件会在本机保留。</p><div class="actions"><button class="primary" data-go="login">重新登录</button></div></article>
+          <article class="state-card warning"><span class="state-icon">变</span><h2>工作权限已经变化</h2><p>你的角色或数据范围刚刚更新。请重新确认工作身份，旧菜单和旧页面权限已经失效。</p><div class="actions"><button class="primary" data-go="identity">确认工作身份</button></div></article>
+          <article class="state-card"><span class="state-icon">确</span><h2>结果确认中</h2><p>系统已经收到操作请求，正在核对最终结果。请勿重复提交，可以稍后查询原请求。</p><div class="actions"><button class="primary" data-notify="已查询原请求，当前仍在确认最终结果。">查询处理结果</button><button class="secondary" data-go="platform">返回工作台</button></div></article>
+          <article class="state-card"><span class="state-icon">空</span><h2>当前没有待处理事项</h2><p>筛选范围内没有任务。你可以移除筛选条件，或者返回工作台查看其他优先事项。</p><div class="actions"><button class="secondary" data-go="list">调整筛选</button></div></article>
+          <article class="state-card danger"><span class="state-icon">锁</span><h2>账号暂时不可登录</h2><p>多次验证失败后账号已暂时锁定。请稍后重试，或联系所属组织的账号管理员。</p><div class="actions"><button class="secondary" data-notify="已显示组织账号管理员的内部支持渠道。">获取帮助</button></div></article>
+        </div>
+      </main>
+    </section>
+
+    <section class="view" data-view="language">
+      <main class="identity-layout">
+        <header class="page-heading">
+          <div><span class="eyebrow">产品表达规范</span><h1>让运营人员看到业务，不是架构图</h1><p>技术信息只在审计和系统运行场景保留，普通页面用行动和恢复语言。</p></div>
+          <button class="primary" data-go="platform">查看应用效果</button>
+        </header>
+        <div class="language-grid">
+          <section class="panel">
+            <header class="panel-header"><div><h2>文案转换</h2><p>内部状态转成普通运营语言</p></div></header>
+            <div class="language-list">
+              <div class="language-row"><span class="old">feature gate disabled</span><span class="arrow">→</span><span class="new">功能暂未开放</span></div>
+              <div class="language-row"><span class="old">AUTHORIZATION_DENIED</span><span class="arrow">→</span><span class="new">当前账号无权执行此操作</span></div>
+              <div class="language-row"><span class="old">unknown result</span><span class="arrow">→</span><span class="new">结果确认中</span></div>
+              <div class="language-row"><span class="old">idempotency conflict</span><span class="arrow">→</span><span class="new">请求处理中，请勿重复提交</span></div>
+              <div class="language-row"><span class="old">L4 field restricted</span><span class="arrow">→</span><span class="new">部分信息需额外授权</span></div>
+              <div class="language-row"><span class="old">scope changed</span><span class="arrow">→</span><span class="new">工作权限已经变化</span></div>
+              <div class="language-row"><span class="old">dead letter recovery</span><span class="arrow">→</span><span class="new">待恢复消息（仅系统运行页）</span></div>
+            </div>
+          </section>
+          <section class="panel">
+            <header class="panel-header"><div><h2>核心组件</h2><p>所有业务域共享相同状态表达</p></div></header>
+            <div class="component-stack">
+              <div class="component-demo"><span>状态标签</span><span class="badge success">正常</span> <span class="badge warning">即将超时</span> <span class="badge danger">已阻断</span></div>
+              <div class="component-demo"><span>主要与次要操作</span><button class="primary">提交处理</button> <button class="secondary">暂不处理</button></div>
+              <div class="component-demo"><span>字段限制</span><div class="notice" style="margin:0">部分信息需额外授权。申请时需要填写用途和关联案件。</div></div>
+              <div class="component-demo"><span>不可执行操作</span><button class="secondary" disabled>直接修改系统金额</button> <small style="color:var(--muted)">金额由资金事实源提供，页面不能修改。</small></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </section>
+
+    <div class="toast" role="status" aria-live="polite" data-toast><b>操作已受控处理</b><span data-toast-message>设计原型交互已完成。</span></div>
+    <script src="./prototype.js"></script>
+  </body>
+</html>

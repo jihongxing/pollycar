@@ -1,0 +1,167 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.audit-event-model"
+language: "zh-CN"
+production_enabled: false
+status: "approved"
+source_document: "docs/decisions/0015-运营控制台多组织授权与审计模型.md"
+
+storage:
+  append_only: true
+  update_forbidden: true
+  delete_forbidden: true
+  business_role_write_forbidden: true
+  server_timestamp_required: true
+  sensitive_plaintext_forbidden: true
+
+identity:
+  event_id:
+    type: uuid
+    generated_by: server
+  occurred_at:
+    type: timestamp_with_timezone
+    generated_by: server
+  access_decision_id:
+    type: uuid
+    required_for_authorized_action: true
+
+required_context:
+  - event_id
+  - event_type
+  - occurred_at
+  - actor_internal_user_id
+  - actor_membership_id
+  - organization_type
+  - organization_id
+  - session_id
+  - request_id
+  - correlation_id
+  - result
+
+conditional_context:
+  scope_change:
+    required_fields:
+      - previous_context_digest
+      - next_context_digest
+  resource_action:
+    required_fields:
+      - resource_type
+      - resource_id
+      - action
+      - purpose
+      - access_decision_id
+  data_disclosure:
+    required_fields:
+      - resource_type
+      - resource_id
+      - disclosed_field_ids
+      - maximum_data_classification
+      - purpose
+      - ticket_id
+      - expires_at
+      - access_decision_id
+    sensitive_values_forbidden: true
+  temporary_grant:
+    required_fields:
+      - grant_id
+      - grant_scope_digest
+      - purpose
+      - ticket_id
+      - approver_internal_user_id
+      - valid_from
+      - expires_at
+  high_risk_action:
+    required_fields:
+      - resource_version
+      - idempotency_key
+      - access_decision_id
+
+event_types:
+  - internal_authentication_succeeded
+  - internal_authentication_failed
+  - session_assurance_changed
+  - organization_context_changed
+  - access_allowed
+  - access_denied
+  - navigation_module_evaluated
+  - sensitive_data_disclosed
+  - temporary_grant_requested
+  - temporary_grant_approved
+  - temporary_grant_denied
+  - temporary_grant_revoked
+  - temporary_grant_expired
+  - high_risk_action_submitted
+  - high_risk_action_succeeded
+  - high_risk_action_failed
+  - controlled_export_requested
+  - controlled_export_completed
+  - controlled_export_denied
+  - executive_dashboard_viewed
+  - executive_filter_changed
+  - executive_drilldown_viewed
+  - executive_metric_definition_viewed
+  - executive_decision_summary_viewed
+  - executive_decision_opinion_recorded
+  - executive_export_requested
+  - executive_export_privacy_reviewed
+  - executive_export_domain_reviewed
+  - executive_export_revoked
+  - executive_export_downloaded
+  - audit_event_viewed
+  - audit_investigation_opened
+  - audit_investigation_assigned
+  - audit_investigation_note_added
+  - audit_investigation_resolved
+  - audit_investigation_reopened
+  - data_report_viewed
+  - data_report_refreshed
+  - admin_membership_viewed
+  - admin_membership_suspended
+  - admin_membership_restored
+
+result_values:
+  - succeeded
+  - failed
+  - allowed
+  - denied
+  - expired
+  - revoked
+
+integrity:
+  canonical_payload_digest_required: true
+  previous_event_digest_optional_for_sandbox: true
+  immutable_database_enforcement_required_before_production: true
+  external_archive_required_before_production: true
+
+query:
+  read_only: true
+  same_scope_as_requester: true
+  auditor_cross_scope_requires_explicit_scope: true
+  raw_sensitive_payload_unavailable: true
+
+productized_admin_api:
+  feature_gate: "synthetic_admin_audit_system"
+  list: "GET /v1/internal-sandbox/admin/audit"
+  detail: "GET /v1/internal-sandbox/admin/audit/:kind/:resource_id"
+  action: "POST /v1/internal-sandbox/admin/audit/:kind/:resource_id/actions/:action"
+  resource_kinds: ["event", "investigation"]
+  list_filters: ["search", "kind", "domain", "result"]
+  signed_cursor_pagination_required: true
+  organization_scope_required: true
+  auditor_read_only: true
+  operator_auditor_own_scope_only: true
+  technical_operations_business_decision_forbidden: true
+  original_event_update_forbidden: true
+  original_event_delete_forbidden: true
+
+investigation:
+  states: ["open", "in_review", "resolved"]
+  actions: ["open_investigation", "assign_investigation", "add_investigation_note", "resolve_investigation", "reopen_investigation"]
+  resource_version_required: true
+  idempotency_key_required: true
+  reason_code_required: true
+  append_only_notes_required: true
+  business_state_mutation_forbidden: true
+
+real_capabilities:
+  production_audit_store_enabled: false
+  external_archive_enabled: false

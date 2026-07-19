@@ -1,0 +1,232 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-role-access-matrix-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/28-后台角色权限与授权导航契约.md"
+
+scenarios:
+  - id: "ADMIN-RBAC-001"
+    category: feature_gate
+    title: "角色矩阵门禁关闭时拒绝签发授权导航"
+    actor: operations_lead
+    command: admin_rbac.navigation.issue
+    expected: denied
+    expected_error: "FEATURE_DISABLED"
+  - id: "ADMIN-RBAC-002"
+    category: implementation_gate
+    title: "未获批准前禁止实现角色菜单和路由守卫"
+    actor: technical_operations
+    command: admin_rbac.implementation.start
+    expected: denied
+    expected_error: "ADMIN_RBAC_IMPLEMENTATION_NOT_APPROVED"
+  - id: "ADMIN-RBAC-003"
+    category: role
+    title: "平台工作身份不自动获得全部菜单"
+    actor: data_analyst
+    command: admin_rbac.navigation.issue
+    expected: workbench_and_reports_only
+    expected_error: null
+  - id: "ADMIN-RBAC-004"
+    category: role
+    title: "不存在平台超级管理员角色"
+    actor: platform_access_administrator
+    command: admin_rbac.role.assign
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-005"
+    category: role
+    title: "平台账号管理员不能给自己新增业务角色"
+    actor: platform_access_administrator
+    command: admin_rbac.role.self_grant
+    expected: denied
+    expected_error: "ADMIN_SELF_REVIEW_FORBIDDEN"
+  - id: "ADMIN-RBAC-006"
+    category: role
+    title: "运营公司账号管理员不能授予平台角色"
+    actor: operator_account_administrator
+    command: admin_rbac.role.assign
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-007"
+    category: role_combination
+    title: "审计角色不能与业务写角色组合"
+    actor: auditor
+    command: admin_rbac.role.combine
+    expected: denied
+    expected_error: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+  - id: "ADMIN-RBAC-008"
+    category: role_combination
+    title: "技术运维不能与业务决定角色组合"
+    actor: technical_operations
+    command: admin_rbac.role.combine
+    expected: denied
+    expected_error: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+  - id: "ADMIN-RBAC-009"
+    category: navigation
+    title: "平台财务经办只显示工作台和资金运营"
+    actor: finance_officer
+    command: admin_rbac.navigation.issue
+    expected: finance_navigation_only
+    expected_error: null
+  - id: "ADMIN-RBAC-010"
+    category: navigation
+    title: "运营公司用户不显示平台账号和跨主体管理入口"
+    actor: operator_operations_lead
+    command: admin_rbac.navigation.issue
+    expected: operator_scoped_navigation
+    expected_error: null
+  - id: "ADMIN-RBAC-011"
+    category: navigation
+    title: "无权菜单不能先展示再点击报错"
+    actor: operator_customer_support
+    command: admin_rbac.navigation.issue
+    expected: finance_menu_hidden
+    expected_error: null
+  - id: "ADMIN-RBAC-012"
+    category: route
+    title: "手工输入无权模块路由被服务端拒绝"
+    actor: data_analyst
+    command: admin_rbac.route.authorize
+    expected: denied_without_resource_disclosure
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-013"
+    category: route
+    title: "无权资源深链接不泄漏资源是否存在"
+    actor: operator_customer_support
+    command: admin_rbac.resource.authorize
+    expected: not_found_without_existence_disclosure
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-014"
+    category: route
+    title: "角色变化后旧导航清单失效"
+    actor: operations_officer
+    command: admin_rbac.navigation.reuse
+    expected: stale_manifest_denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-015"
+    category: organization_scope
+    title: "平台角色必须具备显式城市和运营公司范围"
+    actor: operations_lead
+    command: admin_rbac.scope.authorize
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-016"
+    category: organization_scope
+    title: "运营公司用户访问其他运营公司被拒绝"
+    actor: operator_operations_lead
+    command: admin_rbac.scope.authorize
+    expected: denied
+    expected_error: "ADMIN_OPERATOR_SCOPE_FORBIDDEN"
+  - id: "ADMIN-RBAC-017"
+    category: organization_scope
+    title: "运营公司城市范围不得超过有效城市能力"
+    actor: operator_fleet_officer
+    command: admin_rbac.scope.authorize
+    expected: denied
+    expected_error: "ADMIN_CITY_SCOPE_FORBIDDEN"
+  - id: "ADMIN-RBAC-018"
+    category: organization_scope
+    title: "筛选参数只能缩小不能扩大服务端范围"
+    actor: operations_officer
+    command: admin_rbac.filter.apply
+    expected: denied
+    expected_error: "ADMIN_OPERATOR_SCOPE_FORBIDDEN"
+  - id: "ADMIN-RBAC-019"
+    category: operation
+    title: "菜单可见不自动授予写操作"
+    actor: auditor
+    command: admin_rbac.operation.execute
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-020"
+    category: operation
+    title: "平台客服不能执行安全恢复"
+    actor: customer_support
+    command: admin_rbac.operation.execute
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-021"
+    category: operation
+    title: "安全人员不能执行付款复核"
+    actor: safety_officer
+    command: admin_rbac.operation.execute
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-022"
+    category: operation
+    title: "技术运维只能查询原请求结果不能代替业务决定"
+    actor: technical_operations
+    command: admin_rbac.operation.execute
+    expected: technical_recovery_only
+    expected_error: null
+  - id: "ADMIN-RBAC-023"
+    category: field
+    title: "运营角色默认只能读取脱敏高敏感字段"
+    actor: operations_officer
+    command: admin_rbac.field.read
+    expected: masked_l3
+    expected_error: null
+  - id: "ADMIN-RBAC-024"
+    category: field
+    title: "未分配审核案件不能读取严格受限材料"
+    actor: reviewer
+    command: admin_rbac.field.read
+    expected: denied
+    expected_error: "ADMIN_TEMPORARY_GRANT_REQUIRED"
+  - id: "ADMIN-RBAC-025"
+    category: field
+    title: "运营公司安全联络不能读取原始聊天和完整位置轨迹"
+    actor: operator_safety_liaison
+    command: admin_rbac.field.read
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-026"
+    category: field
+    title: "财务角色不能读取完整付款凭据和完整银行账号"
+    actor: finance_lead
+    command: admin_rbac.field.read
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-027"
+    category: field
+    title: "技术运维不能读取业务正文"
+    actor: technical_operations
+    command: admin_rbac.field.read
+    expected: technical_metadata_only
+    expected_error: null
+  - id: "ADMIN-RBAC-028"
+    category: export
+    title: "无导出档位的角色不能导出"
+    actor: technical_operations
+    command: admin_rbac.export.request
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-029"
+    category: export
+    title: "导出组织范围不得超过页面范围"
+    actor: operator_finance_officer
+    command: admin_rbac.export.request
+    expected: denied
+    expected_error: "ADMIN_OPERATOR_SCOPE_FORBIDDEN"
+  - id: "ADMIN-RBAC-030"
+    category: export
+    title: "导出字段不得超过页面字段档位"
+    actor: operations_lead
+    command: admin_rbac.export.request
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"
+  - id: "ADMIN-RBAC-031"
+    category: bulk_action
+    title: "批量任务分配允许但必须保持服务端范围"
+    actor: operations_lead
+    command: admin_rbac.bulk.task_assign
+    expected: allowed_with_scope
+    expected_error: null
+  - id: "ADMIN-RBAC-032"
+    category: bulk_action
+    title: "批量付款退款冲正和角色授予全部禁止"
+    actor: finance_lead
+    command: admin_rbac.bulk.business_decision
+    expected: denied
+    expected_error: "AUTHORIZATION_DENIED"

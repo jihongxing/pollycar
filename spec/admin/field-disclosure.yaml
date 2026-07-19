@@ -1,0 +1,54 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.field-disclosure"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_document: "docs/product/admin/05-敏感数据披露规则.md"
+default_policy: deny
+levels:
+  queue_summary:
+    roles: [reviewer, senior_reviewer]
+    purpose_required: false
+    ticket_required: false
+    ttl: null
+  review_field:
+    roles: [reviewer, senior_reviewer]
+    task_ownership_required: true
+    purpose_required: false
+    ticket_required: false
+    ttl: "PT30M"
+  masked_original:
+    roles: [reviewer, senior_reviewer]
+    task_ownership_required: true
+    purpose_required: true
+    ticket_required: false
+    ttl: "PT10M"
+  temporary_original:
+    roles: [senior_reviewer, safety_officer, privacy_officer]
+    purpose_required: true
+    ticket_required: true
+    ttl: "PT5M"
+  safety_evidence:
+    roles: [safety_officer]
+    purpose_required: true
+    ticket_required: true
+    ttl: "PT5M"
+fields:
+  application_id: queue_summary
+  review_status: queue_summary
+  submitted_at: queue_summary
+  material_completeness: queue_summary
+  vehicle_type: review_field
+  insurance_expires_on: review_field
+  ownership_type: review_field
+  identity_document_original: temporary_original
+  insurance_document_original: temporary_original
+  safety_evidence_original: safety_evidence
+controls:
+  reveal_all_forbidden: true
+  auto_remask_on_task_change: true
+  auto_remask_on_role_change: true
+  access_audit_required: true
+  export_separate_permission: true
+

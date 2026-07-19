@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>运营主体 360° · PollyCar 运营控制台</title>
+    <link rel="stylesheet" href="../shared/stage-two.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="environment-bar"><strong>内部合成环境 · 阶段二设计参考</strong><span>真实主体、真实材料、真实账号与生产启用均关闭</span></div>
+      <header class="topbar">
+        <div class="brand-lockup"><span class="brand-mark">PC</span><span><b>PollyCar</b><small>运营控制台</small></span></div>
+        <div class="scope-bar">
+          <span class="scope-chip">平台组织</span><span class="scope-chip">城市：上海</span><span class="scope-chip">主体：沪行出行服务</span><span class="role-chip">平台运营负责人</span>
+        </div>
+        <div class="top-actions"><button class="icon-button" aria-label="通知">3</button><button class="avatar-button" aria-label="当前用户">林</button></div>
+      </header>
+      <aside class="sidebar">
+        <nav aria-label="运营控制台导航">
+          <div class="nav-heading">工作</div><a href="#">平台工作台</a><a href="#">我的任务 <span class="nav-count">8</span></a>
+          <div class="nav-heading">组织与运力</div><a href="#" aria-current="page">运营主体</a><a href="#">入驻案件</a><a href="#">车主名录</a><a href="#">车辆名录</a><a href="#">主运营关系</a>
+          <div class="nav-heading">治理</div><a href="#">审计记录</a><a href="#">功能门禁</a>
+        </nav>
+      </aside>
+      <main class="main">
+        <div class="stage-two-banner">
+          <div><span class="eyebrow">组织与运力 · 运营主体 360°</span><h1>沪行出行服务</h1><p>聚合主体档案、生命周期、城市能力、运力与阻断。页面不拥有资格、车辆审核、行程或资金状态。</p></div>
+          <div><span class="status-chip">运营中</span><span class="fact-source">权威来源：运营主体管理域</span></div>
+        </div>
+        <div class="stage-grid">
+          <section class="stage-card">
+            <h2>主体摘要</h2>
+            <div class="identity-grid">
+              <div class="identity-item"><small>合成编号</small><strong>OP-SH-00018</strong></div>
+              <div class="identity-item"><small>联系人</small><strong>赵** · 138****2041</strong></div>
+              <div class="identity-item"><small>当前状态</small><strong>运营中 · 版本 18</strong></div>
+            </div>
+            <h2>生命周期</h2>
+            <div class="state-rail" aria-label="运营主体生命周期">
+              <div class="state-node"><b>候选</b><small>7 月 2 日</small></div>
+              <div class="state-node"><b>入驻审查</b><small>7 月 3 日</small></div>
+              <div class="state-node"><b>待激活</b><small>7 月 8 日</small></div>
+              <div class="state-node current"><b>运营中</b><small>7 月 10 日至今</small></div>
+            </div>
+            <div class="action-row">
+              <button class="button-secondary" data-demo-action data-demo-message="限制或暂停必须创建生命周期变更任务，并由不同内部用户独立复核。">提议限制</button>
+              <button class="button-danger" data-demo-action data-demo-message="退出必须先关闭关系、任务、案件、行程、安全与资金阻断。">发起退出检查</button>
+            </div>
+            <p class="closed-state" data-demo-notice hidden></p>
+          </section>
+          <aside class="stage-card">
+            <h2>风险与阻断</h2>
+            <div class="blocker-list">
+              <div class="blocker warning"><b>1 项入驻复核待完成</b><br /><small>新增安全协作能力尚未生效</small></div>
+              <div class="blocker warning"><b>3 辆车证照将在 30 天内到期</b><br /><small>来自车辆审核权威状态</small></div>
+            </div>
+            <h3>资金关闭态</h3>
+            <div class="closed-state">只读展示：当前无未解决非零差异。阶段二不提供清算、付款、退款或余额操作。</div>
+          </aside>
+        </div>
+        <section class="stage-card">
+          <h2>城市与能力</h2>
+          <p>每项授权都绑定明确城市、能力、有效期、规则版本和批准案件；不存在全国或全部能力。</p>
+          <div class="table-scroll">
+            <table class="capability-table">
+              <thead><tr><th>城市</th><th>能力</th><th>状态</th><th>有效期</th><th>依据</th></tr></thead>
+              <tbody>
+                <tr><td>上海</td><td>车主运营</td><td><span class="status-chip">有效</span></td><td>2026-07-10 起</td><td>ONB-20260703-018</td></tr>
+                <tr><td>上海</td><td>车辆运营</td><td><span class="status-chip">有效</span></td><td>2026-07-10 起</td><td>ONB-20260703-018</td></tr>
+                <tr><td>上海</td><td>行程协作</td><td><span class="status-chip">有效</span></td><td>2026-07-10 起</td><td>ONB-20260703-018</td></tr>
+                <tr><td>上海</td><td>安全协作</td><td><span class="status-chip">待生效</span></td><td>待独立复核</td><td>CAP-20260714-006</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="stage-card">
+          <h2>运力与任务摘要</h2>
+          <div class="metric-grid">
+            <div class="metric-item"><small>当前主运营关系</small><strong>128 名车主</strong></div>
+            <div class="metric-item"><small>有效车辆</small><strong>132 辆</strong></div>
+            <div class="metric-item"><small>待处理运力任务</small><strong>7 项</strong></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../shared/stage-two.js"></script>
+  </body>
+</html>

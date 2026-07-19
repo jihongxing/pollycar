@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/operator-management.schema.json",
+  "title": "运营主体管理契约",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "spec_id",
+    "language",
+    "production_enabled",
+    "status",
+    "source_document",
+    "implementation_approval",
+    "feature_gate",
+    "authoritative_sources",
+    "operator_lifecycle",
+    "onboarding_case",
+    "city_capability",
+    "entity_360",
+    "primary_operator_relationship",
+    "migration_case",
+    "migration_blockers",
+    "authorization",
+    "audit",
+    "productized_domain_closure",
+    "real_capabilities"
+  ],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.admin.operator-management"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "approved"},
+    "source_document": {"type": "string", "minLength": 1},
+    "implementation_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "approved_on", "synthetic_only", "internal_sandbox_only", "feature_gate_default_enabled", "production_enable_forbidden", "real_data_forbidden"],
+      "properties": {
+        "approved": {"const": true},
+        "approved_on": {"const": "2026-07-14"},
+        "synthetic_only": {"const": true},
+        "internal_sandbox_only": {"const": true},
+        "feature_gate_default_enabled": {"const": false},
+        "production_enable_forbidden": {"const": true},
+        "real_data_forbidden": {"const": true}
+      }
+    },
+    "feature_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "default_enabled", "dependencies", "production_enable_forbidden"],
+      "properties": {
+        "id": {"const": "synthetic_admin_operator_management"},
+        "default_enabled": {"const": false},
+        "dependencies": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["internal_sandbox", "synthetic_admin_multi_organization"]}
+        },
+        "production_enable_forbidden": {"const": true}
+      }
+    },
+    "authoritative_sources": {
+      "type": "object",
+      "required": ["operator_profile", "onboarding_case", "city_capability", "driver_eligibility", "vehicle_review", "primary_operator_relationship", "trip_operator_snapshot", "financial_blockers", "duplicated_fact_source_forbidden"],
+      "properties": {
+        "duplicated_fact_source_forbidden": {"const": true}
+      }
+    },
+    "operator_lifecycle": {
+      "type": "object",
+      "required": ["states", "terminal_states", "direct_state_update_forbidden", "append_only_state_events_required", "allowed_transitions", "exited_reactivation_forbidden", "reentry_requires_new_operator_profile"],
+      "properties": {
+        "states": {
+          "type": "array",
+          "minItems": 8,
+          "uniqueItems": true,
+          "items": {"enum": ["candidate", "onboarding_review", "pending_activation", "active", "restricted", "suspended", "exit_pending", "exited"]}
+        },
+        "terminal_states": {"type": "array", "items": {"const": "exited"}},
+        "direct_state_update_forbidden": {"const": true},
+        "append_only_state_events_required": {"const": true},
+        "exited_reactivation_forbidden": {"const": true},
+        "reentry_requires_new_operator_profile": {"const": true}
+      }
+    },
+    "onboarding_case": {
+      "type": "object",
+      "required": ["one_open_case_per_candidate", "states", "terminal_states", "decisions", "required_check_groups", "maker_checker_required", "approval_resulting_operator_state", "account_activation_automatic", "production_capability_automatic", "real_material_allowed"],
+      "properties": {
+        "one_open_case_per_candidate": {"const": true},
+        "maker_checker_required": {"const": true},
+        "approval_resulting_operator_state": {"const": "pending_activation"},
+        "account_activation_automatic": {"const": false},
+        "production_capability_automatic": {"const": false},
+        "real_material_allowed": {"const": false}
+      }
+    },
+    "city_capability": {
+      "type": "object",
+      "required": ["wildcard_city_forbidden", "wildcard_capability_forbidden", "capability_types", "states", "required_fields", "operator_self_grant_forbidden", "append_only_history_required"],
+      "properties": {
+        "wildcard_city_forbidden": {"const": true},
+        "wildcard_capability_forbidden": {"const": true},
+        "operator_self_grant_forbidden": {"const": true},
+        "append_only_history_required": {"const": true}
+      }
+    },
+    "entity_360": {
+      "type": "object",
+      "required": ["source_fact_editing_forbidden", "client_side_scope_filtering_forbidden", "strict_sensitive_plaintext_default_hidden", "operator", "driver", "vehicle"],
+      "properties": {
+        "source_fact_editing_forbidden": {"const": true},
+        "client_side_scope_filtering_forbidden": {"const": true},
+        "strict_sensitive_plaintext_default_hidden": {"const": true}
+      }
+    },
+    "primary_operator_relationship": {
+      "type": "object",
+      "required": ["authoritative_table", "uniqueness_scope", "one_active_relationship_required", "historical_relationship_update_forbidden", "trip_operator_snapshot_immutable", "direct_edit_forbidden"],
+      "properties": {
+        "authoritative_table": {"const": "pollycar_finance.driver_operator_memberships"},
+        "one_active_relationship_required": {"const": true},
+        "historical_relationship_update_forbidden": {"const": true},
+        "trip_operator_snapshot_immutable": {"const": true},
+        "direct_edit_forbidden": {"const": true}
+      }
+    },
+    "migration_case": {
+      "type": "object",
+      "required": ["one_open_case_per_relationship_scope", "states", "terminal_states", "required_fields", "source_and_target_must_differ", "source_acknowledgement_required", "target_acknowledgement_required", "independent_review_required", "maker_checker_must_differ", "future_effective_at_required", "cancellation_before_effective_only", "rollback_after_effective_forbidden", "reversal_requires_new_migration_case", "atomic_end_and_create_required"],
+      "properties": {
+        "one_open_case_per_relationship_scope": {"const": true},
+        "source_and_target_must_differ": {"const": true},
+        "source_acknowledgement_required": {"const": true},
+        "target_acknowledgement_required": {"const": true},
+        "independent_review_required": {"const": true},
+        "maker_checker_must_differ": {"const": true},
+        "future_effective_at_required": {"const": true},
+        "cancellation_before_effective_only": {"const": true},
+        "rollback_after_effective_forbidden": {"const": true},
+        "reversal_requires_new_migration_case": {"const": true},
+        "atomic_end_and_create_required": {"const": true}
+      }
+    },
+    "migration_blockers": {
+      "type": "object",
+      "required": ["target_driver_operations_capability_required", "target_vehicle_operations_capability_required", "serviceable_driver_eligibility_required", "serviceable_vehicle_review_required", "open_migration_case_forbidden", "active_trip_forbidden", "unresolved_safety_handoff_forbidden", "unresolved_nonzero_reconciliation_difference_forbidden", "unknown_payout_result_forbidden", "blocking_fund_case_forbidden", "stale_resource_version_forbidden", "separation_of_duties_required"]
+    },
+    "authorization": {
+      "type": "object",
+      "required": ["platform_actions", "operator_actions", "cross_operator_read_for_operator_forbidden", "operator_lifecycle_write_for_operator_forbidden", "operator_city_capability_self_grant_forbidden", "auditor_write_forbidden"],
+      "properties": {
+        "cross_operator_read_for_operator_forbidden": {"const": true},
+        "operator_lifecycle_write_for_operator_forbidden": {"const": true},
+        "operator_city_capability_self_grant_forbidden": {"const": true},
+        "auditor_write_forbidden": {"const": true}
+      }
+    },
+    "audit": {
+      "type": "object",
+      "required": ["append_only_required", "allowed_and_denied_required", "required_event_types", "sensitive_plaintext_forbidden"],
+      "properties": {
+        "append_only_required": {"const": true},
+        "allowed_and_denied_required": {"const": true},
+        "sensitive_plaintext_forbidden": {"const": true}
+      }
+    },
+    "productized_domain_closure": {
+      "type": "object",
+      "required": ["bearer_session_required", "server_navigation_availability_required", "list_route", "detail_route", "action_route", "summary_required", "searchable", "lifecycle_filter_required", "sortable", "signed_cursor_pagination_required", "detail_updated_at_required", "platform_operations_lead_actions", "operator_roles_read_only", "auditor_read_only", "expected_version_required", "idempotency_key_required", "confirming_state_required", "append_only_audit_projection_required"]
+    },
+    "real_capabilities": {
+      "type": "object",
+      "required": ["real_operator_onboarding", "real_operator_materials", "real_operator_accounts", "real_city_capabilities", "real_primary_operator_migration", "production_admin_enabled"],
+      "properties": {
+        "real_operator_onboarding": {"const": false},
+        "real_operator_materials": {"const": false},
+        "real_operator_accounts": {"const": false},
+        "real_city_capabilities": {"const": false},
+        "real_primary_operator_migration": {"const": false},
+        "production_admin_enabled": {"const": false}
+      }
+    }
+  }
+}

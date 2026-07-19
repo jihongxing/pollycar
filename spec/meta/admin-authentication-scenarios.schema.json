@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/admin-authentication-scenarios.schema.json",
+  "title": "运营后台账号认证验收场景",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "scenarios"],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.tests.admin-authentication-scenarios"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "design_frozen"},
+    "source_document": {"const": "docs/product/admin/27-后台账号认证与工作身份契约.md"},
+    "scenarios": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "title", "initial_state", "actor", "command", "expected_events", "expected_state", "expected_error"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^ADMIN-AUTH-[0-9]{3}$"},
+          "category": {"enum": ["feature_gate", "implementation_gate", "invitation", "activation", "authentication", "mfa", "session", "work_identity", "membership", "revocation", "recovery", "organization_scope", "audit"]},
+          "title": {"type": "string", "minLength": 1},
+          "initial_state": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "actor": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "command": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+          "expected_events": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+          "expected_state": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "expected_error": {"type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]+$"}
+        }
+      }
+    }
+  }
+}

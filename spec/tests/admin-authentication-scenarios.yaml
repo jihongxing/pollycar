@@ -1,0 +1,296 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-authentication-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/27-后台账号认证与工作身份契约.md"
+
+scenarios:
+  - id: "ADMIN-AUTH-001"
+    category: feature_gate
+    title: "认证门禁关闭时拒绝进入后台认证流程"
+    initial_state: feature_disabled
+    actor: internal_user
+    command: admin_auth.login.start
+    expected_events: ["admin_authentication_denied"]
+    expected_state: feature_disabled
+    expected_error: "FEATURE_DISABLED"
+  - id: "ADMIN-AUTH-002"
+    category: feature_gate
+    title: "认证门禁依赖缺失时失败关闭"
+    initial_state: dependency_missing
+    actor: internal_user
+    command: admin_auth.login.start
+    expected_events: ["admin_authentication_denied"]
+    expected_state: feature_disabled
+    expected_error: "FEATURE_DEPENDENCY_DISABLED"
+  - id: "ADMIN-AUTH-003"
+    category: implementation_gate
+    title: "未获批准前禁止进入认证代码实现"
+    initial_state: design_frozen
+    actor: technical_operations
+    command: admin_auth.implementation.start
+    expected_events: ["admin_authentication_implementation_denied"]
+    expected_state: design_frozen
+    expected_error: "ADMIN_AUTH_IMPLEMENTATION_NOT_APPROVED"
+  - id: "ADMIN-AUTH-004"
+    category: invitation
+    title: "无邀请不能注册后台账号"
+    initial_state: no_invitation
+    actor: internal_user
+    command: admin_auth.activation.start
+    expected_events: ["admin_invitation_denied"]
+    expected_state: no_invitation
+    expected_error: "ADMIN_AUTH_INVITATION_REQUIRED"
+  - id: "ADMIN-AUTH-005"
+    category: invitation
+    title: "运营公司管理员不能邀请其他运营公司人员"
+    initial_state: operator_membership_active
+    actor: operator_membership_administrator
+    command: admin_auth.invitation.create
+    expected_events: ["admin_invitation_denied"]
+    expected_state: operator_membership_active
+    expected_error: "ADMIN_AUTH_OPERATOR_SCOPE_FORBIDDEN"
+  - id: "ADMIN-AUTH-006"
+    category: invitation
+    title: "平台邀请人不能扩大自身组织和作用域"
+    initial_state: platform_membership_active
+    actor: platform_membership_administrator
+    command: admin_auth.invitation.create
+    expected_events: ["admin_invitation_denied"]
+    expected_state: platform_membership_active
+    expected_error: "ADMIN_AUTH_INVITER_SCOPE_EXCEEDED"
+  - id: "ADMIN-AUTH-007"
+    category: invitation
+    title: "邀请超过七十二小时后拒绝接受"
+    initial_state: invitation_expired
+    actor: internal_user
+    command: admin_auth.invitation.accept
+    expected_events: ["admin_invitation_rejected"]
+    expected_state: expired
+    expected_error: "ADMIN_AUTH_INVITATION_EXPIRED"
+  - id: "ADMIN-AUTH-008"
+    category: invitation
+    title: "重发邀请后旧令牌立即失效"
+    initial_state: invitation_replaced
+    actor: internal_user
+    command: admin_auth.invitation.accept
+    expected_events: ["admin_invitation_rejected"]
+    expected_state: revoked
+    expected_error: "ADMIN_AUTH_INVITATION_REVOKED"
+  - id: "ADMIN-AUTH-009"
+    category: invitation
+    title: "已使用邀请不能再次接受"
+    initial_state: invitation_accepted
+    actor: internal_user
+    command: admin_auth.invitation.accept
+    expected_events: ["admin_invitation_replay_denied"]
+    expected_state: accepted
+    expected_error: "ADMIN_AUTH_INVITATION_REPLAYED"
+  - id: "ADMIN-AUTH-010"
+    category: activation
+    title: "有效邀请可以进入待激活状态"
+    initial_state: invited
+    actor: internal_user
+    command: admin_auth.invitation.accept
+    expected_events: ["admin_invitation_accepted", "admin_account_activation_started"]
+    expected_state: pending_activation
+    expected_error: null
+  - id: "ADMIN-AUTH-011"
+    category: activation
+    title: "不足十四字符的密码不能激活账号"
+    initial_state: pending_activation
+    actor: internal_user
+    command: admin_auth.credential.set
+    expected_events: ["admin_credential_rejected"]
+    expected_state: pending_activation
+    expected_error: "ADMIN_AUTH_PASSWORD_POLICY_VIOLATION"
+  - id: "ADMIN-AUTH-012"
+    category: activation
+    title: "未完成 TOTP 登记不能激活账号"
+    initial_state: password_configured
+    actor: internal_user
+    command: admin_auth.activation.complete
+    expected_events: ["admin_account_activation_blocked"]
+    expected_state: pending_activation
+    expected_error: "ADMIN_AUTH_MFA_ENROLLMENT_REQUIRED"
+  - id: "ADMIN-AUTH-013"
+    category: activation
+    title: "密码和 TOTP 完成后激活账号与成员关系"
+    initial_state: mfa_verified
+    actor: internal_user
+    command: admin_auth.activation.complete
+    expected_events: ["admin_account_activated", "admin_membership_activated"]
+    expected_state: active
+    expected_error: null
+  - id: "ADMIN-AUTH-014"
+    category: authentication
+    title: "密码正确但未通过 MFA 不签发业务会话"
+    initial_state: password_verified
+    actor: internal_user
+    command: admin_auth.session.issue
+    expected_events: ["admin_session_issue_denied"]
+    expected_state: mfa_pending
+    expected_error: "ADMIN_AUTH_MFA_REQUIRED"
+  - id: "ADMIN-AUTH-015"
+    category: authentication
+    title: "连续五次失败认证锁定账号三十分钟"
+    initial_state: fourth_failure
+    actor: internal_user
+    command: admin_auth.login.verify
+    expected_events: ["admin_login_failed", "admin_account_locked", "admin_sessions_revoked"]
+    expected_state: locked
+    expected_error: "ADMIN_AUTH_ACCOUNT_LOCKED"
+  - id: "ADMIN-AUTH-016"
+    category: authentication
+    title: "暂停账号不能登录"
+    initial_state: suspended
+    actor: internal_user
+    command: admin_auth.login.verify
+    expected_events: ["admin_login_denied"]
+    expected_state: suspended
+    expected_error: "ADMIN_AUTH_ACCOUNT_UNAVAILABLE"
+  - id: "ADMIN-AUTH-017"
+    category: revocation
+    title: "离职或撤销账号不能恢复登录"
+    initial_state: departed
+    actor: internal_user
+    command: admin_auth.login.verify
+    expected_events: ["admin_login_denied"]
+    expected_state: departed
+    expected_error: "ADMIN_AUTH_ACCOUNT_UNAVAILABLE"
+  - id: "ADMIN-AUTH-018"
+    category: mfa
+    title: "同一时间窗口内 TOTP 验证码不能重放"
+    initial_state: totp_code_used
+    actor: internal_user
+    command: admin_auth.mfa.verify
+    expected_events: ["admin_mfa_replay_denied"]
+    expected_state: mfa_pending
+    expected_error: "ADMIN_AUTH_MFA_CODE_REPLAYED"
+  - id: "ADMIN-AUTH-019"
+    category: mfa
+    title: "已使用恢复码不能再次使用"
+    initial_state: recovery_code_used
+    actor: internal_user
+    command: admin_auth.mfa.recover
+    expected_events: ["admin_mfa_recovery_denied"]
+    expected_state: mfa_pending
+    expected_error: "ADMIN_AUTH_RECOVERY_CODE_REPLAYED"
+  - id: "ADMIN-AUTH-020"
+    category: mfa
+    title: "高风险操作要求十五分钟内完成 MFA"
+    initial_state: mfa_stale
+    actor: internal_user
+    command: admin_auth.high_risk.authorize
+    expected_events: ["admin_high_risk_authorization_denied"]
+    expected_state: reauthentication_required
+    expected_error: "ADMIN_AUTH_MFA_FRESHNESS_REQUIRED"
+  - id: "ADMIN-AUTH-021"
+    category: recovery
+    title: "MFA 重置申请人不能批准自己的申请"
+    initial_state: mfa_reset_pending
+    actor: platform_membership_administrator
+    command: admin_auth.mfa_reset.approve
+    expected_events: ["admin_mfa_reset_denied"]
+    expected_state: mfa_reset_pending
+    expected_error: "ADMIN_AUTH_MFA_RESET_REVIEWER_CONFLICT"
+  - id: "ADMIN-AUTH-022"
+    category: recovery
+    title: "MFA 重置批准后撤销全部会话并要求重新登记"
+    initial_state: mfa_reset_pending
+    actor: identity_security_reviewer
+    command: admin_auth.mfa_reset.approve
+    expected_events: ["admin_mfa_reset_approved", "admin_sessions_revoked", "admin_mfa_reenrollment_required"]
+    expected_state: pending_activation
+    expected_error: null
+  - id: "ADMIN-AUTH-023"
+    category: recovery
+    title: "过期密码恢复令牌不能修改凭据"
+    initial_state: recovery_token_expired
+    actor: internal_user
+    command: admin_auth.password_reset.complete
+    expected_events: ["admin_password_reset_denied"]
+    expected_state: recovery_required
+    expected_error: "ADMIN_AUTH_RECOVERY_TOKEN_INVALID"
+  - id: "ADMIN-AUTH-024"
+    category: session
+    title: "刷新令牌每次使用后必须轮换"
+    initial_state: session_active
+    actor: internal_user
+    command: admin_auth.session.refresh
+    expected_events: ["admin_session_refreshed", "admin_refresh_token_rotated"]
+    expected_state: session_active
+    expected_error: null
+  - id: "ADMIN-AUTH-025"
+    category: session
+    title: "刷新令牌重放撤销整个会话族"
+    initial_state: rotated_token_replayed
+    actor: internal_user
+    command: admin_auth.session.refresh
+    expected_events: ["admin_refresh_token_replay_detected", "admin_session_family_revoked"]
+    expected_state: replay_revoked
+    expected_error: "ADMIN_AUTH_SESSION_REPLAY_DETECTED"
+  - id: "ADMIN-AUTH-026"
+    category: session
+    title: "空闲超过三十分钟的会话失效"
+    initial_state: idle_timeout_exceeded
+    actor: internal_user
+    command: admin_auth.session.refresh
+    expected_events: ["admin_session_expired"]
+    expected_state: expired
+    expected_error: "ADMIN_AUTH_SESSION_EXPIRED"
+  - id: "ADMIN-AUTH-027"
+    category: session
+    title: "第四个活动会话签发时撤销最旧会话"
+    initial_state: three_sessions_active
+    actor: internal_user
+    command: admin_auth.session.issue
+    expected_events: ["admin_oldest_session_revoked", "admin_session_issued"]
+    expected_state: session_active
+    expected_error: null
+  - id: "ADMIN-AUTH-028"
+    category: work_identity
+    title: "单个会话不能合并平台和运营公司权限"
+    initial_state: multiple_memberships_active
+    actor: internal_user
+    command: admin_auth.work_identity.merge
+    expected_events: ["admin_work_identity_denied"]
+    expected_state: identity_selection_required
+    expected_error: "ADMIN_AUTH_WORK_IDENTITY_CONFLICT"
+  - id: "ADMIN-AUTH-029"
+    category: organization_scope
+    title: "运营公司身份不能切换到其他运营公司"
+    initial_state: operator_identity_active
+    actor: internal_user
+    command: admin_auth.work_identity.switch
+    expected_events: ["admin_work_identity_denied"]
+    expected_state: operator_identity_active
+    expected_error: "ADMIN_AUTH_OPERATOR_SCOPE_FORBIDDEN"
+  - id: "ADMIN-AUTH-030"
+    category: work_identity
+    title: "工作身份切换后旧访问令牌立即失效"
+    initial_state: platform_identity_active
+    actor: internal_user
+    command: admin_auth.work_identity.switch
+    expected_events: ["admin_old_session_revoked", "admin_work_identity_switched", "admin_session_issued"]
+    expected_state: operator_identity_active
+    expected_error: null
+  - id: "ADMIN-AUTH-031"
+    category: membership
+    title: "成员关系失效后不能继续选择或使用该身份"
+    initial_state: membership_suspended
+    actor: internal_user
+    command: admin_auth.work_identity.select
+    expected_events: ["admin_work_identity_denied", "admin_membership_sessions_revoked"]
+    expected_state: identity_unavailable
+    expected_error: "ADMIN_AUTH_MEMBERSHIP_INACTIVE"
+  - id: "ADMIN-AUTH-032"
+    category: audit
+    title: "认证审计不得记录密码或令牌原文"
+    initial_state: audit_event_pending
+    actor: technical_operations
+    command: admin_auth.audit.append
+    expected_events: ["admin_audit_secret_rejected"]
+    expected_state: audit_event_rejected
+    expected_error: "ADMIN_AUTH_AUDIT_SECRET_FORBIDDEN"

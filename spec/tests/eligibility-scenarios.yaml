@@ -1,0 +1,477 @@
+﻿spec_version: "1.0"
+spec_id: "pollycar.tests.flex-eligibility-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "review"
+source_document: "docs/13-acceptance-matrix.md"
+
+scenarios:
+  - id: "APP-227"
+    name: "安全人员读取开放案件队列"
+    category: "safety"
+    initial_state: "appealing"
+    actor: "safety_officer"
+    command: "safety_case.queue.read"
+    expected_events: []
+    expected_state: "appealing"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "APP-228"
+    name: "案件详情不披露聊天正文和原始证据"
+    category: "safety"
+    initial_state: "appealing"
+    actor: "safety_officer"
+    command: "safety_case.detail.read"
+    expected_events: []
+    expected_state: "appealing"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "APP-229"
+    name: "安全人员从运营后台恢复申诉案件"
+    category: "safety"
+    initial_state: "appealing"
+    actor: "safety_officer"
+    command: "safety_appeal.resolve"
+    expected_events: ["safety_appeal_resolved"]
+    expected_state: "restored"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "APP-220"
+    name: "乘客在履约开始前取消合成行程"
+    category: "app_trip"
+    initial_state: "paid_pending_match"
+    actor: "passenger"
+    command: "synthetic_trip.cancel"
+    expected_events: ["synthetic_trip_cancelled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "APP-221"
+    name: "待支付行程十五分钟超时关闭"
+    category: "app_trip"
+    initial_state: "pending_payment"
+    actor: "technical_operations"
+    command: "synthetic_trip.timeout.reconcile"
+    expected_events: ["synthetic_trip_timeout_reconciled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "APP-222"
+    name: "待匹配行程三十分钟超时关闭"
+    category: "app_trip"
+    initial_state: "paid_pending_match"
+    actor: "technical_operations"
+    command: "synthetic_trip.timeout.reconcile"
+    expected_events: ["synthetic_trip_timeout_reconciled"]
+    expected_state: "cancelled"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "APP-223"
+    name: "车主接受十五分钟未开始则释放重匹配"
+    category: "app_trip"
+    initial_state: "accepted"
+    actor: "technical_operations"
+    command: "synthetic_trip.timeout.reconcile"
+    expected_events: ["synthetic_trip_timeout_reconciled"]
+    expected_state: "paid_pending_match"
+    expected_error: null
+    audit: "strict"
+    classification: "L2"
+    release_blocking: true
+  - id: "ELIG-001"
+    name: "合格车主提交申请"
+    category: "eligibility"
+    initial_state: "not_applied"
+    actor: "driver"
+    command: "eligibility.application.submit"
+    expected_events: ["flex_eligibility_application_submitted"]
+    expected_state: "under_review"
+    expected_error: null
+    audit: "standard"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-002"
+    name: "进行中申请重复提交"
+    category: "eligibility"
+    initial_state: "under_review"
+    actor: "driver"
+    command: "eligibility.application.submit"
+    expected_events: []
+    expected_state: "under_review"
+    expected_error: "ELIGIBILITY_INVALID_STATE"
+    audit: "standard"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-003"
+    name: "资格审核批准"
+    category: "eligibility"
+    initial_state: "under_review"
+    actor: "reviewer"
+    command: "eligibility.application.decide"
+    expected_events: ["flex_eligibility_application_approved"]
+    expected_state: "awaiting_confirmation"
+    expected_error: null
+    audit: "sensitive"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-004"
+    name: "资格审核拒绝"
+    category: "eligibility"
+    initial_state: "under_review"
+    actor: "reviewer"
+    command: "eligibility.application.decide"
+    expected_events: ["flex_eligibility_application_rejected"]
+    expected_state: "rejected"
+    expected_error: null
+    audit: "sensitive"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-005"
+    name: "禁止原审核员复核申诉"
+    category: "authorization"
+    initial_state: "appealing"
+    actor: "reviewer"
+    command: "eligibility.appeal.decide"
+    expected_events: []
+    expected_state: "appealing"
+    expected_error: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ELIG-006"
+    name: "免费试验确认"
+    category: "eligibility"
+    initial_state: "awaiting_confirmation"
+    actor: "driver"
+    command: "eligibility.activation.confirm_free"
+    expected_events: ["flex_eligibility_activation_confirmed"]
+    expected_state: "pending_activation"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "ELIG-007"
+    name: "付费试验确认"
+    category: "eligibility"
+    initial_state: "awaiting_confirmation"
+    actor: "driver"
+    command: "eligibility.activation.confirm_paid"
+    expected_events: ["flex_eligibility_activation_confirmed"]
+    expected_state: "awaiting_payment"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "PAY-001"
+    name: "资格支付成功"
+    category: "payment"
+    initial_state: "awaiting_payment"
+    actor: "payment_callback"
+    command: "payment.provider_result.record"
+    expected_events: ["flex_eligibility_payment_succeeded"]
+    expected_state: "pending_activation"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "PAY-002"
+    name: "重复支付回调幂等"
+    category: "payment"
+    initial_state: "pending_activation"
+    actor: "payment_callback"
+    command: "payment.provider_result.record"
+    expected_events: []
+    expected_state: "pending_activation"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "PAY-004"
+    name: "迟到支付成功触发退款"
+    category: "payment"
+    initial_state: "invalidated"
+    actor: "payment_callback"
+    command: "payment.provider_result.record"
+    expected_events: ["flex_eligibility_payment_succeeded", "flex_eligibility_refund_requested"]
+    expected_state: "invalidated"
+    expected_error: null
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-008"
+    name: "资格正常启用"
+    category: "eligibility"
+    initial_state: "pending_activation"
+    actor: "eligibility_system"
+    command: "eligibility.activate"
+    expected_events: ["flex_eligibility_activated"]
+    expected_state: "active"
+    expected_error: null
+    audit: "sensitive"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-009"
+    name: "启用日达到上限"
+    category: "eligibility"
+    initial_state: "pending_activation"
+    actor: "eligibility_system"
+    command: "eligibility.activate"
+    expected_events: ["flex_eligibility_activation_rejected"]
+    expected_state: "activation_blocked"
+    expected_error: "ELIGIBILITY_ACTIVATION_DAYS_EXCEEDED"
+    audit: "sensitive"
+    classification: "L3"
+    release_blocking: true
+  - id: "ELIG-010"
+    name: "安全暂停资格"
+    category: "safety"
+    initial_state: "active"
+    actor: "safety_officer"
+    command: "eligibility.suspend"
+    expected_events: ["flex_eligibility_suspended"]
+    expected_state: "suspended"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ELIG-011"
+    name: "暂停解除并恢复"
+    category: "eligibility"
+    initial_state: "suspended"
+    actor: "safety_officer"
+    command: "eligibility.restore"
+    expected_events: ["flex_eligibility_suspension_cleared", "flex_eligibility_restored"]
+    expected_state: "active"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ELIG-012"
+    name: "严重违规撤销资格"
+    category: "safety"
+    initial_state: "active"
+    actor: "safety_officer"
+    command: "eligibility.revoke"
+    expected_events: ["flex_eligibility_revoked"]
+    expected_state: "revoked"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "ELIG-013"
+    name: "暂停状态提交申诉"
+    category: "eligibility"
+    initial_state: "suspended"
+    actor: "driver"
+    command: "eligibility.appeal.submit"
+    expected_events: ["flex_eligibility_appeal_submitted"]
+    expected_state: "appealing"
+    expected_error: null
+    audit: "sensitive"
+    classification: "L4"
+    release_blocking: true
+  - id: "ELIG-014"
+    name: "独立复核批准申诉"
+    category: "eligibility"
+    initial_state: "appealing"
+    actor: "senior_reviewer"
+    command: "eligibility.appeal.decide"
+    expected_events: ["flex_eligibility_appeal_approved"]
+    expected_state: "pending_restoration"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "EXP-002"
+    name: "到期保留在途订单"
+    category: "expiration"
+    initial_state: "active"
+    actor: "scheduler"
+    command: "eligibility.expire"
+    expected_events: ["flex_eligibility_expired"]
+    expected_state: "expired"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "QUOTA-002"
+    name: "基础 24 小时第 4 单被拒绝"
+    category: "quota"
+    initial_state: "expired"
+    actor: "driver"
+    command: "quota.evaluate"
+    expected_events: ["quota_evaluation_rejected"]
+    expected_state: "expired"
+    expected_error: "QUOTA_24H_EXCEEDED"
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "QUOTA-003"
+    name: "弹性 24 小时第 4 单允许"
+    category: "quota"
+    initial_state: "active"
+    actor: "driver"
+    command: "quota.evaluate"
+    expected_events: ["quota_evaluation_passed", "quota_slot_occupied"]
+    expected_state: "active"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "QUOTA-007"
+    name: "弹性 7 日第 13 单被拒绝"
+    category: "quota"
+    initial_state: "active"
+    actor: "driver"
+    command: "quota.evaluate"
+    expected_events: ["quota_evaluation_rejected"]
+    expected_state: "active"
+    expected_error: "QUOTA_7D_EXCEEDED"
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "QUOTA-010"
+    name: "弹性 30 日第 19 单被拒绝"
+    category: "quota"
+    initial_state: "active"
+    actor: "driver"
+    command: "quota.evaluate"
+    expected_events: ["quota_evaluation_rejected"]
+    expected_state: "active"
+    expected_error: "QUOTA_30D_EXCEEDED"
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "QUOTA-012"
+    name: "乘客无责取消释放配额"
+    category: "quota"
+    initial_state: "active"
+    actor: "eligibility_system"
+    command: "quota.release"
+    expected_events: ["quota_slot_released"]
+    expected_state: "active"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "QUOTA-015"
+    name: "车主责任取消确认计入"
+    category: "quota"
+    initial_state: "active"
+    actor: "eligibility_system"
+    command: "quota.finalize"
+    expected_events: ["quota_slot_finalized"]
+    expected_state: "active"
+    expected_error: null
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "CONC-001"
+    name: "两名车主并发接单"
+    category: "concurrency"
+    initial_state: "active"
+    actor: "driver"
+    command: "quota.evaluate"
+    expected_events: ["quota_evaluation_rejected"]
+    expected_state: "active"
+    expected_error: "QUOTA_ORDER_ALREADY_ACCEPTED"
+    audit: "standard"
+    classification: "L2"
+    release_blocking: true
+  - id: "CONC-003"
+    name: "暂停与接单并发"
+    category: "concurrency"
+    initial_state: "active"
+    actor: "safety_officer"
+    command: "eligibility.suspend"
+    expected_events: ["flex_eligibility_suspended"]
+    expected_state: "suspended"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "CONC-005"
+    name: "支付成功与安全暂停并发"
+    category: "concurrency"
+    initial_state: "awaiting_payment"
+    actor: "payment_callback"
+    command: "payment.provider_result.record"
+    expected_events: ["flex_eligibility_payment_succeeded", "flex_eligibility_suspended", "flex_eligibility_refund_requested"]
+    expected_state: "suspended"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "AUTH-001"
+    name: "客服读取身份原件被拒绝"
+    category: "authorization"
+    initial_state: "under_review"
+    actor: "customer_support"
+    command: "identity.material.read"
+    expected_events: []
+    expected_state: "under_review"
+    expected_error: "AUTHORIZATION_DENIED"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "AUTH-004"
+    name: "禁止批准自己的异常退款"
+    category: "authorization"
+    initial_state: "active"
+    actor: "finance_lead"
+    command: "payment.refund.approve_exception"
+    expected_events: []
+    expected_state: "active"
+    expected_error: "AUTHORIZATION_SEPARATION_OF_DUTIES"
+    audit: "strict"
+    classification: "L3"
+    release_blocking: true
+  - id: "DATA-001"
+    name: "禁止身份图片进入普通日志"
+    category: "data_protection"
+    initial_state: "under_review"
+    actor: "technical_operations"
+    command: "data.log.write"
+    expected_events: []
+    expected_state: "under_review"
+    expected_error: "AUTHORIZATION_DENIED"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "DATA-003"
+    name: "禁止支付凭据进入测试环境"
+    category: "data_protection"
+    initial_state: "not_applied"
+    actor: "technical_operations"
+    command: "data.non_production.import"
+    expected_events: []
+    expected_state: "not_applied"
+    expected_error: "AUTHORIZATION_DENIED"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "GOV-001"
+    name: "禁止评审规范启用生产"
+    category: "governance"
+    initial_state: "not_applied"
+    actor: "technical_operations"
+    command: "spec.production.enable"
+    expected_events: []
+    expected_state: "not_applied"
+    expected_error: "AUTHORIZATION_DENIED"
+    audit: "strict"
+    classification: "L1"
+    release_blocking: true
+

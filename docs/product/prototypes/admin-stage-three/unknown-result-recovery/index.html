@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>未知结果恢复</title><link rel="stylesheet" href="../shared/stage-three.css"></head><body>
+<div class="shell"><div class="env"><b>内部合成环境 · 阶段三设计原型</b><span>未知结果不等于失败；禁止创建替代请求</span></div><header class="top"><div class="brand"><span class="brand-mark">PC</span><div><b>PollyCar</b><small>运营控制台</small></div></div><div class="context"><b>技术恢复任务</b><b>业务所有者：平台运营</b><b>技术运维</b></div><span class="avatar">技</span></header>
+<aside class="side"><nav><a>行程运营中心</a><a>行程 360°</a><a>客服案件</a><a>安全案件</a><a>证据访问</a><a class="active">结果恢复</a></nav><div class="scope"><b>技术职责边界</b><span>可确认技术结果</span><span>不可作业务决定</span><span>原命令保持冻结</span></div></aside><nav class="mobile-nav"><a>行程中心</a><a>行程</a><a>客服</a><a>安全</a><a>证据</a><a class="active">恢复</a></nav>
+<main><div class="heading"><div><span class="eyebrow">REC-SYN-017 · command result unknown</span><h1>未知结果恢复</h1><p>固定查询原幂等结果、权威状态、审计和 Outbox。未知期间同资源同动作不能再次提交。</p></div><span class="badge danger">结果未知</span></div>
+<div class="alert"><b>禁止重复提交：</b> 行程 TRIP-SYN-8421 的 cancellation 请求仍在恢复中。</div>
+<div class="grid"><section class="panel"><header><div><h2>恢复步骤</h2><p>请求摘要 SHA-256 已锁定，不允许修改请求载荷</p></div><span class="badge warning">reconciling_authoritative_state</span></header><div class="list">
+<article class="item"><span class="icon">1</span><div><b>查询原幂等结果</b><p>idempotency-key：trip-cancel-syn-017</p></div><span class="badge success">未找到终态</span></article>
+<article class="item"><span class="icon">2</span><div><b>读取行程权威状态</b><p>当前仍为 in_progress，版本 27</p></div><span class="badge success">已读取</span></article>
+<article class="item"><span class="icon">3</span><div><b>核对审计与 Outbox</b><p>发现命令已受理事件，等待结果事件</p></div><span class="badge warning">等待中</span></article>
+<article class="item"><span class="icon">4</span><div><b>形成技术结论</b><p>只能标记 recovered_succeeded 或 recovered_failed</p></div><span class="badge warning">未完成</span></article>
+</div><div class="actions"><button class="primary">再次查询原结果</button><button>升级值班工程师</button><button disabled>重新提交取消命令</button></div></section>
+<section class="panel"><header><div><h2>业务与技术分离</h2><p>技术运维不能代替原业务角色</p></div></header><div class="stack"><div class="kv"><span>技术可做</span><b>查询、核对、恢复技术结果</b></div><div class="kv"><span>技术不可做</span><b>决定取消责任、退款、安全恢复</b></div><div class="kv"><span>业务所有者</span><b>平台运营任务 TASK-SYN-448</b></div><div class="kv"><span>恢复成功后</span><b>返回原业务任务继续闭环</b></div><div class="kv"><span>审计</span><b>记录每次查询，不记录敏感载荷</b></div></div></section></div>
+</main></div></body></html>

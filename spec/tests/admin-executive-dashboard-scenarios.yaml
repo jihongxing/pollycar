@@ -1,0 +1,296 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-executive-dashboard-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/23-阶段五高层驾驶舱契约.md"
+
+scenarios:
+  - id: "ADMIN-EXE-001"
+    category: feature_gate
+    title: "阶段五门禁默认关闭"
+    initial_state: disabled
+    actor: executive_sponsor
+    command: admin_executive.dashboard.read
+    expected_events: ["access_denied"]
+    expected_state: disabled
+    expected_error: "FEATURE_DISABLED"
+  - id: "ADMIN-EXE-002"
+    category: implementation_gate
+    title: "设计批准不等于代码实现批准"
+    initial_state: design_frozen
+    actor: executive_sponsor
+    command: admin_executive.dashboard.read
+    expected_events: ["access_denied"]
+    expected_state: design_frozen
+    expected_error: "ADMIN_EXECUTIVE_IMPLEMENTATION_NOT_APPROVED"
+  - id: "ADMIN-EXE-003"
+    category: organization_scope
+    title: "运营主体高层只能读取本主体"
+    initial_state: available
+    actor: operator_executive
+    command: admin_executive.dashboard.read
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_SCOPE_FORBIDDEN"
+  - id: "ADMIN-EXE-004"
+    category: organization_scope
+    title: "筛选参数不能扩大服务端范围"
+    initial_state: available
+    actor: operations_lead
+    command: admin_executive.filter.apply
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_FILTER_SCOPE_INVALID"
+  - id: "ADMIN-EXE-005"
+    category: metric
+    title: "指标必须返回版本和来源"
+    initial_state: available
+    actor: executive_sponsor
+    command: admin_executive.metric_registry.read
+    expected_events: ["executive_metric_definition_viewed"]
+    expected_state: available
+    expected_error: null
+  - id: "ADMIN-EXE-006"
+    category: metric
+    title: "客户端不能重算指标"
+    initial_state: available
+    actor: executive_sponsor
+    command: admin_executive.metric.override
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_OPERATION_FORBIDDEN"
+  - id: "ADMIN-EXE-007"
+    category: freshness
+    title: "陈旧指标显示原截至时间"
+    initial_state: stale
+    actor: operations_lead
+    command: admin_executive.operations.read
+    expected_events: ["executive_dashboard_viewed"]
+    expected_state: stale
+    expected_error: null
+  - id: "ADMIN-EXE-008"
+    category: freshness
+    title: "陈旧数据不得标记为实时"
+    initial_state: stale
+    actor: executive_sponsor
+    command: admin_executive.metric.mark_realtime
+    expected_events: ["access_denied"]
+    expected_state: stale
+    expected_error: "ADMIN_EXECUTIVE_METRIC_STALE"
+  - id: "ADMIN-EXE-009"
+    category: close_status
+    title: "未关账数据必须醒目标识"
+    initial_state: unclosed
+    actor: finance_lead
+    command: admin_executive.finance.read
+    expected_events: ["executive_dashboard_viewed"]
+    expected_state: unclosed
+    expected_error: null
+  - id: "ADMIN-EXE-010"
+    category: close_status
+    title: "未关闭期间不能生成正式月报"
+    initial_state: unclosed
+    actor: executive_sponsor
+    command: admin_executive.report.publish
+    expected_events: ["access_denied"]
+    expected_state: unclosed
+    expected_error: "ADMIN_EXECUTIVE_UNCLOSED_DATA_RESTRICTED"
+  - id: "ADMIN-EXE-011"
+    category: drilldown
+    title: "聚合数据可以按授权城市钻取"
+    initial_state: available
+    actor: operations_lead
+    command: admin_executive.drilldown.read
+    expected_events: ["executive_drilldown_viewed"]
+    expected_state: available
+    expected_error: null
+  - id: "ADMIN-EXE-012"
+    category: drilldown
+    title: "人员明细必须重新执行原领域权限"
+    initial_state: available
+    actor: executive_sponsor
+    command: admin_executive.drilldown.read
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_DRILLDOWN_FORBIDDEN"
+  - id: "ADMIN-EXE-013"
+    category: privacy
+    title: "小样本切片必须抑制"
+    initial_state: suppressed
+    actor: operator_executive
+    command: admin_executive.dashboard.read
+    expected_events: ["executive_dashboard_viewed"]
+    expected_state: suppressed
+    expected_error: null
+  - id: "ADMIN-EXE-014"
+    category: privacy
+    title: "高层不能读取严格敏感原文"
+    initial_state: available
+    actor: executive_sponsor
+    command: admin_executive.sensitive_detail.read
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_SENSITIVE_DETAIL_FORBIDDEN"
+  - id: "ADMIN-EXE-015"
+    category: finance
+    title: "未知付款不得表达为已到账"
+    initial_state: unknown
+    actor: finance_lead
+    command: admin_executive.finance.read
+    expected_events: ["executive_dashboard_viewed"]
+    expected_state: unknown
+    expected_error: null
+  - id: "ADMIN-EXE-016"
+    category: finance
+    title: "高层驾驶舱不能发起资金命令"
+    initial_state: blocked
+    actor: executive_sponsor
+    command: admin_finance.command.execute
+    expected_events: ["access_denied"]
+    expected_state: blocked
+    expected_error: "ADMIN_EXECUTIVE_OPERATION_FORBIDDEN"
+  - id: "ADMIN-EXE-017"
+    category: safety
+    title: "安全卡片只展示案件摘要"
+    initial_state: available
+    actor: safety_lead
+    command: admin_executive.safety_compliance.read
+    expected_events: ["executive_dashboard_viewed"]
+    expected_state: available
+    expected_error: null
+  - id: "ADMIN-EXE-018"
+    category: safety
+    title: "投诉数量不能替代安全调查结论"
+    initial_state: available
+    actor: executive_sponsor
+    command: admin_executive.metric.override
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_OPERATION_FORBIDDEN"
+  - id: "ADMIN-EXE-019"
+    category: decision
+    title: "待决事项链接原职责工作台"
+    initial_state: open
+    actor: executive_sponsor
+    command: admin_executive.decisions.read
+    expected_events: ["executive_decision_summary_viewed"]
+    expected_state: open
+    expected_error: null
+  - id: "ADMIN-EXE-020"
+    category: decision
+    title: "高层不能在驾驶舱直接批准"
+    initial_state: open
+    actor: executive_sponsor
+    command: admin_executive.decision.approve
+    expected_events: ["access_denied"]
+    expected_state: open
+    expected_error: "ADMIN_EXECUTIVE_OPERATION_FORBIDDEN"
+  - id: "ADMIN-EXE-021"
+    category: export
+    title: "导出申请必须提供目的"
+    initial_state: draft
+    actor: executive_sponsor
+    command: admin_executive.export.request
+    expected_events: ["access_denied"]
+    expected_state: draft
+    expected_error: "ADMIN_EXECUTIVE_EXPORT_PURPOSE_REQUIRED"
+  - id: "ADMIN-EXE-022"
+    category: export
+    title: "申请人不能批准自己的导出"
+    initial_state: awaiting_review
+    actor: finance_lead
+    command: admin_executive.export.privacy_approve
+    expected_events: ["access_denied"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_EXECUTIVE_EXPORT_REVIEWER_CONFLICT"
+  - id: "ADMIN-EXE-023"
+    category: export
+    title: "导出不能扩大页面组织范围"
+    initial_state: awaiting_review
+    actor: privacy_compliance
+    command: admin_executive.export.privacy_approve
+    expected_events: ["access_denied"]
+    expected_state: awaiting_review
+    expected_error: "ADMIN_EXECUTIVE_EXPORT_FORBIDDEN"
+  - id: "ADMIN-EXE-024"
+    category: export
+    title: "过期下载授权必须拒绝"
+    initial_state: expired
+    actor: executive_sponsor
+    command: admin_executive.export.download
+    expected_events: ["access_denied"]
+    expected_state: expired
+    expected_error: "ADMIN_EXECUTIVE_EXPORT_EXPIRED"
+  - id: "ADMIN-EXE-025"
+    category: decision
+    title: "项目决策人追加记录高层意见"
+    initial_state: open
+    actor: executive_sponsor
+    command: admin_executive.decision_opinion.record
+    expected_events: ["executive_decision_opinion_recorded"]
+    expected_state: open
+    expected_error: null
+  - id: "ADMIN-EXE-026"
+    category: decision
+    title: "高层意见不能直接改变业务状态"
+    initial_state: open
+    actor: executive_sponsor
+    command: admin_executive.decision.approve
+    expected_events: ["access_denied"]
+    expected_state: open
+    expected_error: "ADMIN_EXECUTIVE_OPERATION_FORBIDDEN"
+  - id: "ADMIN-EXE-027"
+    category: finance
+    title: "项目决策人不能读取精确资金金额"
+    initial_state: available
+    actor: executive_sponsor
+    command: admin_executive.finance.amount.read
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_EXACT_AMOUNT_FORBIDDEN"
+  - id: "ADMIN-EXE-028"
+    category: finance
+    title: "财务负责人按 L3 授权读取精确聚合金额"
+    initial_state: available
+    actor: finance_lead
+    command: admin_executive.finance.amount.read
+    expected_events: ["executive_dashboard_viewed"]
+    expected_state: available
+    expected_error: null
+  - id: "ADMIN-EXE-029"
+    category: finance
+    title: "运营主体负责人只能读取资金区间和趋势"
+    initial_state: available
+    actor: operator_executive
+    command: admin_executive.finance.amount.read
+    expected_events: ["access_denied"]
+    expected_state: available
+    expected_error: "ADMIN_EXECUTIVE_EXACT_AMOUNT_FORBIDDEN"
+  - id: "ADMIN-EXE-030"
+    category: export
+    title: "隐私合规完成第一道导出批准"
+    initial_state: awaiting_privacy_review
+    actor: privacy_compliance
+    command: admin_executive.export.privacy_approve
+    expected_events: ["executive_export_privacy_reviewed"]
+    expected_state: awaiting_domain_review
+    expected_error: null
+  - id: "ADMIN-EXE-031"
+    category: export
+    title: "对应职责域负责人完成第二道导出批准"
+    initial_state: awaiting_domain_review
+    actor: operations_lead
+    command: admin_executive.export.domain_approve
+    expected_events: ["executive_export_domain_reviewed"]
+    expected_state: approved
+    expected_error: null
+  - id: "ADMIN-EXE-032"
+    category: export
+    title: "单次导出不能混合多个职责域"
+    initial_state: draft
+    actor: operator_executive
+    command: admin_executive.export.request
+    expected_events: ["access_denied"]
+    expected_state: draft
+    expected_error: "ADMIN_EXECUTIVE_EXPORT_DOMAIN_MIXED_FORBIDDEN"

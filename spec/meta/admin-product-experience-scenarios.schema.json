@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/admin-product-experience-scenarios.schema.json",
+  "title": "运营后台产品化高保真验收场景",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "scenarios"],
+  "properties": {
+    "spec_version": {"const": "1.0"},
+    "spec_id": {"const": "pollycar.tests.admin-product-experience-scenarios"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"const": "design_frozen"},
+    "source_document": {"type": "string"},
+    "scenarios": {
+      "type": "array",
+      "minItems": 88,
+      "maxItems": 88,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "title", "expected"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^ADMIN-UX-[0-9]{3}$"},
+          "category": {"enum": ["entry", "identity", "navigation", "shell", "pagination", "language", "responsive", "accessibility", "recovery", "operations_task", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "executive_dashboard", "audit_system", "data_reports"]},
+          "title": {"type": "string", "minLength": 1},
+          "expected": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+        }
+      }
+    }
+  }
+}

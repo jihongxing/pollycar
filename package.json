@@ -1,0 +1,41 @@
+{
+  "name": "pollycar",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.22.0",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm --filter @pollycar/app build && pnpm --filter @pollycar/admin build && pnpm exec playwright test",
+    "test:e2e:a11y": "pnpm --filter @pollycar/app build && pnpm --filter @pollycar/admin build && pnpm exec playwright test tests/e2e/app-accessibility.spec.ts",
+    "test:e2e:visual": "pnpm --filter @pollycar/app build && pnpm exec playwright test tests/e2e/app-visual-regression.spec.ts",
+    "test:device:android": "powershell.exe -NoProfile -File scripts/test/run-device-qa.ps1 -Platform android -ProfileId android-standard -Journey first_time_user -Flow core -TesterId local-operator -BuildId local",
+    "test:device:ios": "powershell.exe -NoProfile -File scripts/test/run-device-qa.ps1 -Platform ios -ProfileId ios-standard -Journey first_time_user -Flow core -TesterId local-operator -BuildId local",
+    "test:device:summary": "powershell.exe -NoProfile -File scripts/test/summarize-device-qa.ps1",
+    "test:manual:browser-mobile": "node scripts/test/run-browser-mobile-acceptance.mjs",
+    "test:manual:android-emulator-web": "node scripts/test/run-android-emulator-web-acceptance.mjs",
+    "test:scenarios": "pnpm --filter @pollycar/domain test:scenarios",
+    "test:ledger:stage3": "powershell.exe -NoProfile -File scripts/test/run-ledger-stage3-proof.ps1",
+    "test:ledger:stage4": "powershell.exe -NoProfile -File scripts/test/run-ledger-stage4-kernel.ps1",
+    "test:ledger:stage5": "powershell.exe -NoProfile -File scripts/test/run-ledger-stage5-resilience.ps1",
+    "test:ledger:stage6": "powershell.exe -NoProfile -File scripts/test/run-ledger-stage6-templates.ps1",
+    "test:ledger:stage7": "powershell.exe -NoProfile -File scripts/test/run-ledger-stage7-reconciliation.ps1",
+    "test:ledger:stage8": "powershell.exe -NoProfile -File scripts/test/run-ledger-stage8-operator-funds.ps1",
+    "build": "pnpm -r --if-present build"
+    ,
+    "build:app:sandbox": "pnpm --filter @pollycar/app build:sandbox",
+    "build:app:demo": "pnpm --filter @pollycar/app build:demo",
+    "build:app:production": "pnpm --filter @pollycar/app build:production"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.55.1",
+    "@types/node": "22.19.1",
+    "serve": "14.2.4",
+    "typescript": "5.9.3",
+    "vitest": "4.0.15"
+  }
+}

@@ -1,0 +1,179 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-review-scenarios"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_document: "docs/product/admin/08-实现准入评审.md"
+scenarios:
+  - id: "APP-201"
+    category: normal
+    expected: own_vehicle_review
+  - id: "APP-202"
+    category: normal
+    expected: draft_saved
+  - id: "APP-203"
+    category: normal
+    expected: submitted_and_queued
+  - id: "APP-204"
+    category: normal
+    expected: material_resubmitted
+  - id: "APP-205"
+    category: end_to_end
+    expected: admin_approval_visible_in_app
+  - id: "APP-206"
+    category: data_protection
+    expected_error: REAL_DATA_FORBIDDEN
+  - id: "APP-207"
+    category: normal
+    expected: synthetic_invitation
+  - id: "APP-208"
+    category: normal
+    expected: free_trial_submitted
+  - id: "APP-209"
+    category: normal
+    expected: awaiting_confirmation
+  - id: "APP-210"
+    category: end_to_end
+    expected: free_trial_active
+  - id: "APP-211"
+    category: safety
+    expected: paid_path_remains_frozen
+  - id: "APP-212"
+    category: normal
+    expected: synthetic_trip_dashboard
+  - id: "APP-213"
+    category: normal
+    expected: pending_zero_money_payment
+  - id: "APP-214"
+    category: normal
+    expected: paid_pending_match
+  - id: "APP-215"
+    category: safety
+    expected_error: TRIP_PAYMENT_REQUIRED
+  - id: "APP-216"
+    category: separation_of_duties
+    expected_error: TRIP_SELF_ACCEPT_FORBIDDEN
+  - id: "APP-217"
+    category: authorization
+    expected_error: QUOTA_DRIVER_INELIGIBLE
+  - id: "APP-218"
+    category: normal
+    expected: in_progress
+  - id: "APP-219"
+    category: end_to_end
+    expected: completed_with_zero_money_closed
+  - id: "APP-220"
+    category: normal
+    expected: temporary_chat_open
+  - id: "APP-221"
+    category: normal
+    expected: synthetic_message_sent
+  - id: "APP-222"
+    category: data_protection
+    expected_error: REAL_DATA_FORBIDDEN
+  - id: "APP-223"
+    category: safety
+    expected: trip_and_chat_frozen
+  - id: "APP-224"
+    category: normal
+    expected: appeal_submitted
+  - id: "APP-225"
+    category: safety
+    expected: freeze_remains_during_appeal
+  - id: "APP-226"
+    category: separation_of_duties
+    expected: independent_resolution
+  - id: admin_claim_success
+    category: normal
+    expected: claimed
+  - id: admin_claim_concurrent_denied
+    category: concurrency
+    expected_error: ADMIN_TASK_ALREADY_CLAIMED
+  - id: admin_write_after_ownership_loss
+    category: authorization
+    expected_error: ADMIN_TASK_OWNERSHIP_LOST
+  - id: admin_self_review_denied
+    category: separation_of_duties
+    expected_error: ADMIN_SELF_REVIEW_FORBIDDEN
+  - id: admin_sensitive_reveal_requires_purpose
+    category: data_protection
+    expected_error: ADMIN_DISCLOSURE_PURPOSE_REQUIRED
+  - id: admin_sensitive_reveal_expired
+    category: data_protection
+    expected_error: ADMIN_DISCLOSURE_EXPIRED
+  - id: admin_request_material_preview
+    category: normal
+    expected: waiting_user
+  - id: "ADMIN-116"
+    category: safety
+    expected_error: ADMIN_OPEN_RISK_BLOCKS_APPROVAL
+  - id: "ADMIN-117"
+    category: validation
+    expected_error: ADMIN_DECISION_REASON_REQUIRED
+  - id: "ADMIN-118"
+    category: normal
+    expected: completed
+  - id: "ADMIN-119"
+    category: normal
+    expected: completed
+  - id: admin_escalate_safety
+    category: safety
+    expected: escalated
+  - id: admin_reconsider_same_actor_denied
+    category: separation_of_duties
+    expected_error: ADMIN_SELF_RECONSIDERATION_FORBIDDEN
+  - id: admin_unknown_result_recovered
+    category: resilience
+    expected: idempotent_result_found
+  - id: admin_dead_task_replay_audited
+    category: audit
+    expected: replay_audited
+  - id: admin_real_data_rejected
+    category: data_protection
+    expected_error: REAL_DATA_FORBIDDEN
+  - id: "ADMIN-101"
+    category: normal
+    expected: queue_summary
+  - id: "ADMIN-102"
+    category: normal
+    expected: minimum_detail
+  - id: "ADMIN-105"
+    category: boundary
+    expected: renewed
+  - id: "ADMIN-106"
+    category: normal
+    expected: released
+  - id: "ADMIN-108"
+    category: normal
+    expected: waiting_user
+  - id: "ADMIN-110"
+    category: audit
+    expected: append_only_entries
+  - id: "ADMIN-112"
+    category: resilience
+    expected: up
+  - id: "ADMIN-113"
+    category: authorization
+    expected_error: AUTHORIZATION_DENIED
+  - id: "ADMIN-114"
+    category: resilience
+    expected_error: SERVICE_UNAVAILABLE
+  - id: "ADMIN-115"
+    category: authorization
+    expected: not_found
+  - id: "ADMIN-103"
+    category: normal
+    expected: claimed
+  - id: "ADMIN-104"
+    category: concurrency
+    expected_error: ADMIN_TASK_ALREADY_CLAIMED
+  - id: "ADMIN-107"
+    category: normal
+    expected: previewed
+  - id: "ADMIN-109"
+    category: authorization
+    expected_error: ADMIN_TASK_OWNERSHIP_LOST
+  - id: "ADMIN-111"
+    category: resilience
+    expected: idempotent_result_found

@@ -1,0 +1,1153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/ledger.schema.json",
+  "title": "不可变复式账本规范",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "spec_id",
+    "language",
+    "status",
+    "production_enabled",
+    "synthetic_data_only",
+    "source_documents",
+    "feature_gate",
+    "scope",
+    "money",
+    "account_model",
+    "transaction_model",
+    "posting_model",
+    "database_invariants",
+    "balance_projection",
+    "database_roles",
+    "database_errors",
+    "transaction_templates",
+    "implementation_readiness"
+  ],
+  "properties": {
+    "spec_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "spec_id": {
+      "const": "pollycar.finance.ledger"
+    },
+    "language": {
+      "const": "zh-CN"
+    },
+    "status": {
+      "const": "approved_for_internal_sandbox"
+    },
+    "production_enabled": {
+      "const": false
+    },
+    "synthetic_data_only": {
+      "const": true
+    },
+    "source_documents": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "feature_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "default_enabled",
+        "required_context",
+        "real_payment_required",
+        "production_credentials_allowed",
+        "remote_database_allowed"
+      ],
+      "properties": {
+        "id": {
+          "const": "synthetic_financial_ledger"
+        },
+        "default_enabled": {
+          "const": false
+        },
+        "required_context": {
+          "const": "internal_sandbox"
+        },
+        "real_payment_required": {
+          "const": false
+        },
+        "production_credentials_allowed": {
+          "const": false
+        },
+        "remote_database_allowed": {
+          "const": false
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "forbidden"],
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supported_currencies",
+        "api_amount_format",
+        "database_amount_type",
+        "entry_amount_rule",
+        "direction_values",
+        "floating_point_allowed",
+        "rounding_rule_version_required"
+      ],
+      "properties": {
+        "supported_currencies": {
+          "type": "array",
+          "const": ["CNY"]
+        },
+        "api_amount_format": {
+          "const": "decimal_integer_string"
+        },
+        "database_amount_type": {
+          "const": "bigint"
+        },
+        "entry_amount_rule": {
+          "const": "greater_than_zero"
+        },
+        "direction_values": {
+          "type": "array",
+          "const": ["debit", "credit"]
+        },
+        "floating_point_allowed": {
+          "const": false
+        },
+        "rounding_rule_version_required": {
+          "const": true
+        }
+      }
+    },
+    "account_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "id_type",
+        "account_types",
+        "states",
+        "required_identity_fields",
+        "dimension_snapshot_required",
+        "dimension_value_type",
+        "dimension_key_algorithm",
+        "dimension_key_definition",
+        "account_uniqueness",
+        "immutable_fields",
+        "state_transition",
+        "close_entrypoint",
+        "close_allowed_role",
+        "closed_account_posting_allowed",
+        "account_codes",
+        "dimensions_by_account_code"
+      ],
+      "properties": {
+        "table": {
+          "const": "pollycar_finance.ledger_accounts"
+        },
+        "id_type": {
+          "const": "uuid_generated_by_server"
+        },
+        "account_types": {
+          "type": "array",
+          "const": ["asset", "liability", "revenue", "expense", "equity"]
+        },
+        "states": {
+          "type": "array",
+          "const": ["open", "closed"]
+        },
+        "required_identity_fields": {
+          "type": "array",
+          "const": [
+            "account_code",
+            "account_type",
+            "currency",
+            "owner_type",
+            "owner_id",
+            "dimensions",
+            "dimension_key"
+          ]
+        },
+        "dimension_snapshot_required": {
+          "const": true
+        },
+        "dimension_value_type": {
+          "const": "non_empty_string"
+        },
+        "dimension_key_algorithm": {
+          "const": "postgres_jsonb_text_v1"
+        },
+        "dimension_key_definition": {
+          "const": "dimensions_jsonb_text"
+        },
+        "account_uniqueness": {
+          "type": "array",
+          "const": [
+            "account_code",
+            "currency",
+            "owner_type",
+            "owner_id",
+            "dimension_key"
+          ]
+        },
+        "immutable_fields": {
+          "type": "array",
+          "minItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "state_transition": {
+          "const": "open_to_closed_only"
+        },
+        "close_entrypoint": {
+          "const": "pollycar_finance.close_ledger_account(p_ledger_account_id uuid, p_reason text)"
+        },
+        "close_allowed_role": {
+          "const": "pollycar_ledger_maintenance"
+        },
+        "closed_account_posting_allowed": {
+          "const": false
+        },
+        "account_codes": {
+          "type": "array",
+          "minItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]+$"
+          }
+        },
+        "dimensions_by_account_code": {
+          "type": "array",
+          "minItems": 13,
+          "maxItems": 13,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["account_code", "required_dimensions"],
+            "properties": {
+              "account_code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]+$"
+              },
+              "required_dimensions": {
+                "type": "array",
+                "minItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "transaction_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transaction_table",
+        "entry_table",
+        "projection_table",
+        "id_type",
+        "sequence_definition",
+        "persisted_states",
+        "draft_persistence_allowed",
+        "global_sequence_required",
+        "source_systems",
+        "transaction_types",
+        "source_identity_fields",
+        "idempotency_identity_fields",
+        "request_digest_required",
+        "request_digest",
+        "rule_version_required",
+        "business_reference_required",
+        "minimum_entries",
+        "same_currency_balance_group_required",
+        "initiator_types",
+        "reversal"
+      ],
+      "properties": {
+        "transaction_table": {
+          "const": "pollycar_finance.ledger_transactions"
+        },
+        "entry_table": {
+          "const": "pollycar_finance.ledger_entries"
+        },
+        "projection_table": {
+          "const": "pollycar_finance.ledger_balance_projections"
+        },
+        "id_type": {
+          "const": "uuid_generated_by_server"
+        },
+        "sequence_definition": {
+          "const": "bigint_generated_always_as_identity"
+        },
+        "persisted_states": {
+          "type": "array",
+          "const": ["posted"]
+        },
+        "draft_persistence_allowed": {
+          "const": false
+        },
+        "global_sequence_required": {
+          "const": true
+        },
+        "source_systems": {
+          "type": "array",
+          "const": [
+            "payment_aggregate",
+            "trip_fulfillment",
+            "refund_aggregate",
+            "provider_settlement",
+            "payout_aggregate",
+            "reconciliation",
+            "manual_finance"
+          ]
+        },
+        "transaction_types": {
+          "type": "array",
+          "const": [
+            "PAYMENT_SUCCEEDED",
+            "PROVIDER_SETTLED_WITH_FEE",
+            "REFUND_LIABILITY_CREATED",
+            "REFUND_COMPLETED",
+            "FULL_REVERSAL",
+            "ALLOCATION_15_45_40",
+            "DRIVER_PAYOUT_REQUESTED",
+            "DRIVER_PAYOUT_COMPLETED"
+          ]
+        },
+        "source_identity_fields": {
+          "type": "array",
+          "const": ["source_system", "source_event_id", "transaction_type"]
+        },
+        "idempotency_identity_fields": {
+          "type": "array",
+          "const": ["idempotency_key", "transaction_type"]
+        },
+        "request_digest_required": {
+          "const": true
+        },
+        "request_digest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "encoding",
+            "canonicalization",
+            "optional_field_rule",
+            "included_fields",
+            "excluded_fields",
+            "entry_sort"
+          ],
+          "properties": {
+            "algorithm": {
+              "const": "sha256"
+            },
+            "encoding": {
+              "const": "lowercase_hex"
+            },
+            "canonicalization": {
+              "const": "rfc8785_jcs_utf8"
+            },
+            "optional_field_rule": {
+              "const": "fixed_shape_with_null"
+            },
+            "included_fields": {
+              "type": "array",
+              "minItems": 10,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "excluded_fields": {
+              "type": "array",
+              "minItems": 5,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "entry_sort": {
+              "const": "entry_sequence_ascending"
+            }
+          }
+        },
+        "rule_version_required": {
+          "const": true
+        },
+        "business_reference_required": {
+          "const": true
+        },
+        "minimum_entries": {
+          "const": 2
+        },
+        "same_currency_balance_group_required": {
+          "const": true
+        },
+        "initiator_types": {
+          "type": "array",
+          "const": ["system", "finance_manual"]
+        },
+        "reversal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "original_transaction_required",
+            "maximum_full_reversals",
+            "reversal_of_reversal_allowed",
+            "opposite_entries_required",
+            "caller_supplied_entries_allowed",
+            "entries_copied_by_database",
+            "reason_code_required",
+            "review_reference_required_for_manual_action"
+          ],
+          "properties": {
+            "mode": {
+              "const": "full_only"
+            },
+            "original_transaction_required": {
+              "const": true
+            },
+            "maximum_full_reversals": {
+              "const": 1
+            },
+            "reversal_of_reversal_allowed": {
+              "const": false
+            },
+            "opposite_entries_required": {
+              "const": true
+            },
+            "caller_supplied_entries_allowed": {
+              "const": false
+            },
+            "entries_copied_by_database": {
+              "const": true
+            },
+            "reason_code_required": {
+              "const": true
+            },
+            "review_reference_required_for_manual_action": {
+              "const": true
+            }
+          }
+        }
+      }
+    },
+    "posting_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "database_entrypoint",
+        "function_signature",
+        "internal_core_function",
+        "runtime_internal_core_execute_allowed",
+        "return_fields",
+        "transaction_boundary",
+        "direct_application_dml_allowed",
+        "balance_enforcement",
+        "balance_constraint_function",
+        "balance_constraint_timing",
+        "immutability_enforcement",
+        "immutability_trigger_function",
+        "projection_update",
+        "outbox_append",
+        "outbox_table",
+        "outbox_event_type",
+        "outbox_event_id_format",
+        "transaction_client_required",
+        "autocommit_posting_allowed",
+        "security_mode",
+        "search_path",
+        "public_execute_revoked",
+        "existing_idempotency_behavior",
+        "conflicting_idempotency_behavior",
+        "account_resolution",
+        "reversal_entry_generation"
+      ],
+      "properties": {
+        "database_entrypoint": {
+          "const": "post_runtime_ledger_transaction"
+        },
+        "function_signature": {
+          "const": "pollycar_finance.post_runtime_ledger_transaction(p_request jsonb)"
+        },
+        "internal_core_function": {
+          "const": "pollycar_finance.post_ledger_transaction(p_request jsonb)"
+        },
+        "runtime_internal_core_execute_allowed": {
+          "const": false
+        },
+        "return_fields": {
+          "type": "array",
+          "const": ["ledger_transaction_id", "transaction_sequence", "replayed"]
+        },
+        "transaction_boundary": {
+          "const": "single_database_transaction"
+        },
+        "direct_application_dml_allowed": {
+          "const": false
+        },
+        "balance_enforcement": {
+          "const": "deferrable_constraint_trigger"
+        },
+        "balance_constraint_function": {
+          "const": "pollycar_finance.assert_ledger_transaction_balanced"
+        },
+        "balance_constraint_timing": {
+          "const": "deferrable_initially_deferred"
+        },
+        "immutability_enforcement": {
+          "const": "database_trigger_and_privilege"
+        },
+        "immutability_trigger_function": {
+          "const": "pollycar_finance.reject_ledger_mutation"
+        },
+        "projection_update": {
+          "const": "same_transaction"
+        },
+        "outbox_append": {
+          "const": "same_transaction"
+        },
+        "outbox_table": {
+          "const": "public.pollycar_outbox"
+        },
+        "outbox_event_type": {
+          "const": "finance.ledger.transaction_posted"
+        },
+        "outbox_event_id_format": {
+          "const": "ledger-posted:{ledger_transaction_id}"
+        },
+        "transaction_client_required": {
+          "const": true
+        },
+        "autocommit_posting_allowed": {
+          "const": false
+        },
+        "security_mode": {
+          "const": "security_definer"
+        },
+        "search_path": {
+          "const": "pg_catalog,pollycar_finance"
+        },
+        "public_execute_revoked": {
+          "const": true
+        },
+        "existing_idempotency_behavior": {
+          "const": "same_digest_returns_original_result"
+        },
+        "conflicting_idempotency_behavior": {
+          "const": "reject"
+        },
+        "account_resolution": {
+          "const": "upsert_open_account_by_full_identity"
+        },
+        "reversal_entry_generation": {
+          "const": "database_from_original_entries"
+        }
+      }
+    },
+    "database_invariants": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "balance_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoritative",
+        "formula",
+        "global_sequence_field",
+        "rebuild_source",
+        "rebuild_entrypoint",
+        "rebuild_must_match_incremental_projection",
+        "direct_balance_adjustment_allowed",
+        "account_locking",
+        "overflow_behavior"
+      ],
+      "properties": {
+        "authoritative": {
+          "const": false
+        },
+        "formula": {
+          "const": "debit_total_minor_minus_credit_total_minor"
+        },
+        "global_sequence_field": {
+          "const": "last_transaction_sequence"
+        },
+        "rebuild_source": {
+          "const": "all_posted_entries"
+        },
+        "rebuild_entrypoint": {
+          "const": "pollycar_finance.rebuild_ledger_balance_projections()"
+        },
+        "rebuild_must_match_incremental_projection": {
+          "const": true
+        },
+        "direct_balance_adjustment_allowed": {
+          "const": false
+        },
+        "account_locking": {
+          "const": "select_for_update_in_account_id_order"
+        },
+        "overflow_behavior": {
+          "const": "reject"
+        }
+      }
+    },
+    "database_roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "runtime", "maintenance", "auditor"],
+      "properties": {
+        "owner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "login_allowed", "owns_schema_and_functions", "runtime_membership_allowed"],
+          "properties": {
+            "id": {
+              "const": "pollycar_ledger_owner"
+            },
+            "login_allowed": {
+              "const": false
+            },
+            "owns_schema_and_functions": {
+              "const": true
+            },
+            "runtime_membership_allowed": {
+              "const": false
+            }
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "login_allowed", "allowed", "forbidden"],
+          "properties": {
+            "id": {
+              "const": "pollycar_ledger_runtime"
+            },
+            "login_allowed": {
+              "const": true
+            },
+            "allowed": {
+              "type": "array",
+              "minItems": 3,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "forbidden": {
+              "type": "array",
+              "minItems": 5,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "maintenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "login_allowed", "allowed", "forbidden"],
+          "properties": {
+            "id": {
+              "const": "pollycar_ledger_maintenance"
+            },
+            "login_allowed": {
+              "const": false
+            },
+            "allowed": {
+              "type": "array",
+              "minItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "forbidden": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "auditor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "login_allowed", "allowed", "forbidden"],
+          "properties": {
+            "id": {
+              "const": "pollycar_ledger_auditor"
+            },
+            "login_allowed": {
+              "const": false
+            },
+            "allowed": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "forbidden": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "database_errors": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^LEDGER_[A-Z0-9_]+$"
+      }
+    },
+    "transaction_templates": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "transaction_type",
+          "implementation_stage",
+          "implementation_status",
+          "posting_allowed_before_reconciliation_gate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "transaction_type": {
+            "type": "string",
+            "enum": [
+              "PAYMENT_SUCCEEDED",
+              "PROVIDER_SETTLED_WITH_FEE",
+              "REFUND_LIABILITY_CREATED",
+              "REFUND_COMPLETED",
+              "FULL_REVERSAL",
+              "ALLOCATION_15_45_40",
+              "DRIVER_PAYOUT_REQUESTED",
+              "DRIVER_PAYOUT_COMPLETED"
+            ]
+          },
+          "implementation_stage": {
+            "type": "integer",
+            "minimum": 6,
+            "maximum": 8
+          },
+          "implementation_status": {
+            "enum": ["implemented", "contract_only"]
+          },
+          "posting_service_method": {
+            "type": "string",
+            "pattern": "^post[A-Z][A-Za-z0-9]+$"
+          },
+          "posting_allowed_before_reconciliation_gate": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "implementation_status": {
+                  "const": "implemented"
+                }
+              }
+            },
+            "then": {
+              "required": ["posting_service_method"],
+              "properties": {
+                "implementation_stage": {
+                  "const": 6
+                },
+                "posting_allowed_before_reconciliation_gate": {
+                  "const": true
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "implementation_status": {
+                  "const": "contract_only"
+                }
+              }
+            },
+            "then": {
+              "not": {
+                "required": ["posting_service_method"]
+              },
+              "properties": {
+                "implementation_stage": {
+                  "const": 8
+                },
+                "posting_allowed_before_reconciliation_gate": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "implementation_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frozen_model_version",
+        "stage_2_model_and_write_path_freeze",
+        "stage_3_database_invariant_prototype",
+        "stage_4_persistence_kernel",
+        "stage_5_resilience_verification",
+        "stage_6_synthetic_templates",
+        "formal_runtime_implementation_allowed",
+        "prototype",
+        "formal_implementation",
+        "resilience_verification",
+        "synthetic_template_implementation",
+        "formal_runtime_implementation_requires",
+        "stage_3_required_proofs",
+        "real_postgresql_required",
+        "mocked_database_proof_allowed"
+      ],
+      "properties": {
+        "frozen_model_version": {
+          "const": "ledger_model_v1"
+        },
+        "stage_2_model_and_write_path_freeze": {
+          "const": "completed"
+        },
+        "stage_3_database_invariant_prototype": {
+          "const": "completed"
+        },
+        "stage_4_persistence_kernel": {
+          "const": "completed"
+        },
+        "stage_5_resilience_verification": {
+          "const": "completed"
+        },
+        "stage_6_synthetic_templates": {
+          "const": "completed"
+        },
+        "formal_runtime_implementation_allowed": {
+          "const": true
+        },
+        "prototype": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "database",
+            "runtime_integration_allowed",
+            "migration_integration_allowed",
+            "real_data_allowed",
+            "sql_file",
+            "test_file",
+            "proof_command",
+            "result"
+          ],
+          "properties": {
+            "database": {
+              "const": "isolated_local_postgresql_17"
+            },
+            "runtime_integration_allowed": {
+              "const": false
+            },
+            "migration_integration_allowed": {
+              "const": true
+            },
+            "real_data_allowed": {
+              "const": false
+            },
+            "sql_file": {
+              "const": "apps/server/migrations/0007_financial_ledger.sql"
+            },
+            "test_file": {
+              "const": "apps/server/src/persistence/ledger-stage3-prototype.integration.test.ts"
+            },
+            "proof_command": {
+              "const": "pnpm test:ledger:stage3"
+            },
+            "result": {
+              "const": "10_passed"
+            }
+          }
+        },
+        "formal_implementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "migration_file",
+            "repository_file",
+            "runtime_factory_file",
+            "integration_test_file",
+            "proof_command",
+            "result",
+            "explicit_transaction_required",
+            "unified_posting_function_required",
+            "outbox_atomic_with_posting",
+            "direct_balance_mutation_allowed",
+            "app_or_api_integration_allowed",
+            "real_data_allowed",
+            "production_enablement_allowed"
+          ],
+          "properties": {
+            "migration_file": {
+              "const": "apps/server/migrations/0007_financial_ledger.sql"
+            },
+            "repository_file": {
+              "const": "apps/server/src/persistence/postgres-ledger-repository.ts"
+            },
+            "runtime_factory_file": {
+              "const": "apps/server/src/persistence/postgres-runtime.ts"
+            },
+            "integration_test_file": {
+              "const": "apps/server/src/persistence/postgres-ledger-repository.integration.test.ts"
+            },
+            "proof_command": {
+              "const": "pnpm test:ledger:stage4"
+            },
+            "result": {
+              "const": "2_passed"
+            },
+            "explicit_transaction_required": {
+              "const": true
+            },
+            "unified_posting_function_required": {
+              "const": true
+            },
+            "outbox_atomic_with_posting": {
+              "const": true
+            },
+            "direct_balance_mutation_allowed": {
+              "const": false
+            },
+            "app_or_api_integration_allowed": {
+              "const": false
+            },
+            "real_data_allowed": {
+              "const": false
+            },
+            "production_enablement_allowed": {
+              "const": false
+            }
+          }
+        },
+        "resilience_verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "database",
+            "migration_file",
+            "test_file",
+            "runner_file",
+            "proof_command",
+            "result",
+            "concurrency_lock",
+            "concurrent_same_request_returns_original",
+            "concurrent_source_event_unique",
+            "concurrent_idempotency_key_unique",
+            "duplicate_call_creates_second_transaction",
+            "rollback_leaves_ledger_effects",
+            "rebuilt_projection_matches_incremental",
+            "database_restart_preserves_posted_state",
+            "real_data_allowed",
+            "production_enablement_allowed"
+          ],
+          "properties": {
+            "database": {
+              "const": "isolated_local_postgresql_17"
+            },
+            "migration_file": {
+              "const": "apps/server/migrations/0007_financial_ledger.sql"
+            },
+            "test_file": {
+              "const": "apps/server/src/persistence/ledger-stage5-resilience.integration.test.ts"
+            },
+            "runner_file": {
+              "const": "scripts/test/run-ledger-stage5-resilience.ps1"
+            },
+            "proof_command": {
+              "const": "pnpm test:ledger:stage5"
+            },
+            "result": {
+              "const": "6_passed_across_restart_phases"
+            },
+            "concurrency_lock": {
+              "const": "transaction_scoped_advisory_lock"
+            },
+            "concurrent_same_request_returns_original": {
+              "const": true
+            },
+            "concurrent_source_event_unique": {
+              "const": true
+            },
+            "concurrent_idempotency_key_unique": {
+              "const": true
+            },
+            "duplicate_call_creates_second_transaction": {
+              "const": false
+            },
+            "rollback_leaves_ledger_effects": {
+              "const": false
+            },
+            "rebuilt_projection_matches_incremental": {
+              "const": true
+            },
+            "database_restart_preserves_posted_state": {
+              "const": true
+            },
+            "real_data_allowed": {
+              "const": false
+            },
+            "production_enablement_allowed": {
+              "const": false
+            }
+          }
+        },
+        "synthetic_template_implementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "service_file",
+            "unit_test_file",
+            "integration_test_file",
+            "runner_file",
+            "proof_command",
+            "result",
+            "implemented_transaction_types",
+            "contract_only_transaction_types",
+            "refund_completion_clearing_choice_required",
+            "real_data_allowed",
+            "production_enablement_allowed"
+          ],
+          "properties": {
+            "service_file": {
+              "const": "apps/server/src/application/synthetic-ledger-template-service.ts"
+            },
+            "unit_test_file": {
+              "const": "apps/server/src/application/synthetic-ledger-template-service.test.ts"
+            },
+            "integration_test_file": {
+              "const": "apps/server/src/persistence/ledger-stage6-templates.integration.test.ts"
+            },
+            "runner_file": {
+              "const": "scripts/test/run-ledger-stage6-templates.ps1"
+            },
+            "proof_command": {
+              "const": "pnpm test:ledger:stage6"
+            },
+            "result": {
+              "const": "8_passed"
+            },
+            "implemented_transaction_types": {
+              "type": "array",
+              "const": [
+                "PAYMENT_SUCCEEDED",
+                "PROVIDER_SETTLED_WITH_FEE",
+                "REFUND_LIABILITY_CREATED",
+                "REFUND_COMPLETED",
+                "FULL_REVERSAL"
+              ]
+            },
+            "contract_only_transaction_types": {
+              "type": "array",
+              "const": [
+                "ALLOCATION_15_45_40",
+                "DRIVER_PAYOUT_REQUESTED",
+                "DRIVER_PAYOUT_COMPLETED"
+              ]
+            },
+            "refund_completion_clearing_choice_required": {
+              "const": true
+            },
+            "real_data_allowed": {
+              "const": false
+            },
+            "production_enablement_allowed": {
+              "const": false
+            }
+          }
+        },
+        "formal_runtime_implementation_requires": {
+          "type": "array",
+          "const": [
+            "stage_1_contract_and_schema",
+            "stage_2_model_and_write_path_freeze",
+            "stage_3_database_invariant_prototype"
+          ]
+        },
+        "stage_3_required_proofs": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "real_postgresql_required": {
+          "const": true
+        },
+        "mocked_database_proof_allowed": {
+          "const": false
+        }
+      }
+    }
+  }
+}

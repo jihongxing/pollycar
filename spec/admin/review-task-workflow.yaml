@@ -1,0 +1,64 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.review-task-workflow"
+language: "zh-CN"
+status: "approved_internal"
+production_enabled: false
+synthetic_data_only: true
+source_document: "docs/product/admin/04-车辆审核工作流.md"
+states:
+  - available
+  - claimed
+  - in_progress
+  - waiting_user
+  - escalated
+  - completed
+  - released
+  - expired
+  - cancelled
+transitions:
+  - from: available
+    action: claim
+    to: claimed
+    roles: [reviewer, senior_reviewer]
+  - from: claimed
+    action: start
+    to: in_progress
+    roles: [reviewer, senior_reviewer]
+  - from: claimed
+    action: release
+    to: released
+    roles: [reviewer, senior_reviewer]
+  - from: claimed
+    action: expire
+    to: expired
+    roles: [scheduled_task]
+  - from: in_progress
+    action: request_material
+    to: waiting_user
+    roles: [reviewer, senior_reviewer]
+  - from: in_progress
+    action: escalate
+    to: escalated
+    roles: [reviewer, senior_reviewer]
+  - from: in_progress
+    action: decide
+    to: completed
+    roles: [reviewer, senior_reviewer]
+  - from: waiting_user
+    action: material_resubmitted
+    to: available
+    roles: [system]
+ownership:
+  atomic_claim: true
+  lease_duration: "PT30M"
+  renew_before: "PT5M"
+  deny_write_after_loss: true
+  release_reason_required: true
+  transfer_audited: true
+  self_assignment_forbidden: true
+separation_of_duties:
+  self_review_forbidden: true
+  self_reconsideration_forbidden: true
+  operations_business_decision_forbidden: true
+  audit_write_forbidden: true
+

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/meta/authorization-rules.schema.json",
+  "title": "授权规则规范",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_documents", "default_effect", "actions", "forbidden_role_action_pairs"],
+  "properties": {
+    "spec_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "spec_id": {"const": "pollycar.security.authorization-rules"},
+    "language": {"const": "zh-CN"},
+    "production_enabled": {"const": false},
+    "status": {"enum": ["draft", "review", "approved", "rejected", "superseded"]},
+    "source_documents": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "default_effect": {"const": "deny"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "resource", "allowed_roles", "scope", "audit"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+          "resource": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "allowed_roles": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+          "scope": {"type": "string"},
+          "separation_of_duties": {"type": "string"},
+          "dual_approval_required": {"type": "boolean"},
+          "temporary_access_required": {"type": "boolean"},
+          "maximum_duration": {"type": "string", "pattern": "^PT[0-9]+[HMS]$"},
+          "post_review_sla": {"type": "string", "pattern": "^PT[0-9]+[HMS]$"},
+          "maximum_classification": {"enum": ["L0", "L1", "L2", "L3", "L4"]},
+          "audit": {"enum": ["none", "standard", "sensitive", "strict"]}
+        }
+      }
+    },
+    "forbidden_role_action_pairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "action"],
+        "properties": {
+          "role": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "action": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"}
+        }
+      }
+    }
+  }
+}

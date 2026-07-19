@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PollyCar 运营后台设计参考</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div><strong>PollyCar 运营后台</strong><span class="sandbox">◇ 内部沙箱</span></div>
+      <nav>
+        <button data-page-target="dashboard">工作台</button>
+        <button data-page-target="queue">待处理队列</button>
+        <button data-page-target="detail">审核详情</button>
+        <button data-page-target="disclosure">敏感披露</button>
+        <button data-page-target="material">要求补充</button>
+        <button data-page-target="approve">批准确认</button>
+        <button data-page-target="reject">拒绝确认</button>
+        <button data-page-target="escalate">升级</button>
+        <button data-page-target="conflict">认领冲突</button>
+        <button data-page-target="ownership">所有权失效</button>
+        <button data-page-target="audit">审计</button>
+        <button data-page-target="dead">死信</button>
+        <button data-page-target="entry">入口</button>
+      </nav>
+      <div class="account"><span>普通审核员 · 合成主体 07</span><button id="theme-toggle">◐</button></div>
+    </header>
+    <main class="workspace">
+      <aside class="sidebar">
+        <h2>审核</h2>
+        <a class="active">待处理队列 <b>12</b></a>
+        <a>我的任务 <b>3</b></a>
+        <a>升级与复核 <b>2</b></a>
+        <a>已完成</a>
+        <h2>控制</h2>
+        <a>任务运行</a><a>审计记录</a><a>健康检查</a>
+        <p>真实材料、生产数据库与真实通知全部关闭。</p>
+      </aside>
+      <section class="page active" data-page="dashboard">
+        <header class="page-head"><div><small>我的工作台</small><h1>先处理边界，再处理数量。</h1></div><span>会话剩余 27 分钟</span></header>
+        <div class="metrics"><article><small>可认领</small><strong>12</strong></article><article><small>我的任务</small><strong>3</strong></article><article><small>即将超时</small><strong>1</strong></article></div>
+        <section class="panel"><h2>需要优先处理</h2><div class="task"><span class="warn">需补充</span><div><b>PC-VR-0017</b><p>用户已重新提交合成保险材料</p></div><button data-page-target="detail">继续审核</button></div></section>
+      </section>
+      <section class="page" data-page="queue">
+        <header class="page-head"><div><small>车辆审核</small><h1>待处理队列</h1></div><button>刷新队列</button></header>
+        <div class="filters"><input placeholder="申请编号" /><select><option>全部状态</option></select><select><option>等待时间</option></select></div>
+        <table><thead><tr><th>申请</th><th>状态</th><th>材料</th><th>等待</th><th>所有权</th><th></th></tr></thead><tbody>
+          <tr><td>PC-VR-0017</td><td><span class="warn">待审核</span></td><td>完整</td><td>18 分钟</td><td>可认领</td><td><button data-page-target="detail">认领</button></td></tr>
+          <tr><td>PC-VR-0018</td><td>补充已提交</td><td>需复查</td><td>9 分钟</td><td>其他审核员</td><td><button data-page-target="conflict">查看</button></td></tr>
+        </tbody></table>
+      </section>
+      <section class="page" data-page="detail">
+        <header class="page-head"><div><small>PC-VR-0017 · 已认领</small><h1>车辆审核详情</h1></div><span class="lease">剩余 24:18</span></header>
+        <div class="detail-grid">
+          <div><section class="panel"><h2>客观准入检查</h2><label><input type="checkbox" checked /> 车辆年限在范围内</label><label><input type="checkbox" checked /> 里程在范围内</label><label><input type="checkbox" /> 保险有效期已核对</label></section>
+          <section class="panel"><h2>结构化材料</h2><dl><dt>车辆类型</dt><dd>中大型轿车 · 合成示例</dd><dt>保险有效期</dt><dd>2027-08-31</dd><dt>使用权</dt><dd>稳定使用权 · 合成</dd></dl><button data-page-target="disclosure">查看遮蔽原文</button></section></div>
+          <aside class="decision"><h2>决定</h2><p>必须先完成检查项，并保持任务所有权。</p><button data-page-target="material">要求补充材料</button><button class="approve" data-page-target="approve">批准</button><button class="reject" data-page-target="reject">拒绝</button><button data-page-target="escalate">升级</button></aside>
+        </div>
+      </section>
+      <section class="page modal-page" data-page="disclosure"><div class="modal"><small>严格受限字段</small><h1>临时查看保险材料</h1><p>访问将被审计，并在 5 分钟后自动重新遮蔽。</p><label>访问目的<select><option>核对保险有效期</option></select></label><label>关联工单<input value="PC-VR-0017" /></label><div class="actions"><button data-page-target="detail">取消</button><button>确认并查看</button></div></div></section>
+      <section class="page modal-page" data-page="material"><div class="modal wide"><small>业务决定</small><h1>要求补充材料</h1><label><input type="checkbox" checked /> 保险有效期信息不完整</label><label><input type="checkbox" /> 车辆使用权材料不足</label><h3>用户可见预览</h3><div class="preview"><b>请补充保险有效期</b><p>当前保险有效期信息不完整，请按页面要求补充合成材料。</p></div><div class="actions"><button data-page-target="detail">返回</button><button>确认发送</button></div></div></section>
+      <section class="page modal-page" data-page="approve"><div class="modal wide"><small>批准确认</small><h1>确认车辆审核通过</h1><p>批准将激活合成车主身份，但不会开启真实接单。</p><label>结构化依据<select><option>全部客观准入项满足</option></select></label><div class="preview"><b>车辆审核已通过</b><p>车主身份已激活；真实接单仍需等待试点与邀请开放。</p></div><div class="actions"><button data-page-target="detail">取消</button><button class="approve">确认批准</button></div></div></section>
+      <section class="page modal-page" data-page="reject"><div class="modal wide"><small>拒绝确认</small><h1>确认车辆暂不符合条件</h1><label>结构化原因<select><option>车辆年限超出当前准入范围</option></select></label><label>后续条件<select><option>符合条件后可重新申请</option></select></label><div class="preview"><b>车辆暂不符合准入条件</b><p>车辆年限超出当前客观准入范围。</p></div><div class="actions"><button data-page-target="detail">取消</button><button class="reject">确认拒绝</button></div></div></section>
+      <section class="page modal-page" data-page="escalate"><div class="modal wide"><small>升级任务</small><h1>选择独立处理队列</h1><label>升级类型<select><option>疑似材料伪造</option><option>线下车辆检查</option><option>高级审核复核</option></select></label><label>触发事实<textarea>材料结构与前序记录不一致，仅使用合成数据演示。</textarea></label><p class="warning">升级后普通审核员失去最终决定权限。</p><div class="actions"><button data-page-target="detail">取消</button><button>确认升级</button></div></div></section>
+      <section class="page modal-page" data-page="conflict"><div class="modal"><small>并发冲突</small><h1>任务已由其他审核员认领</h1><p>系统没有为你创建任务所有权，也没有提交任何审核决定。</p><div class="actions"><button data-page-target="queue">返回队列</button><button>查看只读摘要</button></div></div></section>
+      <section class="page modal-page" data-page="ownership"><div class="modal"><small>所有权失效</small><h1>你的任务租约已经到期</h1><p>决定操作已禁用。非敏感理由草稿仍保留，敏感原文已重新遮蔽。</p><div class="actions"><button data-page-target="queue">返回队列</button><button>尝试重新认领</button></div></div></section>
+      <section class="page" data-page="audit"><header class="page-head"><div><small>PC-VR-0017</small><h1>审计记录</h1></div><span>只读</span></header><ol class="timeline"><li><b>任务已创建</b><span>09:36 · 系统</span></li><li><b>任务已认领</b><span>09:42 · 合成审核员 07</span></li><li><b>查看保险有效期字段</b><span>09:44 · 目的：材料核对</span></li><li><b>要求补充材料</b><span>09:48 · insurance_expiry_incomplete</span></li></ol></section>
+      <section class="page" data-page="dead"><header class="page-head"><div><small>任务运行</small><h1>死信与人工重放</h1></div><span>技术运维 · 无业务决定权限</span></header><section class="panel"><div class="task"><span class="danger">死信</span><div><b>vehicle-review:PC-VR-0017</b><p>尝试 3 次 · 关联 ID task-0017</p></div><button>查看日志</button></div><p>人工重放必须填写原因；重放只恢复任务执行，不修改审核结论。</p><button>发起受控重放</button></section></section>
+      <section class="page" data-page="entry"><div class="entry"><span class="sandbox">◇ 内部沙箱</span><h1>运营后台设计参考</h1><p>固定合成角色、合成任务和遮蔽材料。真实身份、生产数据库和真实通知全部关闭。</p><button data-page-target="dashboard">进入普通审核员工作台</button></div></section>
+    </main>
+    <script src="./prototype.js"></script>
+  </body>
+</html>

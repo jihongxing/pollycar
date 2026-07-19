@@ -1,0 +1,279 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-trip-case-management-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "approved"
+source_document: "docs/product/admin/19-阶段三行程客服安全契约.md"
+
+scenarios:
+  - id: "ADMIN-TCS-001"
+    category: trip_operations
+    title: "后台不能自由覆盖行程状态"
+    initial_state: in_progress
+    actor: operations_lead
+    command: admin_trip.state.override
+    expected_events: ["access_denied"]
+    expected_state: in_progress
+    expected_error: "ADMIN_TRIP_DIRECT_MUTATION_FORBIDDEN"
+  - id: "ADMIN-TCS-002"
+    category: trip_operations
+    title: "运营任务请求既有领域命令"
+    initial_state: triaged
+    actor: operations_officer
+    command: admin_trip.domain_action.request
+    expected_events: ["trip_domain_action_requested"]
+    expected_state: awaiting_authoritative_result
+    expected_error: null
+  - id: "ADMIN-TCS-003"
+    category: concurrency
+    title: "行程版本过旧时拒绝领域动作"
+    initial_state: coordinating
+    actor: operations_officer
+    command: admin_trip.domain_action.request
+    expected_events: ["access_denied"]
+    expected_state: coordinating
+    expected_error: "STORAGE_CONCURRENT_MODIFICATION"
+  - id: "ADMIN-TCS-004"
+    category: authorization
+    title: "运营主体只能读取本主体行程快照"
+    initial_state: detected
+    actor: operations_officer
+    command: admin_trip.trip_360.read
+    expected_events: ["access_denied"]
+    expected_state: detected
+    expected_error: "ADMIN_TRIP_SCOPE_FORBIDDEN"
+  - id: "ADMIN-TCS-005"
+    category: boundary
+    title: "主运营关系迁移不改写历史行程主体"
+    initial_state: coordinating
+    actor: operations_lead
+    command: admin_trip.operator_snapshot.rewrite
+    expected_events: ["access_denied"]
+    expected_state: coordinating
+    expected_error: "ADMIN_TRIP_OPERATOR_SNAPSHOT_IMMUTABLE"
+  - id: "ADMIN-TCS-006"
+    category: support_case
+    title: "客服案件可以等待用户补充"
+    initial_state: investigating
+    actor: customer_support
+    command: admin_support.case.await_user
+    expected_events: ["support_case_state_changed"]
+    expected_state: awaiting_user
+    expected_error: null
+  - id: "ADMIN-TCS-007"
+    category: support_case
+    title: "客服不得直接核销资金差异"
+    initial_state: investigating
+    actor: customer_support
+    command: admin_support.finance_difference.resolve
+    expected_events: ["access_denied"]
+    expected_state: investigating
+    expected_error: "ADMIN_SUPPORT_DOMAIN_BOUNDARY_FORBIDDEN"
+  - id: "ADMIN-TCS-008"
+    category: support_case
+    title: "客服可以升级安全转介"
+    initial_state: investigating
+    actor: customer_support
+    command: admin_support.safety_referral.create
+    expected_events: ["support_case_escalated", "safety_referral_created"]
+    expected_state: escalated
+    expected_error: null
+  - id: "ADMIN-TCS-009"
+    category: separation_of_duties
+    title: "客服不能处理安全调查"
+    initial_state: assigned
+    actor: customer_support
+    command: admin_safety.investigation.record
+    expected_events: ["access_denied"]
+    expected_state: assigned
+    expected_error: "ADMIN_SUPPORT_SAFETY_BOUNDARY_FORBIDDEN"
+  - id: "ADMIN-TCS-010"
+    category: safety_case
+    title: "安全人员记录结构化调查结论"
+    initial_state: investigating
+    actor: safety_officer
+    command: admin_safety.investigation.submit
+    expected_events: ["safety_investigation_submitted"]
+    expected_state: awaiting_independent_review
+    expected_error: null
+  - id: "ADMIN-TCS-011"
+    category: separation_of_duties
+    title: "冻结经办人不能复核恢复"
+    initial_state: awaiting_independent_review
+    actor: safety_officer
+    command: admin_safety.restoration.review
+    expected_events: ["access_denied"]
+    expected_state: awaiting_independent_review
+    expected_error: "ADMIN_SAFETY_REVIEWER_CONFLICT"
+  - id: "ADMIN-TCS-012"
+    category: safety_case
+    title: "严重案件存在阻断时不能恢复"
+    initial_state: awaiting_independent_review
+    actor: safety_lead
+    command: admin_safety.restoration.approve
+    expected_events: ["safety_restoration_blocked"]
+    expected_state: awaiting_independent_review
+    expected_error: "ADMIN_SAFETY_RESTORATION_BLOCKED"
+  - id: "ADMIN-TCS-013"
+    category: safety_case
+    title: "独立负责人批准恢复"
+    initial_state: awaiting_independent_review
+    actor: safety_lead
+    command: admin_safety.restoration.approve
+    expected_events: ["safety_restoration_reviewed"]
+    expected_state: completed
+    expected_error: null
+  - id: "ADMIN-TCS-014"
+    category: emergency
+    title: "一级事件必须建立应急响应任务"
+    initial_state: assigned
+    actor: safety_officer
+    command: admin_safety.severity.set_sev1
+    expected_events: ["emergency_response_created"]
+    expected_state: investigating
+    expected_error: null
+  - id: "ADMIN-TCS-015"
+    category: evidence
+    title: "证据访问必须关联工单"
+    initial_state: requested
+    actor: safety_officer
+    command: admin_evidence.access.request
+    expected_events: ["access_denied"]
+    expected_state: requested
+    expected_error: "ADMIN_EVIDENCE_TICKET_REQUIRED"
+  - id: "ADMIN-TCS-016"
+    category: evidence
+    title: "证据访问必须声明目的"
+    initial_state: requested
+    actor: safety_officer
+    command: admin_evidence.access.request
+    expected_events: ["access_denied"]
+    expected_state: requested
+    expected_error: "ADMIN_EVIDENCE_PURPOSE_REQUIRED"
+  - id: "ADMIN-TCS-017"
+    category: evidence
+    title: "普通证据访问最长三十分钟"
+    initial_state: requested
+    actor: safety_officer
+    command: admin_evidence.access.request
+    expected_events: ["access_denied"]
+    expected_state: requested
+    expected_error: "ADMIN_EVIDENCE_TTL_EXCEEDED"
+  - id: "ADMIN-TCS-018"
+    category: evidence
+    title: "聊天原文要求双人批准"
+    initial_state: requested
+    actor: safety_officer
+    command: admin_evidence.raw_chat.activate
+    expected_events: ["access_denied"]
+    expected_state: requested
+    expected_error: "ADMIN_EVIDENCE_DUAL_APPROVAL_REQUIRED"
+  - id: "ADMIN-TCS-019"
+    category: evidence
+    title: "客服不能读取安全证据字段"
+    initial_state: active
+    actor: customer_support
+    command: admin_evidence.safety_bundle.read
+    expected_events: ["access_denied"]
+    expected_state: active
+    expected_error: "ADMIN_EVIDENCE_FIELD_FORBIDDEN"
+  - id: "ADMIN-TCS-020"
+    category: evidence
+    title: "证据授权到期后立即重新遮蔽"
+    initial_state: expired
+    actor: safety_officer
+    command: admin_evidence.field.read
+    expected_events: ["access_denied"]
+    expected_state: expired
+    expected_error: "ADMIN_EVIDENCE_GRANT_EXPIRED"
+  - id: "ADMIN-TCS-021"
+    category: evidence
+    title: "组织上下文切换撤销证据授权"
+    initial_state: active
+    actor: safety_officer
+    command: admin_access.context.switch
+    expected_events: ["evidence_access_revoked", "organization_context_changed"]
+    expected_state: revoked
+    expected_error: null
+  - id: "ADMIN-TCS-022"
+    category: cross_organization
+    title: "跨主体协作任务不披露另一主体内部信息"
+    initial_state: coordinating
+    actor: operations_officer
+    command: admin_collaboration.task.read
+    expected_events: ["access_denied"]
+    expected_state: coordinating
+    expected_error: "ADMIN_CROSS_OPERATOR_DISCLOSURE_FORBIDDEN"
+  - id: "ADMIN-TCS-023"
+    category: cross_organization
+    title: "平台为两个主体建立隔离协作任务"
+    initial_state: triaged
+    actor: operations_lead
+    command: admin_collaboration.tasks.create
+    expected_events: ["collaboration_task_created"]
+    expected_state: coordinating
+    expected_error: null
+  - id: "ADMIN-TCS-024"
+    category: recovery
+    title: "未知结果创建恢复任务"
+    initial_state: accepted
+    actor: operations_officer
+    command: admin_trip.domain_action.observe_unknown
+    expected_events: ["command_result_unknown", "command_recovery_task_created"]
+    expected_state: unknown
+    expected_error: null
+  - id: "ADMIN-TCS-025"
+    category: recovery
+    title: "未知结果期间禁止重复发命令"
+    initial_state: unknown
+    actor: operations_officer
+    command: admin_trip.domain_action.request
+    expected_events: ["access_denied"]
+    expected_state: unknown
+    expected_error: "ADMIN_COMMAND_RECOVERY_IN_PROGRESS"
+  - id: "ADMIN-TCS-026"
+    category: recovery
+    title: "恢复任务查询原幂等结果"
+    initial_state: open
+    actor: technical_operations
+    command: admin_recovery.idempotency_result.query
+    expected_events: ["command_recovery_queried"]
+    expected_state: reconciling_authoritative_state
+    expected_error: null
+  - id: "ADMIN-TCS-027"
+    category: recovery
+    title: "技术运维不能代替业务角色作决定"
+    initial_state: reconciling_authoritative_state
+    actor: technical_operations
+    command: admin_support.case.resolve
+    expected_events: ["access_denied"]
+    expected_state: reconciling_authoritative_state
+    expected_error: "ADMIN_RECOVERY_BUSINESS_DECISION_FORBIDDEN"
+  - id: "ADMIN-TCS-028"
+    category: audit
+    title: "证据披露审计不记录原文"
+    initial_state: active
+    actor: auditor
+    command: admin_evidence.audit.read
+    expected_events: ["evidence_access_audit_viewed"]
+    expected_state: active
+    expected_error: null
+  - id: "ADMIN-TCS-029"
+    category: feature_gate
+    title: "行程运营门禁默认关闭"
+    initial_state: disabled
+    actor: operations_lead
+    command: admin_trip.operations.read
+    expected_events: ["access_denied"]
+    expected_state: disabled
+    expected_error: "FEATURE_DISABLED"
+  - id: "ADMIN-TCS-030"
+    category: feature_gate
+    title: "案件管理门禁默认关闭"
+    initial_state: disabled
+    actor: safety_lead
+    command: admin_safety.case.read
+    expected_events: ["access_denied"]
+    expected_state: disabled
+    expected_error: "FEATURE_DISABLED"
+

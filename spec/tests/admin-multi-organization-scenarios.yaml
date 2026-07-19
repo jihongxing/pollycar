@@ -1,0 +1,88 @@
+spec_version: "1.0"
+spec_id: "pollycar.tests.admin-multi-organization-scenarios"
+language: "zh-CN"
+production_enabled: false
+status: "approved"
+source_document: "docs/decisions/0015-运营控制台多组织授权与审计模型.md"
+
+scenarios:
+  - id: "ADMIN-ORG-001"
+    category: authorization
+    given: 运营主体甲用户查询运营主体乙资源
+    expected_error: ADMIN_OPERATOR_SCOPE_FORBIDDEN
+  - id: "ADMIN-ORG-002"
+    category: authorization
+    given: 运营主体用户手工输入其他主体详情深链接
+    expected_error: ADMIN_OPERATOR_SCOPE_FORBIDDEN
+  - id: "ADMIN-ORG-003"
+    category: authorization
+    given: 用户访问未绑定功能角色的模块
+    expected_error: AUTHORIZATION_DENIED
+  - id: "ADMIN-ORG-004"
+    category: navigation
+    given: 用户没有资金运营角色
+    expected: finance_module_hidden
+  - id: "ADMIN-ORG-005"
+    category: boundary
+    given: 平台用户切换到已授权运营主体观察范围
+    expected: context_changed_without_role_change
+  - id: "ADMIN-ORG-006"
+    category: authorization
+    given: 平台用户切换到未授权城市
+    expected_error: ADMIN_CITY_SCOPE_FORBIDDEN
+  - id: "ADMIN-ORG-007"
+    category: authorization
+    given: 运营主体用户尝试切换主体上下文
+    expected_error: ADMIN_ORGANIZATION_CONTEXT_FIXED
+  - id: "ADMIN-ORG-008"
+    category: data_protection
+    given: 未获临时授权查看严格敏感字段
+    expected_error: ADMIN_TEMPORARY_GRANT_REQUIRED
+  - id: "ADMIN-ORG-009"
+    category: data_protection
+    given: 严格敏感字段临时授权超过十五分钟
+    expected_error: ADMIN_TEMPORARY_GRANT_TTL_EXCEEDED
+  - id: "ADMIN-ORG-010"
+    category: authorization
+    given: 临时授权已经到期
+    expected_error: ADMIN_TEMPORARY_GRANT_EXPIRED
+  - id: "ADMIN-ORG-011"
+    category: separation_of_duties
+    given: 临时授权尝试允许经办人复核本人操作
+    expected_error: ADMIN_SELF_REVIEW_FORBIDDEN
+  - id: "ADMIN-ORG-012"
+    category: separation_of_duties
+    given: 技术运维尝试执行业务决定
+    expected_error: AUTHORIZATION_DENIED
+  - id: "ADMIN-ORG-013"
+    category: separation_of_duties
+    given: 高层日常经办身份与驾驶舱身份合并在同一会话
+    expected_error: ADMIN_SESSION_PURPOSE_CONFLICT
+  - id: "ADMIN-ORG-014"
+    category: audit
+    given: 用户成功切换组织观察范围
+    expected: append_only_context_change_event
+  - id: "ADMIN-ORG-015"
+    category: audit
+    given: 用户被拒绝访问跨主体资源
+    expected: append_only_access_denied_event
+  - id: "ADMIN-ORG-016"
+    category: audit
+    given: 用户披露受限字段
+    expected: field_ids_logged_without_sensitive_values
+  - id: "ADMIN-ORG-017"
+    category: audit
+    given: 业务角色尝试修改审计事件
+    expected_error: ADMIN_AUDIT_IMMUTABLE
+  - id: "ADMIN-ORG-018"
+    category: boundary
+    given: 平台用户只读访问运营主体名录
+    expected: masked_read_only_directory
+  - id: "ADMIN-ORG-019"
+    category: authorization
+    given: 运营主体用户访问平台运营主体名录
+    expected_error: AUTHORIZATION_DENIED
+  - id: "ADMIN-ORG-020"
+    category: feature_gate
+    given: 多组织后台功能门禁关闭
+    expected_error: FEATURE_DISABLED

@@ -1,0 +1,152 @@
+spec_version: "1.0"
+spec_id: "pollycar.finance.reconciliation"
+language: "zh-CN"
+status: "approved_for_internal_sandbox"
+production_enabled: false
+synthetic_data_only: true
+
+feature_gate:
+  id: "synthetic_financial_reconciliation"
+  default_enabled: false
+  required_context: "internal_sandbox"
+  ledger_required: true
+  real_provider_statement_allowed: false
+  remote_database_allowed: false
+
+fact_model:
+  table: "pollycar_finance.reconciliation_facts"
+  sources:
+    - "business_order"
+    - "payment_aggregate"
+    - "ledger"
+    - "provider_statement"
+  record_types:
+    - "payment"
+    - "refund"
+    - "settlement"
+    - "fee"
+  amount_format: "decimal_integer_string"
+  currency: "CNY"
+  stable_reference_required: true
+  amount_and_time_only_matching_allowed: false
+  late_provider_event_recorded: true
+
+matching:
+  priority:
+    - "provider_order_id"
+    - "internal_order_id"
+    - "provider_event_id"
+    - "merchant_id"
+    - "currency_and_amount"
+  individual_matching_required: true
+  aggregate_count_matching_required: true
+  aggregate_amount_matching_required: true
+  fee_matching_required: true
+
+runs:
+  table: "pollycar_finance.reconciliation_runs"
+  states:
+    - "created"
+    - "validating"
+    - "matching"
+    - "differences_found"
+    - "balanced"
+    - "failed"
+    - "closed"
+  source_file_digest_unique: true
+  duplicate_file_behavior: "return_original_run"
+  close_requires_state: "balanced"
+  close_requires_zero_difference_count: true
+  close_requires_zero_difference_amount: true
+  close_requires_four_sources: true
+  statement_signature_required: true
+  control_totals_required: true
+
+differences:
+  table: "pollycar_finance.reconciliation_items"
+  states: ["open", "resolved"]
+  types:
+    - "provider_only_payment"
+    - "provider_only_refund"
+    - "internal_only_payment"
+    - "internal_only_refund"
+    - "payment_aggregate_missing"
+    - "payment_amount_mismatch"
+    - "refund_amount_mismatch"
+    - "settlement_mismatch"
+    - "duplicate_provider_payment"
+    - "ledger_missing"
+    - "fee_mismatch"
+    - "aggregate_count_mismatch"
+    - "aggregate_amount_mismatch"
+    - "late_provider_callback"
+    - "unknown_result"
+    - "statement_validation_failed"
+  nonzero_difference_auto_writeoff_allowed: false
+  unresolved_difference_persisted: true
+  resolution_reason_required: true
+  resolution_evidence_reference_required: true
+
+recovery:
+  table: "pollycar_finance.reconciliation_recovery_actions"
+  action_types:
+    - "query_original_request"
+    - "recheck_next_batch"
+    - "create_duplicate_payment_refund_case"
+    - "repair_missing_ledger_idempotently"
+    - "investigate_orphan_provider_payment"
+  states: ["pending", "failed", "completed"]
+  retry_same_original_request_only: true
+  blind_second_charge_allowed: false
+  original_financial_record_mutation_allowed: false
+  completed_recovery_automatically_clears_difference: false
+  difference_resolution_requires_independent_review: true
+
+financial_action_gate:
+  function: "pollycar_finance.assert_reconciliation_action_allowed(p_run_id text, p_action text)"
+  actions:
+    - "settlement"
+    - "payout"
+    - "close"
+  requires_closed_run: true
+  nonzero_difference_blocks_all_actions: true
+  unresolved_zero_amount_case_blocks_all_actions: true
+  direct_table_bypass_allowed: false
+
+business_day_close:
+  table: "pollycar_finance.financial_business_days"
+  timezone: "Asia/Shanghai"
+  intraday_scan_interval_minutes: 15
+  provisional_check_deadline: "06:00"
+  formal_close_target: "12:00"
+  prepared_and_reviewed_by_must_differ: true
+  all_runs_must_be_closed: true
+  missing_statement_blocks_close: true
+  invalid_statement_blocks_close: true
+  nonzero_difference_blocks_close: true
+
+database_entrypoints:
+  record_evaluation: "pollycar_finance.record_reconciliation_evaluation(p_request jsonb)"
+  close_run: "pollycar_finance.close_reconciliation_run(p_run_id text)"
+  assert_action: "pollycar_finance.assert_reconciliation_action_allowed(p_run_id text, p_action text)"
+  close_business_date: "pollycar_finance.close_financial_business_date(p_business_date date, p_prepared_by text, p_reviewed_by text)"
+  record_recovery: "pollycar_finance.record_reconciliation_recovery_result(p_recovery_action_id text, p_succeeded boolean, p_error_code text)"
+  resolve_difference: "pollycar_finance.resolve_reconciliation_item(p_reconciliation_item_id text, p_resolution_type text, p_resolved_by text, p_reviewed_by text, p_resolution_evidence_reference text)"
+  security_definer_required: true
+  public_execute_revoked: true
+  runtime_direct_write_allowed: false
+
+implementation:
+  stage_7_status: "completed"
+  migration_file: "apps/server/migrations/0008_financial_reconciliation.sql"
+  service_file: "apps/server/src/application/financial-reconciliation-service.ts"
+  repository_file: "apps/server/src/persistence/postgres-reconciliation-repository.ts"
+  unit_test_file: "apps/server/src/application/financial-reconciliation-service.test.ts"
+  integration_test_file: "apps/server/src/persistence/ledger-stage7-reconciliation.integration.test.ts"
+  runner_file: "scripts/test/run-ledger-stage7-reconciliation.ps1"
+  proof_command: "pnpm test:ledger:stage7"
+  result: "12_passed"
+  stage_8_synthetic_implementation_allowed: true
+  real_settlement_allowed: false
+  real_payout_allowed: false
+  production_enablement_allowed: false

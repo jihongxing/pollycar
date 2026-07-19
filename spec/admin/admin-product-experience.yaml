@@ -1,0 +1,410 @@
+spec_version: "1.0"
+spec_id: "pollycar.admin.product-experience"
+language: "zh-CN"
+production_enabled: false
+status: "design_frozen"
+source_document: "docs/product/admin/29-运营后台产品化高保真方案.md"
+review_document: "docs/product/admin/30-运营后台产品化实施前设计评审.md"
+
+design_approval:
+  high_fidelity_frozen: true
+  reviewed_on: "2026-07-15"
+  implementation_approved: true
+  explicit_implementation_approval_required: true
+
+required_contracts:
+  authentication: "spec/admin/authentication-session.yaml"
+  role_access_matrix: "spec/admin/role-access-matrix.yaml"
+  internal_access_control: "spec/admin/internal-access-control.yaml"
+  audit: "spec/admin/audit-event-model.yaml"
+  data_reports: "spec/admin/data-reports.yaml"
+  organization_accounts: "spec/admin/organization-accounts.yaml"
+
+required_feature_gates:
+  synthetic_admin_authentication: false
+  synthetic_admin_role_access_matrix: false
+  synthetic_admin_operator_management: false
+  synthetic_admin_driver_vehicle: false
+  synthetic_admin_trip_operations: false
+  synthetic_admin_case_management: false
+  synthetic_admin_finance_operations: false
+  synthetic_admin_executive_dashboard: false
+  synthetic_admin_audit_system: false
+  synthetic_admin_data_reports: false
+  real_admin_organization_accounts: false
+  production_authentication: false
+  production_admin_enabled: false
+
+entry_views:
+  - "login"
+  - "invitation_activation"
+  - "totp_verification"
+  - "recovery_codes"
+  - "password_recovery"
+  - "work_identity_selection"
+  - "session_expired"
+  - "account_unavailable"
+
+navigation_manifest:
+  server_authoritative: true
+  client_role_menu_mapping_forbidden: true
+  required_fields: ["navigation_version", "work_identity_id", "organization_context", "role_ids", "items", "route_permissions", "operation_permissions", "field_profiles", "export_profiles", "scope_digest", "expires_at"]
+  route_reauthorization_required: true
+  stale_manifest_forbidden: true
+  role_or_scope_change_revokes_session: true
+  item_availability_required: true
+  unavailable_item_click_forbidden: true
+  unavailable_item_label: "功能暂未开放"
+
+information_architecture:
+  top_level_domains: ["workbench", "organization_accounts", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "executive_dashboard", "audit_system"]
+  technical_stage_navigation_forbidden: true
+  operator_cross_scope_selector_forbidden: true
+  platform_scope_switch_may_only_narrow: true
+
+pagination:
+  method: "signed_cursor"
+  default_page_size: 25
+  allowed_page_sizes:
+    - 25
+    - 50
+    - 100
+  maximum_page_size: 100
+  after_and_before_mutually_exclusive: true
+  cursor_opaque: true
+  cursor_signed: true
+  cursor_binds_query_digest: true
+  cursor_binds_scope_digest: true
+  stable_unique_tiebreaker_required: true
+  query_change_clears_cursor: true
+  exact_total_required: false
+  sensitive_list_exact_total_default_forbidden: true
+  response_fields: ["items", "page_info", "query_digest", "scope_digest", "as_of"]
+  page_info_fields: ["has_next_page", "has_previous_page", "start_cursor", "end_cursor", "approximate_total"]
+  return_state_restoration_required: true
+  select_all_results_forbidden: true
+
+domain_page_foundation:
+  bearer_session_required: true
+  server_route_reauthorization_required: true
+  list_and_detail_contract_required: true
+  list_states: ["loading", "empty", "error", "forbidden", "ready"]
+  detail_states: ["loading", "not_found", "error", "forbidden", "ready"]
+  browser_history_route_required: true
+  return_filter_restoration_required: true
+  return_cursor_restoration_required: true
+  return_scroll_restoration_required: true
+  initial_validation_resource: "operations_task"
+
+operations_task_closure:
+  resource_version_required: true
+  idempotency_key_required: true
+  organization_scope_reauthorization_required: true
+  role_action_reauthorization_required: true
+  states: ["unassigned", "processing", "waiting_review", "blocked", "completed"]
+  transitions:
+    - action: "assign"
+      from: ["unassigned"]
+      to: "processing"
+      required_permission: "assign"
+    - action: "process"
+      from: ["processing", "blocked"]
+      to: "waiting_review"
+      required_permission: "process"
+    - action: "review"
+      from: ["waiting_review"]
+      to: "completed"
+      required_permission: "review"
+  result_states: ["confirming", "confirmed", "error"]
+  confirming_copy: "结果确认中"
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  audit_actions: ["task_created", "scope_checked", "task_assigned", "task_processed", "task_reviewed"]
+  completed_task_write_forbidden: true
+
+operator_management_closure:
+  source_contract: "spec/admin/operator-management.yaml"
+  feature_gate: "synthetic_admin_operator_management"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/operators"
+    detail: "/admin/operators/:operator_id"
+  summary_fields: ["total_operators", "active_operators", "attention_operators", "active_drivers", "active_vehicles"]
+  list_capabilities: ["search", "lifecycle_filter", "sort", "signed_cursor_pagination"]
+  return_state_restoration_required: true
+  resource_version_required: true
+  idempotency_key_required: true
+  action_reason_required: true
+  actions:
+    - action: "restrict"
+      from: ["active"]
+      to: "restricted"
+      allowed_roles: ["operations_lead"]
+    - action: "reactivate"
+      from: ["restricted"]
+      to: "active"
+      allowed_roles: ["operations_lead"]
+  operator_role_read_own_scope_only: true
+  auditor_read_only: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  audit_fields: ["actor_label", "actor_role", "occurred_at", "previous_state", "next_state", "note"]
+
+driver_vehicle_closure:
+  source_contracts:
+    driver_vehicle_360: "spec/admin/operator-management.yaml"
+    review_task: "spec/domain/vehicle-review.yaml"
+  feature_gate: "synthetic_admin_driver_vehicle"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    driver_list: "/admin/fleet/drivers"
+    driver_detail: "/admin/fleet/drivers/:driver_account_id"
+    vehicle_list: "/admin/fleet/vehicles"
+    vehicle_detail: "/admin/fleet/vehicles/:vehicle_id"
+  summary_required: true
+  list_capabilities: ["search", "state_filter", "sort", "signed_cursor_pagination"]
+  return_state_restoration_required: true
+  reviewer_actions: ["claim", "request_material", "approve", "reject"]
+  action_source_of_truth: "existing_admin_review_task_service"
+  role_and_state_intersection_required: true
+  operator_fleet_officer_own_scope_read_only: true
+  auditor_read_only: true
+  expected_task_version_required: true
+  expected_vehicle_review_version_required: true
+  idempotency_key_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  audit_actions: ["task_viewed", "task_claimed", "material_previewed", "material_requested", "vehicle_approved", "vehicle_rejected"]
+  real_materials_allowed: false
+  production_enablement_allowed: false
+
+trip_operations_closure:
+  source_contract: "spec/admin/trip-case-management.yaml"
+  feature_gate: "synthetic_admin_trip_operations"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/trips"
+    detail: "/admin/trips/:trip_id"
+  summary_fields: ["total_trips", "active_trips", "attention_trips", "safety_frozen_trips", "awaiting_authoritative_result_trips"]
+  list_capabilities: ["search", "authoritative_state_filter", "operation_state_filter", "sort", "signed_cursor_pagination"]
+  return_state_restoration_required: true
+  detail_composition: ["trip_360", "masked_parties", "operator_snapshot", "operation_task", "case_references", "audit_trail"]
+  direct_trip_state_mutation_forbidden: true
+  action_source_of_truth: "existing_admin_trip_case_management_service"
+  role_and_state_intersection_required: true
+  actions:
+    - action: "triage"
+      from: ["detected"]
+      to: "triaged"
+      allowed_roles: ["operations_lead", "operator_operations_lead"]
+    - action: "request_domain_action"
+      from: ["triaged", "coordinating"]
+      to: "awaiting_authoritative_result"
+      allowed_roles: ["operations_lead", "operator_operations_lead"]
+  operator_role_read_own_scope_only: true
+  support_safety_roles_read_only: true
+  auditor_read_only: true
+  expected_task_version_required: true
+  expected_trip_version_required: true
+  idempotency_key_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  audit_actions: ["trip_profile_viewed", "trip_operation_triaged", "trip_domain_action_requested"]
+  real_trip_operations_allowed: false
+  production_enablement_allowed: false
+
+support_safety_closure:
+  source_contract: "spec/admin/trip-case-management.yaml"
+  feature_gates: ["synthetic_admin_case_management", "synthetic_admin_trip_operations"]
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/cases"
+    support_detail: "/admin/cases/support/:case_id"
+    safety_detail: "/admin/cases/safety/:case_id"
+  summary_fields: ["total_cases", "support_cases", "safety_cases", "active_cases", "severe_safety_cases", "awaiting_independent_review_cases"]
+  list_capabilities: ["search", "case_kind_filter", "support_state_filter", "safety_state_filter", "sort", "signed_cursor_pagination"]
+  return_state_restoration_required: true
+  support_detail_composition: ["support_case", "trip_360", "organization_scope", "allowed_actions", "audit_trail"]
+  safety_detail_composition: ["safety_investigation", "trip_360", "blockers", "evidence_grants", "organization_scope", "allowed_actions", "audit_trail"]
+  action_source_of_truth: "existing_admin_trip_case_management_service"
+  role_and_state_intersection_required: true
+  support_actions: ["continue_investigation", "await_user", "await_internal", "resolve", "close", "reopen", "escalate_operations", "escalate_safety", "escalate_finance"]
+  safety_actions: ["submit_investigation", "restore_access", "uphold_freeze", "request_evidence", "approve_evidence", "revoke_evidence"]
+  operator_customer_support_own_scope_only: true
+  auditor_read_only: true
+  expected_resource_version_required: true
+  idempotency_key_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  real_evidence_allowed: false
+  production_enablement_allowed: false
+
+finance_operations_closure:
+  source_contract: "spec/admin/finance-operations.yaml"
+  feature_gate: "synthetic_admin_finance_operations"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/finance"
+    detail: "/admin/finance/:kind/:resource_id"
+  api_routes:
+    list: "GET /v1/internal-sandbox/admin/finance"
+    detail: "GET /v1/internal-sandbox/admin/finance/:kind/:resource_id"
+    action: "POST /v1/internal-sandbox/admin/finance/:kind/:resource_id/actions/:action"
+  summary_fields: ["total_resources", "blocking_resources", "awaiting_independent_review", "unknown_results", "open_reconciliation_runs", "ready_business_days"]
+  list_capabilities: ["search", "resource_kind_filter", "state_filter", "blocking_filter", "sort", "signed_cursor_pagination"]
+  resource_kinds: ["settlement", "payout", "refund_reversal", "reconciliation", "business_day", "ledger"]
+  return_state_restoration_required: true
+  detail_composition: ["authoritative_finance_record", "organization_scope", "allowed_actions", "control_boundaries", "audit_trail"]
+  action_source_of_truth: "existing_admin_finance_operations_service"
+  role_and_state_intersection_required: true
+  platform_finance_actions: ["prepare_operator_settlement", "review_operator_settlement", "request_refund", "request_full_reversal", "submit_reconciliation_resolution", "review_reconciliation_resolution", "prepare_business_day_close", "review_business_day_close"]
+  operator_finance_actions: ["prepare_driver_payout", "review_driver_payout", "request_driver_payout", "submit_reconciliation_resolution", "review_reconciliation_resolution"]
+  auditor_read_only: true
+  operator_finance_own_scope_only: true
+  technical_recovery_remains_in_audit_system: true
+  expected_resource_version_required: true
+  idempotency_key_required: true
+  reason_code_required: true
+  reconciliation_evidence_reference_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  amount_edit_allowed: false
+  direct_balance_mutation_allowed: false
+  real_money_movement_allowed: false
+  production_enablement_allowed: false
+
+executive_dashboard_closure:
+  source_contract: "spec/admin/executive-dashboard.yaml"
+  feature_gate: "synthetic_admin_executive_dashboard"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/executive"
+    detail: "/admin/executive/:kind/:resource_id"
+  api_routes:
+    list: "GET /v1/internal-sandbox/admin/executive"
+    detail: "GET /v1/internal-sandbox/admin/executive/:kind/:resource_id"
+    action: "POST /v1/internal-sandbox/admin/executive/:kind/:resource_id/actions/:action"
+  summary_fields: ["total_resources", "open_decision_items", "blocking_operators", "exports_awaiting_review", "unavailable_metrics", "page_state"]
+  list_capabilities: ["search", "resource_kind_filter", "domain_filter", "blocking_filter", "sort", "signed_cursor_pagination"]
+  resource_kinds: ["decision_item", "export_request", "operator_health", "metric"]
+  return_state_restoration_required: true
+  detail_composition: ["authoritative_dashboard_record", "organization_scope", "allowed_actions", "governance_boundaries", "audit_trail"]
+  action_source_of_truth: "existing_executive_dashboard_query_service"
+  role_and_state_intersection_required: true
+  governance_actions: ["record_decision_opinion", "create_export_request", "privacy_approve_export", "privacy_reject_export", "domain_approve_export", "domain_reject_export", "revoke_export", "download_export"]
+  operator_executive_own_scope_only: true
+  privacy_and_domain_dual_review_required: true
+  requester_download_only: true
+  single_use_download_required: true
+  expected_resource_version_required: true
+  idempotency_key_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  direct_business_approval_allowed: false
+  person_level_drilldown_allowed: false
+  real_data_allowed: false
+  production_enablement_allowed: false
+
+audit_system_closure:
+  source_contract: "spec/admin/audit-event-model.yaml"
+  feature_gate: "synthetic_admin_audit_system"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/governance"
+    detail: "/admin/governance/:kind/:resource_id"
+  api_routes:
+    list: "GET /v1/internal-sandbox/admin/audit"
+    detail: "GET /v1/internal-sandbox/admin/audit/:kind/:resource_id"
+    action: "POST /v1/internal-sandbox/admin/audit/:kind/:resource_id/actions/:action"
+  summary_fields: ["total_resources", "denied_events", "high_risk_events", "open_investigations", "integrity_warnings"]
+  list_capabilities: ["search", "resource_kind_filter", "domain_filter", "result_filter", "sort", "signed_cursor_pagination"]
+  resource_kinds: ["event", "investigation"]
+  return_state_restoration_required: true
+  detail_composition: ["sanitized_event_metadata", "organization_scope", "correlation_context", "integrity_digest", "allowed_actions", "audit_trail"]
+  source_of_truth: "admin_audit_event_store"
+  duplicate_business_audit_copy_forbidden: true
+  auditor_read_only: true
+  technical_operations_actions: ["open_investigation", "assign_investigation", "add_investigation_note", "resolve_investigation", "reopen_investigation"]
+  business_state_mutation_allowed: false
+  operator_auditor_own_scope_only: true
+  expected_resource_version_required: true
+  idempotency_key_required: true
+  action_reason_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  original_event_update_allowed: false
+  original_event_delete_allowed: false
+  raw_sensitive_payload_available: false
+  production_audit_store_enabled: false
+  production_enablement_allowed: false
+
+data_reports_closure:
+  source_contract: "spec/admin/data-reports.yaml"
+  feature_gate: "synthetic_admin_data_reports"
+  bearer_session_required: true
+  server_scope_reauthorization_required: true
+  routes:
+    list: "/admin/reports"
+    detail: "/admin/reports/:report_id"
+  api_routes:
+    list: "GET /v1/internal-sandbox/admin/reports"
+    detail: "GET /v1/internal-sandbox/admin/reports/:report_id"
+    action: "POST /v1/internal-sandbox/admin/reports/:report_id/actions/refresh_report"
+  summary_fields: ["total_reports", "ready_reports", "partial_reports", "stale_reports", "total_metrics"]
+  list_capabilities: ["search", "domain_filter", "state_filter", "sort", "signed_cursor_pagination"]
+  report_domains: ["operations", "finance", "safety_compliance", "audit"]
+  return_state_restoration_required: true
+  aggregate_only: true
+  person_level_data_available: false
+  real_data_available: false
+  export_available: false
+  expected_resource_version_required: true
+  idempotency_key_required: true
+  action_reason_required: true
+  result_states: ["confirming", "confirmed", "error"]
+  duplicate_submit_forbidden_while_confirming: true
+  append_only_audit_required: true
+  auditor_read_only: true
+  operator_role_read_own_scope_only: true
+  production_enablement_allowed: false
+
+product_language:
+  ordinary_page_forbidden_terms: ["synthetic", "feature_gate", "L2", "L3", "L4", "server", "adapter", "port", "idempotency_key", "outbox", "dead_letter", "scope_digest"]
+  allowed_technical_surfaces: ["audit_detail", "system_operations", "developer_diagnostics", "compliance_evidence"]
+  replacements:
+    feature_disabled: "功能暂未开放"
+    authorization_denied: "当前账号无权执行此操作"
+    unknown_result: "结果确认中"
+    duplicate_request: "请求处理中，请勿重复提交"
+    restricted_field: "部分信息需额外授权"
+
+prototype:
+  path: "docs/product/prototypes/admin-productization/index.html"
+  views: 8
+  interactive: true
+  desktop_width: 1440
+  narrow_desktop_width: 1024
+  entry_mobile_width: 390
+  page_level_horizontal_overflow_forbidden: true
+
+implementation_gate:
+  implementation_allowed: true
+  authentication_code_forbidden_before_approval: false
+  navigation_api_forbidden_before_approval: false
+  menu_refactor_forbidden_before_approval: false
+  pagination_api_forbidden_before_approval: false
+  production_enablement_allowed: false
