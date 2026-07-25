@@ -6,6 +6,11 @@ import {
   useState,
 } from "react";
 import { useAccountSession } from "../application/account-session-context";
+import {
+  readBrowserStorage,
+  removeBrowserStorage,
+  writeBrowserStorage,
+} from "../infrastructure/browser-storage";
 import { clearIdentityScopedJourneyState } from "../navigation/journey-continuity";
 
 export type UserIdentity = "passenger" | "owner";
@@ -22,15 +27,14 @@ const IdentityContext = createContext<IdentityContextValue | undefined>(undefine
 export function IdentityProvider({ children }: PropsWithChildren) {
   const { session, switchIdentity } = useAccountSession();
   const [activeIdentity, setActiveIdentityState] = useState<UserIdentity>(() => {
-    if (typeof window === "undefined") return "passenger";
-    return window.localStorage.getItem(identityStorageKey) === "owner" ? "owner" : "passenger";
+    return readBrowserStorage(identityStorageKey) === "owner" ? "owner" : "passenger";
   });
   const [ownerApproved, setOwnerApproved] = useState(false);
   const setActiveIdentity = async (identity: UserIdentity) => {
     await switchIdentity(identity === "owner" ? "driver" : "passenger");
     clearIdentityScopedJourneyState();
     setActiveIdentityState(identity);
-    if (typeof window !== "undefined") window.localStorage.setItem(identityStorageKey, identity);
+    writeBrowserStorage(identityStorageKey, identity);
   };
   const serverIdentity = session?.activeIdentity === "driver" ? "owner" : "passenger";
   const resolvedIdentity = session ? serverIdentity : activeIdentity;
@@ -48,6 +52,10 @@ export function IdentityProvider({ children }: PropsWithChildren) {
 }
 
 const identityStorageKey = "pollycar.preference.identity";
+
+export function clearStoredIdentityPreference(): void {
+  removeBrowserStorage(identityStorageKey);
+}
 
 export function useIdentity() {
   const context = useContext(IdentityContext);

@@ -35,7 +35,11 @@ type InteractionContextValue = Readonly<{
   runAction(
     key: string,
     action: () => Promise<void>,
-    options?: Readonly<{ successTitle?: string; successMessage?: string }>,
+    options?: Readonly<{
+      successTitle?: string;
+      successMessage?: string;
+      resultPresentation?: "toast" | "local";
+    }>,
   ): Promise<boolean>;
   confirm(options: Readonly<{
     title: string;
@@ -62,7 +66,7 @@ export function InteractionProvider({ children }: PropsWithChildren) {
       try {
         await actionLock.run(key, action);
         setActions((current) => ({ ...current, [key]: "succeeded" }));
-        if (options?.successTitle) {
+        if (options?.successTitle && options.resultPresentation !== "local") {
           setToast({
             id: Date.now(),
             tone: "success",
@@ -77,12 +81,14 @@ export function InteractionProvider({ children }: PropsWithChildren) {
           ...current,
           [key]: error instanceof Error && error.message === "UNKNOWN_RESULT" ? "unknown" : "failed",
         }));
-        setToast({
-          id: Date.now(),
-          tone: "warning",
-          title: presentation.title,
-          message: presentation.message,
-        });
+        if (options?.resultPresentation !== "local") {
+          setToast({
+            id: Date.now(),
+            tone: "warning",
+            title: presentation.title,
+            message: presentation.message,
+          });
+        }
         return false;
       }
     },

@@ -10,10 +10,13 @@ import {
   AppV2MessageBubble,
   AppV2ReadinessList,
   AppV2StageHeader,
-  AppV2StatusPanel,
   AppV2SummaryList,
   AppV2TripContext,
 } from "../../components/app-v2-components";
+import {
+  AuxiliaryInlineFeedback,
+  AuxiliaryState,
+} from "../../components/auxiliary-page";
 import { MobilityPage } from "../../components/mobility";
 import { AppText, PrimaryButton } from "../../components/ui";
 import { useIdentity } from "../../identity/identity-context";
@@ -104,17 +107,19 @@ export function SafetyChatScreen({ navigate }: { navigate: Navigate }) {
       }
     >
       {journey.loading && !chat ? (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="messages"
           title="正在加载行程消息"
           description="请稍候，当前行程上下文会保持不变。"
-          tone={journey.tone}
+          tone={journey.tone === "driver" ? "driver" : "passenger"}
         />
       ) : journey.error && !chat ? (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="messages"
           title="暂时无法读取行程消息"
           description="请检查网络后重试，已经发送的消息不会重复提交。"
           action={{ label: "重新加载", onPress: () => void journey.reload() }}
-          tone="safety"
+          tone="danger"
         />
       ) : chat ? (
         <>
@@ -177,10 +182,6 @@ export function SafetyReportScreen({ navigate }: { navigate: Navigate }) {
     if (await runAction(
       "safety.report",
       () => journey.report(journey.tripId!),
-      {
-        successTitle: "安全问题已报告",
-        successMessage: "本次行程和联系已暂停，可以查看后续处理进展。",
-      },
     )) navigate("safety-frozen");
   };
 
@@ -238,10 +239,11 @@ export function SafetyReportScreen({ navigate }: { navigate: Navigate }) {
           },
         ]}
       />
-      <AppV2StatusPanel
+      <AuxiliaryInlineFeedback
+        icon="safety"
         title="提交后不会自动恢复"
         description="如果你是被报告的一方且符合条件，可以在暂停后提交一次申诉说明。"
-        tone="safety"
+        tone="neutral"
       />
     </MobilityPage>
   );
@@ -311,17 +313,19 @@ export function SafetyFrozenScreen({ navigate }: { navigate: Navigate }) {
         />
       ) : null}
       {journey.loading && !safetyCase ? (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="clock"
           title="正在读取处理进展"
           description="请稍候，已经完成的操作不会重复提交。"
-          tone="safety"
+          tone="neutral"
         />
       ) : journey.error && !safetyCase ? (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="safety"
           title="暂时无法读取处理进展"
           description="请检查网络后重新加载。"
           action={{ label: "重新加载", onPress: () => void journey.reload() }}
-          tone="safety"
+          tone="danger"
         />
       ) : safetyCase ? (
         <>
@@ -349,14 +353,15 @@ export function SafetyFrozenScreen({ navigate }: { navigate: Navigate }) {
               },
             ]}
           />
-          <AppV2StatusPanel
+          <AuxiliaryInlineFeedback
+            icon={canAppeal ? "account" : "clock"}
             title={canAppeal ? "可以补充一次申诉说明" : "当前无需重复操作"}
             description={
               canAppeal
                 ? "申诉用于补充可能缺失的行程背景，但不会自动解除暂停。"
                 : "请等待处理结果；状态变化后会在消息中心显示。"
             }
-            tone={canAppeal ? "neutral" : "safety"}
+            tone="neutral"
           />
         </>
       ) : (
@@ -389,10 +394,6 @@ export function SafetyAppealScreen({ navigate }: { navigate: Navigate }) {
     if (await runAction(
       "safety.appeal",
       journey.appeal,
-      {
-        successTitle: "申诉说明已提交",
-        successMessage: "暂停状态保持不变，可以返回查看处理进展。",
-      },
     )) navigate("safety-frozen");
   };
 
@@ -448,18 +449,20 @@ export function SafetyAppealScreen({ navigate }: { navigate: Navigate }) {
               { label: "提交后", value: "继续保持暂停" },
             ]}
           />
-          <AppV2StatusPanel
+          <AuxiliaryInlineFeedback
+            icon="privacy"
             title="当前不会上传图片或聊天记录"
             description="本次只提交固定的背景补充说明，不会采集新的真实材料。"
             tone="neutral"
           />
         </>
       ) : (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="safety"
           title="请返回查看处理进展"
           description="结果更新后会显示可以恢复的能力和下一步。"
           action={{ label: "返回进展", onPress: () => navigate("safety-frozen") }}
-          tone="safety"
+          tone="neutral"
         />
       )}
     </MobilityPage>
@@ -535,11 +538,12 @@ export function SafetyResultScreen({ navigate }: { navigate: Navigate }) {
         />
       ) : null}
       {journey.error && !safetyCase ? (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="safety"
           title="暂时无法读取处理结果"
           description="请检查网络后重试。"
           action={{ label: "重新加载", onPress: () => void journey.reload() }}
-          tone="safety"
+          tone="danger"
         />
       ) : finalState && safetyCase ? (
         <>
@@ -590,22 +594,24 @@ export function SafetyResultScreen({ navigate }: { navigate: Navigate }) {
                   ]
             }
           />
-          <AppV2StatusPanel
+          <AuxiliaryInlineFeedback
+            icon={restored ? "account" : "safety"}
             title={restored ? "继续前会重新确认当前状态" : "其他账户功能不受此页面直接改变"}
             description={
               restored
                 ? "恢复结果不会绕过行程、资格或安全检查。"
                 : "如有新的服务动态，会在消息中心显示。"
             }
-            tone={restored ? "neutral" : "safety"}
+            tone="neutral"
           />
         </>
       ) : (
-        <AppV2StatusPanel
+        <AuxiliaryState
+          icon="clock"
           title="处理结果尚未完成"
           description="可以返回处理进展页查看当前状态。"
           action={{ label: "查看处理进展", onPress: () => navigate("safety-frozen") }}
-          tone="safety"
+          tone="neutral"
         />
       )}
     </MobilityPage>

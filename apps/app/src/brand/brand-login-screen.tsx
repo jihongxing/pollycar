@@ -110,11 +110,29 @@ export function BrandLoginScreen() {
               style={{ minHeight: 52, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.small, paddingHorizontal: theme.spacing.md, color: theme.colors.text, backgroundColor: theme.colors.surface, letterSpacing: 6 }}
             />
           ) : null}
-          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: consentAccepted }} onPress={() => setConsentAccepted((value) => !value)} style={{ flexDirection: "row", alignItems: "flex-start", gap: theme.spacing.sm }}>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel="我已阅读并同意相关协议"
+            accessibilityState={{ checked: consentAccepted }}
+            onPress={() => setConsentAccepted((value) => !value)}
+            style={{ flexDirection: "row", alignItems: "flex-start", gap: theme.spacing.sm }}
+          >
             <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: consentAccepted ? theme.colors.primary : theme.colors.border, backgroundColor: consentAccepted ? theme.colors.primary : theme.colors.surface, alignItems: "center", justifyContent: "center" }}>
               {consentAccepted ? <AppText style={{ color: theme.colors.inverseText }}>✓</AppText> : null}
             </View>
-            <AppText size="small" tone="secondary" style={{ flex: 1 }}>我已阅读并同意服务协议、隐私政策及手机号认证必要说明。</AppText>
+            <AppText size="small" tone="secondary" style={{ flex: 1 }}>
+              我已阅读并同意相关协议。
+            </AppText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="查看服务协议、隐私政策和手机号认证说明"
+            onPress={() => router.push(routeForScreen("legal-information"))}
+            style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start" }}
+          >
+            <AppText size="small" tone="primary" weight="medium">
+              服务协议 · 隐私政策 · 手机号认证说明
+            </AppText>
           </Pressable>
           {error ? <AppText tone="danger">{error}</AppText> : null}
           <PrimaryButton

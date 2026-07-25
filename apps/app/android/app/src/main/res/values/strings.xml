@@ -1,0 +1,4 @@
+<resources>
+  <string name="app_name">御驾出行</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+</resources>

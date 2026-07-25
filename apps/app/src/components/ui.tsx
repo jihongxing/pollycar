@@ -12,6 +12,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { readBrowserStorage } from "../infrastructure/browser-storage";
 import { useIdentity, type UserIdentity } from "../identity/identity-context";
 import { useAppTheme } from "../theme/theme-context";
 import { AppIcon, type AppIconName } from "./app-icon";
@@ -89,8 +90,8 @@ export function AppText({
 }
 
 function resolveQaFontScale(): number {
-  if (Platform.OS !== "web" || typeof window === "undefined") return 1;
-  const value = Number(window.localStorage.getItem("pollycar.qa.font-scale") ?? "1");
+  if (Platform.OS !== "web") return 1;
+  const value = Number(readBrowserStorage("pollycar.qa.font-scale") ?? "1");
   return value === 1.3 || value === 2 ? value : 1;
 }
 

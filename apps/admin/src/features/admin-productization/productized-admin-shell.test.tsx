@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
   AdminAuditDetail,
   AdminDataReportDetail,
+  AdminDriverDetail,
   AdminExecutiveDetail,
   AdminFinanceDetail,
+  AdminMembershipDetail,
   AdminOperatorDetail,
   AdminOperationsTaskDetail,
   AdminProductizationClient,
@@ -56,11 +58,17 @@ describe("产品化运营后台", () => {
     await login(user);
     const search = await screen.findByRole("textbox", { name: "搜索任务" });
     await user.type(search, "车辆");
-    await user.click(await screen.findByRole("button", { name: /车辆资格跟进 1/ }));
+    const taskButton = await screen.findByRole("button", {
+      name: /车辆资格跟进 1/,
+    });
+    await user.click(taskButton);
     expect(await screen.findByRole("heading", { name: "车辆资格跟进 1" })).toBeInTheDocument();
+    expect(search).toBeInTheDocument();
+    expect(taskButton).toHaveAttribute("aria-pressed", "true");
     expect(window.location.pathname).toBe("/admin/workbench/tasks/OPS-0001");
     await user.click(screen.getByRole("button", { name: "返回任务列表" }));
     expect(await screen.findByRole("textbox", { name: "搜索任务" })).toHaveValue("车辆");
+    await waitFor(() => expect(taskButton).toHaveFocus());
     expect(window.location.pathname).toBe("/admin/workbench");
   });
 
@@ -85,9 +93,12 @@ describe("产品化运营后台", () => {
     expect(screen.getByRole("button", { name: "分派任务" })).toBeDisabled();
     confirmOperation();
     expect(await screen.findByRole("status")).toHaveTextContent("分派任务已确认");
-    expect(screen.getByText("任务已分派")).toBeInTheDocument();
-    expect(screen.getByText("分派给当班负责人")).toBeInTheDocument();
-    expect(screen.getByText("处理中")).toBeInTheDocument();
+    const taskDetail = screen.getByRole("region", {
+      name: "角色任务工作区详情",
+    });
+    expect(within(taskDetail).getByText("任务已分派")).toBeInTheDocument();
+    expect(within(taskDetail).getByText("分派给当班负责人")).toBeInTheDocument();
+    expect(within(taskDetail).getByText("处理中")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "分派任务" })).not.toBeInTheDocument();
   });
 
@@ -99,12 +110,18 @@ describe("产品化运营后台", () => {
     await user.click(screen.getByRole("button", { name: "运营公司" }));
     const search = await screen.findByRole("textbox", { name: "搜索运营公司" });
     await user.type(search, "沪行");
-    await user.click(await screen.findByRole("button", { name: /沪行出行服务/ }));
+    const operatorButton = await screen.findByRole("button", {
+      name: /沪行出行服务/,
+    });
+    await user.click(operatorButton);
     expect(await screen.findByRole("heading", { name: "沪行出行服务" })).toBeInTheDocument();
+    expect(search).toBeInTheDocument();
+    expect(operatorButton).toHaveAttribute("aria-pressed", "true");
     expect(window.location.pathname).toBe("/admin/operators/operator-huhang");
     expect(screen.getByText("当前角色在此主体状态下仅可查看。")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "返回运营公司名录" }));
     expect(await screen.findByRole("textbox", { name: "搜索运营公司" })).toHaveValue("沪行");
+    await waitFor(() => expect(operatorButton).toHaveFocus());
   });
 
   it("平台负责人限制运营主体时展示确认中、结果和追加审计", async () => {
@@ -135,9 +152,13 @@ describe("产品化运营后台", () => {
     expect(screen.getByRole("button", { name: "限制运营" })).toBeDisabled();
     confirmOperation();
     expect(await screen.findByRole("status")).toHaveTextContent("限制运营已确认");
-    expect(screen.getByText("主体已限制")).toBeInTheDocument();
-    expect(screen.getByText("安全联系人需要重新核验")).toBeInTheDocument();
-    expect(screen.getByText("受限")).toBeInTheDocument();
+    const operatorDetail = screen.getByRole("region", {
+      name: "运营公司工作区详情",
+    });
+    expect(within(operatorDetail).getByText("主体已限制")).toBeInTheDocument();
+    expect(within(operatorDetail).getByText("安全联系人需要重新核验"))
+      .toBeInTheDocument();
+    expect(within(operatorDetail).getByText("受限")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "恢复运营" })).toBeInTheDocument();
   });
 
@@ -204,7 +225,144 @@ describe("产品化运营后台", () => {
     await user.click(screen.getByRole("button", { name: "认领审核任务" }));
     expect(await screen.findByRole("status")).toHaveTextContent("操作结果已确认");
     expect(screen.getByText("审核任务已认领")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "批准车辆" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "通过车辆审核" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "← 返回车辆列表" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "查看详情" })).toHaveFocus();
+    });
+  });
+
+  it("车主名录在同一工作区查看详情并恢复列表焦点", async () => {
+    const user = userEvent.setup();
+    const session = fixtureFleetSession();
+    const detail = fixtureDriverDetail(session);
+    const client = fixtureClient(session);
+    client.listDrivers = async () => ({
+      summary: {
+        totalDrivers: 1,
+        serviceableDrivers: 0,
+        restrictedDrivers: 1,
+        reviewAttentionDrivers: 1,
+      },
+      items: [detail.driver],
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: "driver-start",
+        endCursor: "driver-end",
+        approximateTotal: 1,
+      },
+      queryDigest: "drivers",
+      scopeDigest: "fleet",
+      asOf: "2026-07-19T08:00:00.000Z",
+      synthetic: true,
+    });
+    client.getDriver = async () => detail;
+    render(<Providers><ProductizedAdminShell client={client} /></Providers>);
+    await login(user, /PollyCar 平台/);
+    await user.click(screen.getByRole("button", { name: "车主与车辆" }));
+    const search = await screen.findByRole("textbox", { name: "搜索车主" });
+    await user.type(search, "林");
+    const driverButton = await screen.findByRole("button", {
+      name: /林\*/,
+    });
+    await user.click(driverButton);
+    expect(screen.getByRole("region", {
+      name: "车主名录工作区详情",
+    })).toHaveTextContent("你的工作范围");
+    expect(search).toBeInTheDocument();
+    expect(driverButton).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: /返回车主名录/ }));
+    expect(search).toHaveValue("林");
+    await waitFor(() => expect(driverButton).toHaveFocus());
+  });
+
+  it("车辆审核 Dialog 限制背景交互、确认中防重复并恢复操作焦点", async () => {
+    const user = userEvent.setup();
+    const session = fixtureFleetSession();
+    const client = fixtureClient(session);
+    client.listDrivers = async () => ({
+      summary: {
+        totalDrivers: 0,
+        serviceableDrivers: 0,
+        restrictedDrivers: 0,
+        reviewAttentionDrivers: 0,
+      },
+      items: [],
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: null,
+        endCursor: null,
+        approximateTotal: 0,
+      },
+      queryDigest: "drivers",
+      scopeDigest: "fleet",
+      asOf: "2026-07-19T10:00:00.000Z",
+      synthetic: true,
+    });
+    client.listVehicles = async () => ({
+      summary: {
+        totalVehicles: 1,
+        approvedVehicles: 0,
+        underReviewVehicles: 1,
+        changesRequestedVehicles: 0,
+        rejectedVehicles: 0,
+        openReviewTasks: 1,
+      },
+      items: [fixtureVehicleDetail(session).vehicle],
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: "vehicle-start",
+        endCursor: "vehicle-end",
+        approximateTotal: 1,
+      },
+      queryDigest: "vehicles",
+      scopeDigest: "fleet",
+      asOf: "2026-07-19T10:00:00.000Z",
+      synthetic: true,
+    });
+    client.getVehicle = async () => fixtureVehicleDetail(session, true);
+    let confirmOperation!: () => void;
+    client.performVehicleReviewAction = async () => {
+      await new Promise<void>((resolve) => {
+        confirmOperation = resolve;
+      });
+      return {
+        operationId: "vehicle-approve-operation",
+        resultState: "confirmed",
+        idempotentReplay: false,
+        detail: fixtureVehicleDetail(session, true),
+        synthetic: true,
+      };
+    };
+
+    render(<Providers><ProductizedAdminShell client={client} /></Providers>);
+    await login(user, /PollyCar 平台/);
+    await user.click(screen.getByRole("button", { name: "车主与车辆" }));
+    await user.click(screen.getByRole("tab", { name: "车辆名录" }));
+    await user.click(await screen.findByRole("button", { name: "查看详情" }));
+    const approveTrigger = await screen.findByRole("button", {
+      name: "通过车辆审核",
+    });
+    await user.click(approveTrigger);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /返回检查/ })).toHaveFocus();
+    expect(screen.getByRole("navigation", { name: "主菜单" }))
+      .toHaveAttribute("inert");
+
+    await user.click(within(dialog).getByRole("button", { name: "通过车辆审核" }));
+    expect(within(dialog).getByRole("button", { name: "正在确认" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    confirmOperation();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "通过车辆审核" })).toHaveFocus();
   });
 
   it("行程运营完成列表详情动作结果审计并恢复搜索条件", async () => {
@@ -218,12 +376,15 @@ describe("产品化运营后台", () => {
       .toBeInTheDocument();
     const search = screen.getByRole("textbox", { name: "搜索行程" });
     await user.type(search, "浦东机场");
-    await user.click(await screen.findByRole("button", {
+    const tripButton = await screen.findByRole("button", {
       name: /静安寺 → 浦东机场/,
-    }));
+    });
+    await user.click(tripButton);
     expect(await screen.findByRole("heading", {
-      name: "静安寺 → 浦东机场（合成路线）",
+      name: "静安寺 → 浦东机场",
     })).toBeInTheDocument();
+    expect(search).toBeInTheDocument();
+    expect(tripButton).toHaveAttribute("aria-pressed", "true");
     await user.click(screen.getByRole("button", {
       name: "请求权威领域处理",
     }));
@@ -232,6 +393,50 @@ describe("产品化运营后台", () => {
     await user.click(screen.getByRole("button", { name: /返回行程列表/ }));
     expect(await screen.findByRole("textbox", { name: "搜索行程" }))
       .toHaveValue("浦东机场");
+    await waitFor(() => expect(tripButton).toHaveFocus());
+  });
+
+  it("全局搜索按领域分组并跳转到服务端返回的详情路由", async () => {
+    const user = userEvent.setup();
+    const session = fixtureTripSession();
+    const client = fixtureClient(session);
+    client.searchAcrossDomains = async () => ({
+      groups: [{
+        domain: "trip_operations",
+        label: "行程运营",
+        hasMore: false,
+        items: [{
+          resultId: "trip-synthetic-8466",
+          domain: "trip_operations",
+          kind: "trip",
+          title: "静安寺 → 浦东机场",
+          description: "申城伙伴运营 · trip-synthetic-8466",
+          route: "/admin/trips/trip-synthetic-8466",
+        }],
+      }],
+      totalResults: 1,
+      asOf: "2026-07-19T09:00:00.000Z",
+      synthetic: true,
+    });
+
+    render(<Providers><ProductizedAdminShell client={client} /></Providers>);
+    await login(user, /PollyCar 平台/);
+    await user.click(screen.getByRole("button", { name: /全局搜索/ }));
+    await user.type(
+      screen.getByRole("textbox", { name: "搜索后台记录" }),
+      "浦东机场",
+    );
+    await user.click(await screen.findByRole("button", {
+      name: /静安寺 → 浦东机场/,
+    }));
+
+    expect(window.location.pathname)
+      .toBe("/admin/trips/trip-synthetic-8466");
+    expect(await screen.findByRole("heading", {
+      name: /静安寺 → 浦东机场/,
+    })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "搜索行程" }))
+      .toBeInTheDocument();
   });
 
   it("客服案件从名录进入详情、完成操作并恢复搜索条件", async () => {
@@ -245,12 +450,15 @@ describe("产品化运营后台", () => {
       .toBeInTheDocument();
     const search = screen.getByRole("textbox", { name: "搜索案件" });
     await user.type(search, "计划接驾");
-    await user.click(await screen.findByRole("button", {
+    const caseButton = await screen.findByRole("button", {
       name: /乘客询问计划接驾时间/,
-    }));
+    });
+    await user.click(caseButton);
     expect(await screen.findByRole("heading", {
       name: "乘客询问计划接驾时间",
     })).toBeInTheDocument();
+    expect(search).toBeInTheDocument();
+    expect(caseButton).toHaveAttribute("aria-pressed", "true");
     await user.type(
       screen.getByRole("textbox", { name: "案件处理说明" }),
       "已向乘客确认处理结果",
@@ -261,6 +469,7 @@ describe("产品化运营后台", () => {
     await user.click(screen.getByRole("button", { name: /返回案件列表/ }));
     expect(await screen.findByRole("textbox", { name: "搜索案件" }))
       .toHaveValue("计划接驾");
+    await waitFor(() => expect(caseButton).toHaveFocus());
   });
 
   it("财务与对账完成列表详情动作结果审计并恢复搜索条件", async () => {
@@ -281,14 +490,106 @@ describe("产品化运营后台", () => {
       name: "沪行出行服务分配结算批次",
     })).toBeInTheDocument();
     expect(screen.getByText("¥108,420.00")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {
+    const actionButton = screen.getByRole("button", {
       name: "准备运营公司结算",
+    });
+    await user.click(actionButton);
+    const dialog = await screen.findByRole("dialog", {
+      name: "准备运营公司结算",
+    });
+    expect(within(dialog).getByRole("button", { name: "返回检查" }))
+      .toHaveFocus();
+    expect(screen.getByRole("navigation", { name: "主菜单" }))
+      .toHaveAttribute("inert");
+    await user.click(within(dialog).getByRole("button", {
+      name: "确认准备运营公司结算",
     }));
     expect(await screen.findByRole("status")).toHaveTextContent("已确认");
     expect(screen.getByText("提交财务操作")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /返回财务列表/ }));
+    const backButton = screen.getByRole("button", { name: /返回财务列表/ });
+    await waitFor(() => expect(backButton).toHaveFocus());
+    await user.click(backButton);
     expect(await screen.findByRole("textbox", { name: "搜索财务记录" }))
       .toHaveValue("沪行");
+    await waitFor(() => expect(screen.getByRole("button", {
+      name: /沪行出行服务分配结算批次/,
+    })).toHaveFocus());
+  });
+
+  it("成员与权限在确认暂停前说明影响并阻止重复提交", async () => {
+    const user = userEvent.setup();
+    const session = fixtureMembershipSession();
+    const activeDetail = fixtureMembershipDetail(session);
+    const client = fixtureClient(session);
+    let operationCount = 0;
+    let releaseOperation!: () => void;
+    const pendingOperation = new Promise<void>((resolve) => {
+      releaseOperation = resolve;
+    });
+    client.listMemberships = async () => ({
+      summary: {
+        totalMemberships: 1,
+        activeMemberships: 1,
+        suspendedMemberships: 0,
+        activeSessions: 2,
+      },
+      items: [activeDetail.item],
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: "membership-start",
+        endCursor: "membership-end",
+        approximateTotal: 1,
+      },
+      queryDigest: "memberships",
+      scopeDigest: "accounts",
+      asOf: "2026-07-19T08:00:00.000Z",
+      synthetic: true,
+    });
+    client.getMembership = async () => activeDetail;
+    client.performMembershipAction = async () => {
+      operationCount += 1;
+      await pendingOperation;
+      return {
+        operationId: "membership-operation-1",
+        resultState: "confirmed",
+        idempotentReplay: false,
+        detail: fixtureMembershipDetail(session, true),
+        synthetic: true,
+      };
+    };
+    render(<Providers><ProductizedAdminShell client={client} /></Providers>);
+    await login(user, /平台账号管理员/);
+    await user.click(screen.getByRole("button", { name: "成员与权限" }));
+    const search = await screen.findByRole("textbox", { name: "搜索成员" });
+    await user.type(search, "林");
+    const memberButton = await screen.findByRole("button", { name: /林岚/ });
+    await user.click(memberButton);
+    expect(memberButton).toHaveAttribute("aria-pressed", "true");
+    expect(search).toBeInTheDocument();
+    const suspendButton = screen.getByRole("button", { name: "暂停成员" });
+    await user.click(suspendButton);
+    const dialog = await screen.findByRole("dialog", { name: "暂停成员" });
+    expect(within(dialog).getByText(/2 个活跃登录将立即失效/))
+      .toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "返回检查" }))
+      .toHaveFocus();
+    const confirmButton = within(dialog).getByRole("button", {
+      name: "确认暂停成员",
+    });
+    await user.dblClick(confirmButton);
+    expect(operationCount).toBe(1);
+    expect(confirmButton).toBeDisabled();
+    releaseOperation();
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "成员已暂停",
+    );
+    await waitFor(() => expect(screen.getByRole("button", {
+      name: "恢复成员",
+    })).toHaveFocus());
+    await user.click(screen.getByRole("button", { name: /返回成员列表/ }));
+    expect(search).toHaveValue("林");
+    await waitFor(() => expect(memberButton).toHaveFocus());
   });
 
   it("高层驾驶舱进入待决详情、记录治理意见并恢复列表筛选", async () => {
@@ -374,14 +675,14 @@ describe("产品化运营后台", () => {
       .toBe("/admin/executive/decision_item/decision-operator-haiwan");
     await user.click(screen.getByRole("button", { name: "记录治理意见" }));
     expect(await screen.findByRole("status")).toHaveTextContent("操作已确认");
-    expect(screen.getByText("continue_controlled_review")).toBeInTheDocument();
+    expect(screen.getByText("继续跟进")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /返回驾驶舱名录/ }));
     expect(await screen.findByRole("textbox", {
       name: "搜索驾驶舱资源",
     })).toHaveValue("海湾");
   });
 
-  it("审计与系统进入事件详情并创建受控技术调查", async () => {
+  it("审计与系统在主从工作区确认创建调查并恢复列表焦点", async () => {
     const user = userEvent.setup();
     const session = fixtureAuditSession();
     const eventDetail = fixtureAuditEventDetail(session);
@@ -423,18 +724,31 @@ describe("产品化运营后台", () => {
     await login(user, /PollyCar 平台/);
     await user.click(screen.getByRole("button", { name: "审计与系统" }));
     expect(await screen.findByRole("heading", { name: "审计与系统" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /访问决策拒绝/ }));
+    const auditButton = screen.getByRole("button", { name: /访问决策拒绝/ });
+    await user.click(auditButton);
     expect(window.location.pathname).toBe("/admin/governance/event/audit-event-001");
-    await user.click(screen.getByRole("button", { name: "创建技术调查" }));
+    expect(auditButton).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "创建调查" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "返回检查" })).toHaveFocus();
+    expect(within(dialog).getByText(/不改变原业务状态/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "创建调查" }));
     expect(await screen.findByText("调查：访问决策拒绝")).toBeInTheDocument();
     expect(window.location.pathname)
       .toBe("/admin/governance/investigation/audit-investigation-001");
+    await user.click(screen.getByRole("button", { name: /返回审计名录/ }));
+    await waitFor(() => expect(auditButton).toHaveFocus());
   });
 
   it("数据与报表完成搜索、详情、刷新确认、审计更新和列表恢复", async () => {
     const user = userEvent.setup();
     const session = fixtureDataReportSession();
     const detail = fixtureDataReportDetail(session);
+    let refreshCount = 0;
+    let releaseRefresh!: () => void;
+    const pendingRefresh = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
     const client: AdminProductizationClient = {
       ...fixtureClient(session),
       listDataReports: async () => ({
@@ -459,52 +773,67 @@ describe("产品化运营后台", () => {
         synthetic: true,
       }),
       getDataReport: async () => detail,
-      performDataReportAction: async () => ({
-        operationId: "data-report-operation-001",
-        resultState: "confirmed",
-        idempotentReplay: false,
-        detail: {
-          ...detail,
-          item: {
-            ...detail.item,
-            resourceVersion: 2,
-            refreshedAt: "2026-07-16T12:05:00.000Z",
-          },
-          auditTrail: [
-            ...detail.auditTrail,
-            {
-              eventId: "data-report-refresh-001",
-              action: "data_report_refreshed",
-              actorLabel: session.workIdentity.organizationName,
-              actorRole: session.workIdentity.productRoleName,
-              occurredAt: "2026-07-16T12:05:00.000Z",
-              previousVersion: 1,
-              nextVersion: 2,
-              reasonCode: "scheduled_quality_review",
+      performDataReportAction: async () => {
+        refreshCount += 1;
+        await pendingRefresh;
+        return {
+          operationId: "data-report-operation-001",
+          resultState: "confirmed",
+          idempotentReplay: false,
+          detail: {
+            ...detail,
+            item: {
+              ...detail.item,
+              resourceVersion: 2,
+              refreshedAt: "2026-07-16T12:05:00.000Z",
             },
-          ],
-        },
-        synthetic: true,
-      }),
+            auditTrail: [
+              ...detail.auditTrail,
+              {
+                eventId: "data-report-refresh-001",
+                action: "data_report_refreshed",
+                actorLabel: session.workIdentity.organizationName,
+                actorRole: session.workIdentity.productRoleName,
+                occurredAt: "2026-07-16T12:05:00.000Z",
+                previousVersion: 1,
+                nextVersion: 2,
+                reasonCode: "scheduled_quality_review",
+              },
+            ],
+          },
+          synthetic: true,
+        };
+      },
     };
     render(<Providers><ProductizedAdminShell client={client} /></Providers>);
     await login(user, /PollyCar 平台/);
     await user.click(screen.getByRole("button", { name: "数据与报表" }));
     const search = await screen.findByRole("textbox", { name: "搜索数据报表" });
     await user.type(search, "运营");
-    await user.click(await screen.findByRole("button", {
+    const reportButton = await screen.findByRole("button", {
       name: /运营任务健康报表/,
-    }));
+    });
+    await user.click(reportButton);
     expect(window.location.pathname).toBe("/admin/reports/operations-health");
+    expect(reportButton).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByRole("heading", {
       name: "运营任务健康报表",
     })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "刷新报表快照" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("报表刷新已确认");
-    expect(screen.getByText("报表已刷新")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "刷新报表指标" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "返回检查" })).toHaveFocus();
+    expect(within(dialog).getByText(/历史处理记录会保留/)).toBeInTheDocument();
+    const confirmButton = within(dialog).getByRole("button", { name: "确认刷新" });
+    await user.dblClick(confirmButton);
+    expect(refreshCount).toBe(1);
+    expect(confirmButton).toBeDisabled();
+    releaseRefresh();
+    expect(await screen.findByRole("status")).toHaveTextContent("报表指标已更新");
+    expect(screen.getByText("报表指标已刷新")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /返回报表列表/ }));
     expect(await screen.findByRole("textbox", { name: "搜索数据报表" }))
       .toHaveValue("运营");
+    await waitFor(() => expect(reportButton).toHaveFocus());
   });
 });
 
@@ -531,9 +860,16 @@ function fixtureClient(
       synthetic: true,
     }),
     selectWorkIdentity: async () => session,
+    switchWorkIdentity: async () => session,
     refreshSession: async () => session,
     logout: async () => undefined,
     getNavigation: async () => session.navigation,
+    searchAcrossDomains: async () => ({
+      groups: [],
+      totalResults: 0,
+      asOf: "2026-07-19T09:00:00.000Z",
+      synthetic: true,
+    }),
     listOperationsTasks: async () => ({
       items: [{
         taskId: "OPS-0001",
@@ -1443,6 +1779,48 @@ function fixtureFinanceDetail(
   };
 }
 
+function fixtureDriverDetail(
+  session: AdminProductSession,
+): AdminDriverDetail {
+  const vehicleDetail = fixtureVehicleDetail(session);
+  const driver = vehicleDetail.driver;
+  const relationship = vehicleDetail.profile.primaryOperatorRelationship;
+  return {
+    driver,
+    profile: {
+      context: session.navigation.organizationContext,
+      driverAccountId: driver.driverAccountId,
+      displayNameMasked: driver.displayNameMasked,
+      phoneMasked: driver.phoneMasked,
+      eligibilityState: driver.eligibilityState,
+      quotaSummary: "本周期可继续提供服务",
+      primaryOperatorRelationship: relationship,
+      relationshipHistory: [relationship],
+      vehicles: [{
+        vehicleId: vehicleDetail.vehicle.vehicleId,
+        plateMasked: vehicleDetail.vehicle.plateMasked,
+        reviewState: vehicleDetail.vehicle.reviewState,
+      }],
+      sensitiveFieldsMasked: true,
+      synthetic: true,
+    },
+    organizationScope: {
+      organizationId: session.workIdentity.organizationId,
+      organizationName: session.workIdentity.organizationName,
+      cityScopes: session.workIdentity.cityScopes,
+    },
+    linkedVehicles: [vehicleDetail.vehicle],
+    auditTrail: [{
+      eventId: "driver-view-1",
+      action: "driver_profile_viewed",
+      actorLabel: session.workIdentity.organizationName,
+      actorRole: session.workIdentity.productRoleName,
+      occurredAt: "2026-07-19T08:00:00.000Z",
+    }],
+    synthetic: true,
+  };
+}
+
 function fixtureFleetSession(): AdminProductSession {
   const base = fixtureSession();
   const workIdentity = {
@@ -1584,6 +1962,107 @@ function fixtureFinanceSession(): AdminProductSession {
         "finance:prepare",
       ],
     },
+  };
+}
+
+function fixtureMembershipSession(): AdminProductSession {
+  const base = fixturePlatformSession();
+  const workIdentity = {
+    ...base.workIdentity,
+    workIdentityId: "synthetic-platform-access-admin-001",
+    legacyAccessToken: "synthetic-platform-access-admin-001",
+    productRole: "platform_access_administrator" as const,
+    productRoleName: "平台账号管理员",
+  };
+  return {
+    ...base,
+    workIdentity,
+    navigation: {
+      ...base.navigation,
+      workIdentityId: workIdentity.workIdentityId,
+      roleIds: ["platform_access_administrator"],
+      items: [
+        ...base.navigation.items,
+        {
+          id: "organization_accounts" as const,
+          label: "成员与权限",
+          route: "/admin/organization-accounts",
+          availability: "available" as const,
+          children: [],
+        },
+      ],
+      routePermissions: [
+        ...base.navigation.routePermissions,
+        "organization_accounts:read",
+      ],
+      operationPermissions: [
+        ...base.navigation.operationPermissions,
+        "membership:suspend",
+        "membership:restore",
+      ],
+    },
+  };
+}
+
+function fixtureMembershipDetail(
+  session: AdminProductSession,
+  suspended = false,
+): AdminMembershipDetail {
+  return {
+    item: {
+      membershipId: "membership-platform-ops-001",
+      internalUserId: "internal-platform-ops-001",
+      workIdentityId: "synthetic-platform-ops-001",
+      displayName: "林岚",
+      workEmailMasked: "li***@rego.example",
+      organizationType: "platform",
+      organizationId: "platform-pollycar",
+      organizationName: "PollyCar 平台",
+      productRole: "operations_lead",
+      productRoleName: "平台运营负责人",
+      state: suspended ? "suspended" : "active",
+      activeSessionCount: suspended ? 0 : 2,
+      resourceVersion: suspended ? 2 : 1,
+      updatedAt: "2026-07-19T08:00:00.000Z",
+      synthetic: true,
+    },
+    roleBinding: {
+      roleId: "operations_lead",
+      roleName: "平台运营负责人",
+      source: "authoritative_membership",
+      mutable: false,
+    },
+    scopeBindings: {
+      organizationId: session.workIdentity.organizationId,
+      organizationName: session.workIdentity.organizationName,
+      cityScopes: session.workIdentity.cityScopes,
+    },
+    allowedActions: suspended
+      ? ["restore_membership"]
+      : ["suspend_membership"],
+    auditTrail: [{
+      eventId: suspended ? "membership-suspended-1" : "membership-viewed-1",
+      action: suspended
+        ? "admin_membership_suspended"
+        : "admin_membership_viewed",
+      actorLabel: session.workIdentity.organizationName,
+      actorRole: session.workIdentity.productRoleName,
+      occurredAt: "2026-07-19T08:00:00.000Z",
+      ...(suspended
+        ? {
+            previousState: "active" as const,
+            nextState: "suspended" as const,
+            reasonCode: "access_risk_control",
+          }
+        : {}),
+    }],
+    capabilityBoundary: {
+      realAccountAvailable: false,
+      roleMutationAvailable: false,
+      invitationAvailable: false,
+      directPermissionBindingAvailable: false,
+    },
+    synthetic: true,
   };
 }
 

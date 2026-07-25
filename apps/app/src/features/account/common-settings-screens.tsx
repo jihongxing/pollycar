@@ -5,12 +5,15 @@ import { useAdultEligibility } from "../../application/adult-eligibility-context
 import {
   AppV2ChoiceChip,
   AppV2FieldFrame,
-  AppV2NavigationRow,
-  AppV2PreferenceRow,
-  AppV2StageHeader,
-  AppV2StatusPanel,
 } from "../../components/app-v2-components";
-import { MobilityPage } from "../../components/mobility";
+import {
+  AuxiliaryDataRow,
+  AuxiliaryGroup,
+  AuxiliaryInlineFeedback,
+  AuxiliaryPage,
+  AuxiliarySection,
+  AuxiliarySwitchRow,
+} from "../../components/auxiliary-page";
 import { AppText, PrimaryButton } from "../../components/ui";
 import { useInteraction } from "../../interaction/interaction-context";
 import { useAppTheme } from "../../theme/theme-context";
@@ -29,8 +32,6 @@ export function NotificationSettingsScreen({ navigate }: { navigate: Navigate })
   const [returnScreen] = useState<AppScreen>(
     () => consumeMessageCenterDetailReturn("notification-settings") ?? "account",
   );
-  const returnLabel =
-    returnScreen === "message-center" ? "返回消息" : "返回我的账户";
   const update = (patch: Partial<NotificationPreferences>) => {
     const next = { ...preferences, ...patch };
     setPreferences(next);
@@ -38,53 +39,49 @@ export function NotificationSettingsScreen({ navigate }: { navigate: Navigate })
   };
 
   return (
-    <MobilityPage
+    <AuxiliaryPage
       title="通知设置"
       accessibilityLabel="账户通知设置"
       onBack={() => navigate(returnScreen)}
-      actions={
-        <PrimaryButton
-          label={returnLabel}
-          variant="text"
-          onPress={() => navigate(returnScreen)}
-        />
-      }
     >
-      <AppV2StageHeader
-        eyebrow="账户 · 通知"
-        title="只保留对你有用的更新"
-        description="选择消息中心显示哪些非紧急通知；安全提醒和需要处理的状态始终保留。"
-      />
-      <AppV2PreferenceRow
-        icon="route"
-        title="行程进展"
-        description="显示匹配、预约和行程结果等非紧急更新"
-        enabled={preferences.tripUpdates}
-        onChange={(enabled) => update({ tripUpdates: enabled })}
-        tone="passenger"
-      />
-      <AppV2PreferenceRow
-        icon="car"
-        title="车主准备进展"
-        description="显示车辆审核和参与资格的非紧急更新"
-        enabled={preferences.ownerUpdates}
-        onChange={(enabled) => update({ ownerUpdates: enabled })}
-        tone="driver"
-      />
-      <AppV2PreferenceRow
-        icon="safety"
-        title="安全与重要状态"
-        description="涉及安全或需要你操作的事项不会被隐藏"
-        enabled
-        disabled
-        onChange={() => undefined}
-        tone="safety"
-      />
-      <AppV2StatusPanel
-        title="偏好保存在当前设备"
-        description="更换设备后可以重新选择，不会改变账户、身份或行程状态。"
-      />
-    </MobilityPage>
+      <AuxiliarySection
+        title="服务通知"
+        description="关闭后仍可在消息中查看相关记录。"
+      >
+        <AuxiliaryGroup>
+          <AuxiliarySwitchRow
+            icon="route"
+            label="行程进展"
+            description="匹配、预约和行程结果"
+            enabled={preferences.tripUpdates}
+            onChange={(enabled) => update({ tripUpdates: enabled })}
+          />
+          <AuxiliarySwitchRow
+            icon="car"
+            label="车主准备进展"
+            description="车辆审核和参与资格更新"
+            enabled={preferences.ownerUpdates}
+            onChange={(enabled) => update({ ownerUpdates: enabled })}
+            last
+          />
+        </AuxiliaryGroup>
+      </AuxiliarySection>
+      <AuxiliarySection title="重要提醒">
+        <AuxiliaryGroup>
+          <AuxiliaryDataRow
+            icon="safety"
+            label="安全与账户提醒"
+            description="涉及安全、登录或需要确认的事项"
+            value="始终开启"
+            valueTone="primary"
+            last
+          />
+        </AuxiliaryGroup>
+      </AuxiliarySection>
+      <AppText size="small" tone="secondary">
+        通知偏好保存在当前设备。
+      </AppText>
+    </AuxiliaryPage>
   );
 }
 
@@ -96,25 +93,37 @@ export function HelpFeedbackScreen({ navigate }: { navigate: Navigate }) {
   const { theme } = useAppTheme();
   const [category, setCategory] = useState<FeedbackCategory>("trip");
   const [details, setDetails] = useState("");
-  const [message, setMessage] = useState<string>();
+  const [feedback, setFeedback] = useState<Readonly<{
+    tone: "neutral" | "danger";
+    title: string;
+    description: string;
+  }>>();
 
   const shareFeedback = async () => {
     await runAction("account.feedback", async () => {
-      setMessage(undefined);
+      setFeedback(undefined);
       try {
         await Share.share({
           title: "御驾出行反馈",
           message: `反馈类型：${feedbackLabels[category]}\n\n${details.trim()}`,
         });
-        setMessage("已打开系统分享菜单，请选择你希望使用的联系渠道。");
+        setFeedback({
+          tone: "neutral",
+          title: "已打开分享菜单",
+          description: "请选择你希望使用的联系渠道。",
+        });
       } catch {
-        setMessage("当前设备暂时无法打开分享菜单，请稍后重试。");
+        setFeedback({
+          tone: "danger",
+          title: "暂时无法分享反馈",
+          description: "请稍后重试。",
+        });
       }
     });
   };
 
   return (
-    <MobilityPage
+    <AuxiliaryPage
       title="帮助与反馈"
       accessibilityLabel="帮助与反馈"
       onBack={() => navigate("account")}
@@ -127,46 +136,42 @@ export function HelpFeedbackScreen({ navigate }: { navigate: Navigate }) {
             disabled={details.trim().length < 4}
             onPress={() => void shareFeedback()}
           />
-          <PrimaryButton
-            label="返回我的账户"
-            variant="text"
-            onPress={() => navigate("account")}
-          />
         </>
       }
     >
-      <AppV2StageHeader
-        eyebrow="账户 · 帮助"
-        title="先找到正确的处理入口"
-        description="行程、安全和实名问题分别进入对应流程；一般产品建议可以通过设备分享菜单发送。"
-      />
-      <AppV2NavigationRow
-        icon="messages"
-        title="行程与消息帮助"
-        description="查看当前行程、服务通知和已有联系"
-        onPress={() => navigate("message-center")}
-        tone="passenger"
-      />
-      <AppV2NavigationRow
-        icon="safety"
-        title="安全问题"
-        description="查看当前安全事项和可采取的下一步"
-        onPress={() => navigate("privacy-safety-settings")}
-        tone="safety"
-      />
-      <AppV2NavigationRow
-        icon="account"
-        title="实名帮助"
-        description={
-          verification?.businessAccessAllowed
-            ? "实名信息已确认，可查看当前结果"
-            : "继续验证、重试或提交复核说明"
-        }
-        value={verification?.businessAccessAllowed ? "已完成" : "查看"}
-        onPress={() => navigate("adult-eligibility")}
-      />
-      <View style={{ gap: theme.spacing.md }}>
-        <AppText size="small" weight="bold">产品反馈</AppText>
+      <AuxiliarySection title="常用帮助">
+        <AuxiliaryGroup>
+          <AuxiliaryDataRow
+            icon="messages"
+            label="行程与消息"
+            description="查看当前行程、通知和已有联系"
+            onPress={() => navigate("message-center")}
+          />
+          <AuxiliaryDataRow
+            icon="safety"
+            label="安全问题"
+            description="查看安全事项和处理进度"
+            onPress={() => navigate("privacy-safety-settings")}
+          />
+          <AuxiliaryDataRow
+            icon="account"
+            label="我的实名"
+            description={
+              verification?.businessAccessAllowed
+                ? "查看已确认的实名资料"
+                : "继续确认、重试或提交复核说明"
+            }
+            value={verification?.businessAccessAllowed ? "已确认" : undefined}
+            onPress={() => navigate("adult-eligibility")}
+            last
+          />
+        </AuxiliaryGroup>
+      </AuxiliarySection>
+      <AuxiliarySection
+        title="提交反馈"
+        description="不会自动附带账户资料或行程内容。"
+      >
+        <View style={{ gap: theme.spacing.md }}>
         <View
           accessibilityRole="radiogroup"
           style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}
@@ -187,7 +192,7 @@ export function HelpFeedbackScreen({ navigate }: { navigate: Navigate }) {
             value={details}
             onChangeText={(value) => {
               setDetails(value);
-              setMessage(undefined);
+              setFeedback(undefined);
             }}
             placeholder="请描述发生了什么，以及你希望如何改进"
             placeholderTextColor={theme.colors.textSecondary}
@@ -202,15 +207,16 @@ export function HelpFeedbackScreen({ navigate }: { navigate: Navigate }) {
         <AppText size="caption" tone="secondary">
           只有在你确认分享后，反馈内容才会交给所选应用。
         </AppText>
-      </View>
-      {message ? (
-        <AppV2StatusPanel
-          title={message.startsWith("已打开") ? "反馈已准备好" : "暂时无法分享"}
-          description={message}
-          tone={message.startsWith("已打开") ? "neutral" : "safety"}
+        </View>
+      </AuxiliarySection>
+      {feedback ? (
+        <AuxiliaryInlineFeedback
+          title={feedback.title}
+          description={feedback.description}
+          tone={feedback.tone}
         />
       ) : null}
-    </MobilityPage>
+    </AuxiliaryPage>
   );
 }
 

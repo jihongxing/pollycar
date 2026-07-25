@@ -25,3 +25,55 @@ statuses: ["draft", "under_review", "approved", "suspended", "appealing", "revok
 immediate_review_triggers: ["accident", "repair", "modification", "ownership_changed", "plate_changed", "insurance_changed", "major_recall", "safety_report"]
 revoke_reasons: ["forged_document", "vehicle_substitution", "concealed_structural_damage", "insurance_not_covered", "illegal_modification", "duplicate_account_binding"]
 prohibited_ranking_inputs: ["brand", "vehicle_price", "energy_type"]
+vehicle_material_recognition:
+  provider:
+    id: "tencent-cloud-ocr"
+    production_enabled: false
+    endpoint: "ocr.tencentcloudapi.com"
+    api_version: "2018-11-19"
+    app_direct_access_allowed: false
+  actions:
+    driver_license: "DriverLicenseOCR"
+    vehicle_registration: "VehicleLicenseOCR"
+    insurance_proof: "GeneralAccurateOCR"
+  provider_signal_outcomes:
+    - "precheck_passed"
+    - "needs_manual_review"
+    - "failed"
+    - "unknown"
+  platform_dispositions:
+    - "ready_for_vehicle_review"
+    - "manual_review_required"
+  persisted_fields_allowed:
+    - "provider_request_id"
+    - "material_kind"
+    - "platform_disposition"
+    - "warning_codes"
+    - "document_number_fingerprint"
+    - "holder_name_fingerprint"
+    - "owner_name_fingerprint"
+    - "vin_fingerprint"
+    - "plate_number_masked"
+    - "permitted_class"
+    - "vehicle_type"
+    - "valid_from"
+    - "valid_until"
+    - "registered_on"
+    - "inspected_until"
+    - "insurance_expires_on"
+  persisted_fields_forbidden:
+    - "raw_file"
+    - "image_base64"
+    - "full_driver_license_number"
+    - "full_name"
+    - "full_vehicle_owner_name"
+    - "full_vin"
+    - "full_plate_number"
+    - "full_insurance_text"
+    - "provider_raw_response"
+  invariants:
+    - "供应商信号不得直接修改车辆审核状态或授予车主身份"
+    - "保险材料的通用 OCR 结果必须进入平台人工复核"
+    - "供应商超时、错误、告警和未知结果必须失败关闭"
+    - "App 不得持有供应商密钥或直接调用供应商"
+    - "真实材料上传门禁关闭时不得接收或转发真实文件"

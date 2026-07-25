@@ -1,0 +1,52 @@
+version: 1
+id: "local_production_readiness"
+production_enabled: false
+scope: "local_isolated_infrastructure_acceptance"
+
+isolation:
+  compose_project: "pollycar-production-readiness"
+  loopback_proxy_only: true
+  internal_sandbox_reuse_allowed: false
+  real_data_allowed: false
+
+database:
+  engine: "postgresql"
+  tls_required: true
+  named_volume_required: true
+  generated_password_file_required: true
+  migration_entrypoint: "production_readiness"
+
+https_proxy:
+  implementation: "caddy"
+  certificate_authority_validation_required: true
+  certificate_san_validation_required: true
+  health_routes_only: true
+  business_route_status: 503
+
+secrets:
+  generated_locally: true
+  source_control_forbidden: true
+  image_embedding_forbidden: true
+  production_reuse_forbidden: true
+
+monitoring:
+  collector: "opentelemetry_collector"
+  local_debug_exporter_only: true
+  external_export_enabled: false
+
+acceptance:
+  deployment_required: true
+  migrations_required: true
+  live_check_required: true
+  readiness_database_probe_required: true
+  backup_required: true
+  restore_required: true
+  restored_migration_history_required: true
+  cleanup_by_default: true
+
+business_capabilities:
+  routes_enabled: false
+  real_identity_enabled: false
+  real_map_enabled: false
+  real_location_enabled: false
+  real_payment_enabled: false

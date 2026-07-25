@@ -10,6 +10,14 @@
     "newArchEnabled": true,
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许御驾出行访问相册，以便选择并更新账户头像。",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "./plugins/with-pollycar-map-module.cjs",
       [
         "expo-splash-screen",

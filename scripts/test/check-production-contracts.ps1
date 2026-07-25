@@ -10,7 +10,11 @@ $files = @(
   "spec\platform\persistence.yaml",
   "spec\finance\ledger.yaml",
   "spec\finance\reconciliation.yaml",
-  "spec\finance\operator-funds.yaml"
+  "spec\finance\operator-funds.yaml",
+  "spec\platform\production-runtime.yaml",
+  "spec\platform\local-production-readiness.yaml",
+  "spec\platform\shared-preproduction.yaml",
+  "spec\platform\production-authentication.yaml"
 )
 
 foreach ($path in $files) {
@@ -45,7 +49,7 @@ foreach ($required in @("amount_minor: 0", "zero_money_payment: true", "real_pay
 }
 
 $gates = Get-Content -LiteralPath (Join-Path $repo $files[4]) -Raw
-foreach ($required in @("synthetic_admin_multi_organization: false", "synthetic_admin_operator_management: false", "synthetic_admin_trip_operations: false", "synthetic_admin_case_management: false", "synthetic_admin_finance_operations: false", "synthetic_admin_executive_dashboard: false", "synthetic_admin_audit_system: false", "synthetic_admin_data_reports: false", "real_admin_organization_accounts: false", "real_admin_finance_operations: false", "production_admin_enabled: false", "synthetic_financial_ledger: false", "synthetic_financial_reconciliation: false", "synthetic_operator_funds: false", "real_payment: false", "paid_flex_trial: false", "real_user_invitation: false", "shanghai_pilot: false", "real_data_ingestion: false", "real_sms_delivery: false", "real_phone_data: false", "production_authentication: false", "deny_on_missing: true")) {
+foreach ($required in @("synthetic_admin_multi_organization: false", "synthetic_admin_operator_management: false", "synthetic_admin_trip_operations: false", "synthetic_admin_case_management: false", "synthetic_admin_finance_operations: false", "synthetic_admin_executive_dashboard: false", "synthetic_admin_audit_system: false", "synthetic_admin_data_reports: false", "real_admin_organization_accounts: false", "real_admin_finance_operations: false", "production_admin_enabled: false", "synthetic_financial_ledger: false", "synthetic_financial_reconciliation: false", "synthetic_operator_funds: false", "real_payment: false", "real_settlement: false", "real_withdrawal: false", "driver_early_settlement_enabled: false", "real_operator_onboarding: false", "paid_flex_trial: false", "real_user_invitation: false", "shanghai_pilot: false", "real_data_ingestion: false", "external_identity_provider: false", "real_identity_verification: false", "real_biometric_verification: false", "real_sms_delivery: false", "real_phone_data: false", "production_authentication: false", "real_map: false", "external_map_provider: false", "real_device_location: false", "background_location: false", "real_vehicle_location_stream: false", "amap_sdk: false", "amap_web_service: false", "internal_sandbox: true", "deny_on_missing: true")) {
   if ($gates -notmatch [regex]::Escape($required)) { throw "平台门禁契约缺少: $required" }
 }
 
@@ -83,6 +87,101 @@ foreach ($required in @(
   "production_enablement_allowed: false"
 )) {
   if ($operatorFunds -notmatch [regex]::Escape($required)) { throw "多运营主体资金契约缺少: $required" }
+}
+
+$productionRuntime = Get-Content -LiteralPath (Join-Path $repo $files[9]) -Raw
+foreach ($required in @(
+  'release_mode: "infrastructure_readiness"',
+  'business_routes_enabled: false',
+  'production_business_capabilities_enabled: false',
+  'remote_database_required: true',
+  'local_database_forbidden: true',
+  'tls_required: true',
+  'public_base_url_https_required: true',
+  'forwarded_https_required: true',
+  'provider: "managed"',
+  'raw_vendor_secret_environment_forbidden: true',
+  'otlp_https_required: true',
+  'readiness_database_probe_required: true'
+)) {
+  if ($productionRuntime -notmatch [regex]::Escape($required)) {
+    throw "生产运行契约缺少: $required"
+  }
+}
+
+$localProductionReadiness = Get-Content -LiteralPath (Join-Path $repo $files[10]) -Raw
+foreach ($required in @(
+  'scope: "local_isolated_infrastructure_acceptance"',
+  'compose_project: "pollycar-production-readiness"',
+  'internal_sandbox_reuse_allowed: false',
+  'real_data_allowed: false',
+  'tls_required: true',
+  'generated_password_file_required: true',
+  'certificate_authority_validation_required: true',
+  'health_routes_only: true',
+  'business_route_status: 503',
+  'source_control_forbidden: true',
+  'external_export_enabled: false',
+  'restore_required: true',
+  'cleanup_by_default: true',
+  'routes_enabled: false'
+)) {
+  if ($localProductionReadiness -notmatch [regex]::Escape($required)) {
+    throw "本地生产就绪契约缺少: $required"
+  }
+}
+
+$sharedPreproduction = Get-Content -LiteralPath (Join-Path $repo $files[11]) -Raw
+foreach ($required in @(
+  'status: "reviewing"',
+  'resource_creation_enabled: false',
+  'deployment_enabled: false',
+  'business_routes_enabled: false',
+  'real_data_allowed: false',
+  'dedicated_cloud_boundary_required: true',
+  'provider_selected: false',
+  'account_selected: false',
+  'region_selected: false',
+  'public_endpoint_allowed: false',
+  'multi_availability_zone_required: true',
+  'target_rpo_minutes: 5',
+  'target_rto_minutes: 60',
+  'self_signed_allowed: false',
+  'workload_identity_required: true',
+  'database_public_ip_allowed: false',
+  'default_deny_egress_required: true',
+  'request_response_bodies_allowed: false',
+  'monthly_restore_drill_required: true',
+  'cross_region_backup_enabled: false',
+  'all_approvals_required_for_resource_creation: true',
+  'approved: false'
+)) {
+  if ($sharedPreproduction -notmatch [regex]::Escape($required)) {
+    throw "共享预生产契约缺少: $required"
+  }
+}
+
+$productionAuthentication = Get-Content -LiteralPath (Join-Path $repo $files[12]) -Raw
+foreach ($required in @(
+  'phase: "real_accounts_and_authentication_readiness"',
+  'production_authentication_enabled: false',
+  'authentication_routes_enabled: false',
+  'production_migrations_enabled: false',
+  'real_phone_data_enabled: false',
+  'real_sms_delivery_enabled: false',
+  'real_identity_verification_enabled: false',
+  'real_biometric_verification_enabled: false',
+  'real_admin_accounts_enabled: false',
+  'recommended_strategy: "managed_oidc"',
+  'raw_secrets_allowed: false',
+  'all_approvals_required_for_provider_testing: true',
+  'production_database_schema_created: false',
+  'production_http_routes_mounted: false',
+  'supplier_sdk_integrated: false'
+)) {
+  if ($productionAuthentication -notmatch [regex]::Escape($required)) {
+    throw "生产认证准备契约缺少: $required"
+  }
 }
 
 $persistence = Get-Content -LiteralPath (Join-Path $repo $files[5]) -Raw

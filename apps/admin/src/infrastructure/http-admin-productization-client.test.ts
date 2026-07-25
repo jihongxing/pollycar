@@ -13,6 +13,82 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("HttpAdminProductizationClient", () => {
+  it("使用 Bearer 会话调用受控跨域搜索", async () => {
+    const result = {
+      groups: [],
+      totalResults: 0,
+      asOf: "2026-07-19T08:00:00.000Z",
+      synthetic: true,
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(result));
+    const client = new HttpAdminProductizationClient(
+      "http://127.0.0.1:4310",
+      fetcher,
+    );
+
+    await expect(client.searchAcrossDomains("access-token", {
+      query: "浦东 机场",
+      limitPerDomain: 5,
+    })).resolves.toEqual(result);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://127.0.0.1:4310/v1/internal-sandbox/admin/search?query=%E6%B5%A6%E4%B8%9C+%E6%9C%BA%E5%9C%BA&limit_per_domain=5",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer access-token",
+        }),
+      }),
+    );
+  });
+
+  it("使用当前 Bearer 会话切换工作身份", async () => {
+    const result = {
+      accessToken: "access-platform",
+      refreshToken: "refresh-platform",
+      sessionFamilyId: "family-platform",
+      workIdentity: {
+        workIdentityId: "synthetic-platform-ops-001",
+        legacyAccessToken: "synthetic-platform-ops-001",
+        type: "platform",
+        organizationId: "platform-pollycar",
+        organizationName: "PollyCar 平台",
+        productRole: "operations_lead",
+        productRoleName: "平台运营负责人",
+        cityScopes: ["上海"],
+        maximumDataClassification: "sensitive",
+        synthetic: true,
+      },
+      navigation: {},
+      accessTokenExpiresAt: "2026-07-19T10:30:00.000Z",
+      absoluteExpiresAt: "2026-07-19T18:00:00.000Z",
+      idleExpiresAt: "2026-07-19T11:00:00.000Z",
+      synthetic: true,
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(result));
+    const client = new HttpAdminProductizationClient(
+      "http://127.0.0.1:4310",
+      fetcher,
+    );
+
+    await expect(client.switchWorkIdentity(
+      "access-operator",
+      "synthetic-platform-ops-001",
+    )).resolves.toEqual(result);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://127.0.0.1:4310/v1/internal-sandbox/admin/auth/work-identities/switch",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer access-operator",
+        }),
+        body: JSON.stringify({
+          workIdentityId: "synthetic-platform-ops-001",
+        }),
+      }),
+    );
+  });
+
   it("使用 Bearer 会话和幂等键提交运营任务操作", async () => {
     const result: AdminOperationsTaskActionResult = {
       operationId: "operation-001",

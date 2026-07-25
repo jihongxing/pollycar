@@ -6,6 +6,7 @@ import { View } from "react-native";
 import { useVehicleReview } from "../application/vehicle-review-context";
 import { AppShell, BottomNavigation, IdentitySwitchSheet } from "../components/ui";
 import {
+  AccountLoginScreen,
   AccountProfileScreen,
   EligibilitySettingsScreen,
   IdentitySettingsScreen,
@@ -50,7 +51,10 @@ import {
   SafetyReportScreen,
   SafetyResultScreen,
 } from "../features/safety/safety-screens";
-import { NotificationCenterScreen } from "../features/notifications/notification-center-screen";
+import {
+  NotificationCenterScreen,
+  NotificationDetailScreen,
+} from "../features/notifications/notification-center-screen";
 import {
   DriverPickupScreen as RideDriverPickupScreen,
   InTripScreen,
@@ -432,6 +436,8 @@ export function ProductRoute({ screen }: Readonly<{ screen: AppScreen }>) {
       <MessageCenterScreen navigate={navigateLoose} />
     ) : screen === "notifications" ? (
       <NotificationCenterScreen navigate={navigate} />
+    ) : screen === "notification-detail" ? (
+      <NotificationDetailScreen navigate={navigate} />
     ) : screen === "owner-apply-intro" ? (
       <OwnerApplyIntro navigate={navigate} />
     ) : screen === "owner-profile" ? (
@@ -450,6 +456,8 @@ export function ProductRoute({ screen }: Readonly<{ screen: AppScreen }>) {
       <AccountScreen navigate={navigate} />
     ) : screen === "account-profile" ? (
       <AccountProfileScreen navigate={navigate} />
+    ) : screen === "account-login" ? (
+      <AccountLoginScreen navigate={navigate} />
     ) : screen === "identity-settings" ? (
       <IdentitySettingsScreen navigate={navigate} />
     ) : screen === "vehicle-settings" ? (

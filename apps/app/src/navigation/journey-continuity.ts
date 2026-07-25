@@ -1,6 +1,11 @@
 import type { PassengerTripDetailOrigin } from "../application/synthetic-trip-context";
 import type { AppScreen } from "../features/vehicle-review/screens";
 import type { UserIdentity } from "../identity/identity-context";
+import {
+  readBrowserSessionStorage,
+  removeBrowserSessionStorage,
+  writeBrowserSessionStorage,
+} from "../infrastructure/browser-storage";
 
 export type PassengerTripHistoryFilter =
   | "all"
@@ -21,7 +26,6 @@ const driverOrderIdKey = "rego.journey.driver-order-id";
 const driverHistoryFilterKey = "rego.journey.driver-history-filter";
 const messageDetailTargetKey = "rego.message-center.detail-target";
 const messageTripConversationKey = "rego.message-center.trip-conversation";
-const memoryStorage = new Map<string, string>();
 
 export function rememberPassengerTripDetail(
   tripId: string,
@@ -99,13 +103,10 @@ export function identityRedirectForScreen(
 }
 
 function storage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
-  if (typeof window !== "undefined") return window.sessionStorage;
   return {
-    getItem: (key) => memoryStorage.get(key) ?? null,
-    setItem: (key, value) => memoryStorage.set(key, value),
-    removeItem: (key) => {
-      memoryStorage.delete(key);
-    },
+    getItem: (key) => readBrowserSessionStorage(key) ?? null,
+    setItem: writeBrowserSessionStorage,
+    removeItem: removeBrowserSessionStorage,
   };
 }
 

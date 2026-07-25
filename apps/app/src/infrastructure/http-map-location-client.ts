@@ -16,9 +16,22 @@ export class HttpMapLocationClient {
     private readonly fetcher: typeof fetch = globalThis.fetch.bind(globalThis),
   ) {}
 
-  public searchPlaces(query: string, limit = 10): Promise<PlaceSearchResult> {
+  public searchPlaces(
+    query: string,
+    options: Readonly<{ limit?: number; cityCode?: string; biasLocation?: GeoPoint }> = {},
+  ): Promise<PlaceSearchResult> {
+    const search = new URLSearchParams({
+      query,
+      limit: String(options.limit ?? 10),
+    });
+    if (options.cityCode) search.set("city_code", options.cityCode);
+    if (options.biasLocation) {
+      search.set("bias_latitude", String(options.biasLocation.latitude));
+      search.set("bias_longitude", String(options.biasLocation.longitude));
+      search.set("bias_coordinate_system", options.biasLocation.coordinateSystem);
+    }
     return this.request(
-      `/v1/internal-sandbox/app/map/places/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+      `/v1/internal-sandbox/app/map/places/search?${search.toString()}`,
     );
   }
 

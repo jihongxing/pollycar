@@ -191,6 +191,41 @@ errors:
     disclosure: "public"
     audit: "none"
     client_action: "correct_field"
+  - id: "AVATAR_UPLOAD_INVALID"
+    http_status: 400
+    message: "头像文件无效，请重新选择"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_another_image"
+  - id: "AVATAR_FILE_TOO_LARGE"
+    http_status: 413
+    message: "头像文件过大，请选择较小的图片"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_smaller_image"
+  - id: "AVATAR_IMAGE_INVALID"
+    http_status: 422
+    message: "无法读取这张图片，请重新选择"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_another_image"
+  - id: "AVATAR_DIMENSIONS_INVALID"
+    http_status: 422
+    message: "头像尺寸不符合要求，请重新选择"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "choose_another_image"
+  - id: "AVATAR_NOT_FOUND"
+    http_status: 404
+    message: "头像不存在或已被替换"
+    retryable: false
+    disclosure: "public"
+    audit: "standard"
+    client_action: "refresh_profile"
   - id: "AUTHENTICATION_REQUIRED"
     http_status: 401
     message: "请先完成身份认证"

@@ -511,6 +511,17 @@ operations:
     audit: "strict"
     allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "ADMIN_RESOURCE_VERSION_CONFLICT", "ADMIN_AUDIT_RESOURCE_NOT_FOUND", "ADMIN_AUDIT_OPERATION_FORBIDDEN", "ADMIN_AUDIT_IMMUTABLE", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
     acceptance_scenarios: ["ADMIN-UX-081", "ADMIN-UX-082"]
+  - operation_id: "searchAdminAcrossDomains"
+    method: "GET"
+    path: "/v1/internal-sandbox/admin/search"
+    authorization_action: "admin_global_search.read"
+    actors: ["platform_access_administrator", "operations_officer", "operations_lead", "operator_management_officer", "reviewer", "senior_reviewer", "customer_support", "support_lead", "safety_officer", "safety_lead", "finance_officer", "finance_lead", "privacy_compliance", "data_analyst", "auditor", "technical_operations", "executive_sponsor", "operator_account_administrator", "operator_operations_lead", "operator_fleet_officer", "operator_customer_support", "operator_safety_liaison", "operator_finance_officer", "operator_finance_lead", "operator_auditor", "operator_executive"]
+    request_classification: "L1"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "AUTHORIZATION_DENIED", "FEATURE_DISABLED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["ADMIN-UX-089", "ADMIN-UX-090", "ADMIN-UX-091"]
   - operation_id: "listAdminDataReports"
     method: "GET"
     path: "/v1/internal-sandbox/admin/reports"
@@ -652,8 +663,19 @@ operations:
     response_classification: "L2"
     idempotency_required: true
     audit: "strict"
-    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AVATAR_UPLOAD_INVALID", "AVATAR_FILE_TOO_LARGE", "AVATAR_IMAGE_INVALID", "AVATAR_DIMENSIONS_INVALID", "AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
     acceptance_scenarios: ["MOB-013", "MOB-014"]
+  - operation_id: "getApprovedAvatarMedia"
+    method: "GET"
+    path: "/v1/internal-sandbox/media/avatars/{objectKey}"
+    authorization_action: "trust_profile.avatar.public.read"
+    actors: ["passenger", "driver"]
+    request_classification: "L0"
+    response_classification: "L2"
+    idempotency_required: false
+    audit: "standard"
+    allowed_errors: ["AVATAR_NOT_FOUND", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-013"]
   - operation_id: "getAppFairnessReport"
     method: "GET"
     path: "/v1/internal-sandbox/app/trust-profile/fairness"

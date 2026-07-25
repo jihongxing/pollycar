@@ -1,5 +1,6 @@
 import type {
   AccountTrustProfile,
+  SubmitCustomAvatarCommand,
   SubmitTripRatingCommand,
   SyntheticAvatarAsset,
   TripRatingView,
@@ -14,6 +15,9 @@ type TrustProfileContextValue = Readonly<{
   loading: boolean;
   refresh(): Promise<void>;
   submitAvatar(asset: SyntheticAvatarAsset): Promise<AccountTrustProfile>;
+  submitCustomAvatar(
+    command: Omit<SubmitCustomAvatarCommand, "idempotencyKey">,
+  ): Promise<AccountTrustProfile>;
   getRating(tripId: string): Promise<TripRatingView | undefined>;
   submitRating(command: Omit<SubmitTripRatingCommand, "idempotencyKey">): Promise<TripRatingView>;
 }>;
@@ -50,6 +54,14 @@ export function TrustProfileProvider({ children }: PropsWithChildren) {
       const next = await client.submitAvatar({
         asset,
         idempotencyKey: `avatar-${asset}-${Date.now()}`,
+      });
+      setProfile(next);
+      return next;
+    },
+    submitCustomAvatar: async (command) => {
+      const next = await client.submitCustomAvatar({
+        ...command,
+        idempotencyKey: `avatar-custom-${Date.now()}`,
       });
       setProfile(next);
       return next;

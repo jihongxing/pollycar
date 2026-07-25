@@ -1,13 +1,21 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { createPortal } from "react-dom";
 
 export function FocusTrapDialog({
   titleId,
   busy = false,
+  initialFocusRef,
   onClose,
   children,
 }: Readonly<{
   titleId: string;
   busy?: boolean;
+  initialFocusRef?: RefObject<HTMLElement | null>;
   onClose(): void;
   children: ReactNode;
 }>) {
@@ -28,14 +36,25 @@ export function FocusTrapDialog({
     const siblings = Array.from(container.children).filter(
       (element) => element !== backdrop,
     );
-    siblings.forEach((element) => element.setAttribute("inert", ""));
+    const inertTargets = siblings.flatMap((element) => [
+      element,
+      ...Array.from(
+        element.querySelectorAll(
+          "aside, header, main, nav, section, button, input, select, textarea, a, [tabindex]",
+        ),
+      ),
+    ]);
+    const addedInert = inertTargets.filter(
+      (element) => !element.hasAttribute("inert"),
+    );
+    addedInert.forEach((element) => element.setAttribute("inert", ""));
     const focusable = () =>
       Array.from(
         dialog.querySelectorAll<HTMLElement>(
           'button:not([disabled]), select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
         ),
       );
-    const first = focusable()[0] ?? dialog;
+    const first = initialFocusRef?.current ?? focusable()[0] ?? dialog;
     first.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -62,12 +81,12 @@ export function FocusTrapDialog({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      siblings.forEach((element) => element.removeAttribute("inert"));
+      addedInert.forEach((element) => element.removeAttribute("inert"));
       previouslyFocused.current?.focus();
     };
-  }, []);
+  }, [initialFocusRef]);
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" role="presentation">
       <section
         ref={dialogRef}
@@ -79,6 +98,7 @@ export function FocusTrapDialog({
       >
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

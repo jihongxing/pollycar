@@ -1,5 +1,5 @@
+import type { SyntheticNotificationItem } from "@pollycar/contracts";
 import { useMemo } from "react";
-import { View } from "react-native";
 
 import { useFreeFlexTrial } from "../../application/free-flex-trial-context";
 import { buildSyntheticNotificationCenter } from "../../application/notification-center";
@@ -7,20 +7,22 @@ import { useSafetyCase } from "../../application/safety-case-context";
 import { useSyntheticTrip } from "../../application/synthetic-trip-context";
 import { useVehicleReview } from "../../application/vehicle-review-context";
 import {
-  AppV2EmptyState,
-  AppV2NavigationRow,
-  AppV2SectionHeader,
-  AppV2StageHeader,
-  AppV2StatusPanel,
-  AppV2SummaryList,
-} from "../../components/app-v2-components";
-import { MobilityPage } from "../../components/mobility";
-import { useAppTheme } from "../../theme/theme-context";
+  AuxiliaryDataRow,
+  AuxiliaryGroup,
+  AuxiliaryPage,
+  AuxiliarySection,
+  AuxiliaryState,
+} from "../../components/auxiliary-page";
+import { AppText, PrimaryButton } from "../../components/ui";
 import {
   readNotificationPreferences,
   shouldShowNotification,
 } from "../account/notification-preferences";
 import type { AppScreen } from "../vehicle-review/screens";
+import {
+  readNotificationDetail,
+  rememberNotificationDetail,
+} from "./notification-navigation";
 
 export function NotificationCenterScreen({
   navigate,
@@ -31,7 +33,6 @@ export function NotificationCenterScreen({
   const { trial } = useFreeFlexTrial();
   const { dashboard: trips } = useSyntheticTrip();
   const { dashboard: safety } = useSafetyCase();
-  const { theme } = useAppTheme();
   const preferences = readNotificationPreferences();
   const center = useMemo(
     () => buildSyntheticNotificationCenter({ review, trial, trips, ...(safety ? { safety } : {}) }),
@@ -43,82 +44,150 @@ export function NotificationCenterScreen({
   );
 
   return (
-    <MobilityPage
+    <AuxiliaryPage
       title="服务通知"
       accessibilityLabel="服务通知"
       onBack={() => navigate("message-center")}
     >
-      <AppV2StageHeader
-        eyebrow="消息 · 服务通知"
-        title={tasks.length > 0 ? "有几项服务状态需要留意" : "服务状态已是最新"}
-        description={
-          tasks.length > 0
-            ? "进入对应页面即可查看原因和下一步。"
-            : "行程、车辆、身份和安全状态变化后会在这里通知你。"
-        }
-        tone={tasks.some((item) => item.domain === "safety") ? "safety" : "passenger"}
-      />
-      <AppV2SummaryList
-        items={[
-          {
-            label: "需要留意",
-            value: `${tasks.length} 项`,
-            emphasized: tasks.length > 0,
-          },
-          { label: "其他通知", value: `${updates.length} 项` },
-        ]}
-      />
-      <AppV2NavigationRow
-        icon="theme"
-        title="通知设置"
-        description="选择显示哪些非紧急服务通知"
-        onPress={() => navigate("notification-settings")}
-      />
-      <View style={{ gap: theme.spacing.md }}>
-        <AppV2SectionHeader title="需要留意" detail={`${tasks.length} 项`} />
-        {tasks.length > 0 ? (
-          tasks.map((task) => (
-            <AppV2NavigationRow
-              key={task.notificationId}
-              icon={domainIcons[task.domain]}
-              title={task.title}
-              description={task.body}
-              value={domainLabels[task.domain]}
-              tone={domainTones[task.domain]}
-              onPress={() => navigate(task.target)}
-            />
-          ))
-        ) : (
-          <AppV2EmptyState
-            icon="orders"
-            title="当前没有需要处理的服务状态"
-            description="新的行程、车辆、身份或安全通知会显示在这里。"
-            tone="passenger"
-          />
-        )}
-      </View>
-      {updates.length > 0 ? (
-        <View style={{ gap: theme.spacing.md }}>
-          <AppV2SectionHeader title="服务动态" detail={`${updates.length} 项`} />
-          {updates.map((update) => (
-            <AppV2NavigationRow
-              key={update.notificationId}
-              icon={domainIcons[update.domain]}
-              title={update.title}
-              description={update.body}
-              value={domainLabels[update.domain]}
-              tone={domainTones[update.domain]}
-              onPress={() => navigate(update.target)}
-            />
-          ))}
-        </View>
-      ) : (
-        <AppV2StatusPanel
-          title="没有更多服务通知"
-          description="你关闭的非紧急通知不会显示；安全提醒和需要处理的状态始终保留。"
+      {tasks.length === 0 && updates.length === 0 ? (
+        <AuxiliaryState
+          icon="messages"
+          title="暂时没有服务通知"
+          description="行程、车辆、资格或安全状态变化后会显示在这里。"
+          tone="passenger"
         />
-      )}
-    </MobilityPage>
+      ) : null}
+      {tasks.length > 0 ? (
+        <NotificationGroup
+          title="需要留意"
+          description="这些变化可能影响下一步使用。"
+          items={tasks}
+          navigate={navigate}
+        />
+      ) : null}
+      {updates.length > 0 ? (
+        <NotificationGroup
+          title="其他更新"
+          items={updates}
+          navigate={navigate}
+        />
+      ) : null}
+      <AuxiliarySection title="通知管理">
+        <AuxiliaryGroup>
+          <AuxiliaryDataRow
+            icon="theme"
+            label="通知设置"
+            description="选择显示哪些非紧急服务通知"
+            onPress={() => navigate("notification-settings")}
+            last
+          />
+        </AuxiliaryGroup>
+      </AuxiliarySection>
+      <AppText size="small" tone="secondary">
+        安全与账户提醒始终保留，其他通知可在通知设置中调整。
+      </AppText>
+    </AuxiliaryPage>
+  );
+}
+
+export function NotificationDetailScreen({
+  navigate,
+}: {
+  navigate: (screen: AppScreen) => void;
+}) {
+  const { review } = useVehicleReview();
+  const { trial } = useFreeFlexTrial();
+  const { dashboard: trips } = useSyntheticTrip();
+  const { dashboard: safety } = useSafetyCase();
+  const center = useMemo(
+    () => buildSyntheticNotificationCenter({ review, trial, trips, ...(safety ? { safety } : {}) }),
+    [review, safety, trial, trips],
+  );
+  const notificationId = readNotificationDetail();
+  const notification = center.items.find((item) => item.notificationId === notificationId);
+
+  if (!notification) {
+    return (
+      <AuxiliaryPage
+        title="通知详情"
+        accessibilityLabel="通知详情不可用"
+        onBack={() => navigate("notifications")}
+      >
+        <AuxiliaryState
+          icon="messages"
+          title="这条通知已不在当前列表"
+          description="服务状态更新后，旧通知可能不再显示。"
+          action={{ label: "返回服务通知", onPress: () => navigate("notifications") }}
+        />
+      </AuxiliaryPage>
+    );
+  }
+
+  return (
+    <AuxiliaryPage
+      title="通知详情"
+      accessibilityLabel={`${domainLabels[notification.domain]}通知详情`}
+      onBack={() => navigate("notifications")}
+      tone={notification.domain === "review" || notification.domain === "eligibility" ? "driver" : "neutral"}
+      actions={
+        <PrimaryButton
+          label={targetLabels[notification.domain]}
+          variant={notification.domain === "review" || notification.domain === "eligibility" ? "owner" : "primary"}
+          onPress={() => navigate(notification.target)}
+        />
+      }
+    >
+      <AuxiliarySection title={domainLabels[notification.domain]}>
+        <AuxiliaryGroup>
+          <AuxiliaryDataRow label="通知内容" value={notification.title} />
+          <AuxiliaryDataRow
+            label="当前结果"
+            value={notification.requiresAction ? "需要查看" : "已更新"}
+            valueTone="primary"
+            last
+          />
+        </AuxiliaryGroup>
+      </AuxiliarySection>
+      <AuxiliarySection title="说明">
+        <AuxiliaryGroup>
+          <AuxiliaryDataRow label={notification.body} last />
+        </AuxiliaryGroup>
+      </AuxiliarySection>
+    </AuxiliaryPage>
+  );
+}
+
+function NotificationGroup({
+  title,
+  description,
+  items,
+  navigate,
+}: {
+  title: string;
+  description?: string;
+  items: readonly SyntheticNotificationItem[];
+  navigate: (screen: AppScreen) => void;
+}) {
+  return (
+    <AuxiliarySection title={title} description={description}>
+      <AuxiliaryGroup>
+        {items.map((item, index) => (
+          <AuxiliaryDataRow
+            key={item.notificationId}
+            icon={domainIcons[item.domain]}
+            label={item.title}
+            description={item.body}
+            value={domainLabels[item.domain]}
+            valueTone={item.domain === "review" || item.domain === "eligibility" ? "owner" : "primary"}
+            onPress={() => {
+              rememberNotificationDetail(item.notificationId);
+              navigate("notification-detail");
+            }}
+            last={index === items.length - 1}
+          />
+        ))}
+      </AuxiliaryGroup>
+    </AuxiliarySection>
   );
 }
 
@@ -136,9 +205,9 @@ const domainIcons = {
   eligibility: "account",
 } as const;
 
-const domainTones = {
-  review: "driver",
-  trip: "passenger",
-  safety: "safety",
-  eligibility: "driver",
+const targetLabels = {
+  review: "查看车辆状态",
+  trip: "查看行程",
+  safety: "查看安全事项",
+  eligibility: "查看参与资格",
 } as const;

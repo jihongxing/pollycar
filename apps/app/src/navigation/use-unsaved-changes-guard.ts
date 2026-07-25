@@ -26,7 +26,12 @@ export function useUnsavedChangesGuard(
   }, [confirmLeave, enabled, navigation, pathname]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !enabled) return;
+    if (
+      typeof window === "undefined" ||
+      typeof window.addEventListener !== "function" ||
+      typeof window.removeEventListener !== "function" ||
+      !enabled
+    ) return;
     const preventUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";

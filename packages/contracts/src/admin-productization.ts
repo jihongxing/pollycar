@@ -73,6 +73,47 @@ export type AdminNavigationManifest = Readonly<{
   synthetic: true;
 }>;
 
+export type AdminGlobalSearchQuery = Readonly<{
+  query: string;
+  limitPerDomain?: 3 | 5 | 10;
+}>;
+
+export type AdminGlobalSearchResultKind =
+  | "task"
+  | "membership"
+  | "operator"
+  | "driver"
+  | "vehicle"
+  | "trip"
+  | "case"
+  | "finance"
+  | "report"
+  | "executive"
+  | "audit";
+
+export type AdminGlobalSearchResultItem = Readonly<{
+  resultId: string;
+  domain: AdminNavigationDomain;
+  kind: AdminGlobalSearchResultKind;
+  title: string;
+  description: string;
+  route: string;
+}>;
+
+export type AdminGlobalSearchGroup = Readonly<{
+  domain: AdminNavigationDomain;
+  label: string;
+  items: readonly AdminGlobalSearchResultItem[];
+  hasMore: boolean;
+}>;
+
+export type AdminGlobalSearchResponse = Readonly<{
+  groups: readonly AdminGlobalSearchGroup[];
+  totalResults: number;
+  asOf: string;
+  synthetic: true;
+}>;
+
 export type AdminWorkIdentitySummary = Readonly<{
   workIdentityId: string;
   legacyAccessToken: string;
@@ -1353,9 +1394,17 @@ export interface AdminProductizationClient {
     selectionToken: string,
     workIdentityId: string,
   ): Promise<AdminProductSession>;
+  switchWorkIdentity(
+    accessToken: string,
+    workIdentityId: string,
+  ): Promise<AdminProductSession>;
   refreshSession(refreshToken: string): Promise<AdminProductSession>;
   logout(accessToken: string): Promise<void>;
   getNavigation(accessToken: string): Promise<AdminNavigationManifest>;
+  searchAcrossDomains(
+    accessToken: string,
+    query: AdminGlobalSearchQuery,
+  ): Promise<AdminGlobalSearchResponse>;
   listOperationsTasks(
     accessToken: string,
     query: AdminOperationsTaskQuery,

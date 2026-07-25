@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("expo-modules-core", () => ({
+  requireOptionalNativeModule: () => null,
+}));
+
 import { DisabledNativeMapModule } from "./map-native-module";
 
 describe("Expo Development Build 地图原生壳", () => {

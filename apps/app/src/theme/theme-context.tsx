@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { readBrowserStorage, writeBrowserStorage } from "../infrastructure/browser-storage";
 import { resolveTheme, type ThemeMode } from "./tokens";
 
 type ThemeContextValue = {
@@ -20,17 +21,16 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [mode, setModeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "light";
-    return window.localStorage.getItem(themeStorageKey) === "dark" ? "dark" : "light";
+    return readBrowserStorage(themeStorageKey) === "dark" ? "dark" : "light";
   });
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);
-    if (typeof window !== "undefined") window.localStorage.setItem(themeStorageKey, next);
+    writeBrowserStorage(themeStorageKey, next);
   }, []);
   const toggleMode = useCallback(
     () => setModeState((current) => {
       const next = current === "light" ? "dark" : "light";
-      if (typeof window !== "undefined") window.localStorage.setItem(themeStorageKey, next);
+      writeBrowserStorage(themeStorageKey, next);
       return next;
     }),
     [],

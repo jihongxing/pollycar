@@ -8,6 +8,11 @@ describe("App 业务路由", () => {
     expect(routeForScreen("owner-workbench")).toBe("/owner-workbench");
     expect(routeForScreen("account")).toBe("/account");
     expect(routeForScreen("account-profile")).toBe("/account-profile");
+    expect(routeForScreen("account-login")).toBe("/account-login");
+    expect(routeForScreen("legal-information")).toBe("/legal-information");
+    expect(routeForScreen("service-agreement")).toBe("/service-agreement");
+    expect(routeForScreen("privacy-policy")).toBe("/privacy-policy");
+    expect(routeForScreen("phone-auth-notice")).toBe("/phone-auth-notice");
     expect(routeForScreen("ride-history")).toBe("/ride-history");
     expect(routeForScreen("identity-settings")).toBe("/identity-settings");
     expect(routeForScreen("vehicle-settings")).toBe("/vehicle-settings");
@@ -16,6 +21,7 @@ describe("App 业务路由", () => {
     expect(routeForScreen("theme-settings")).toBe("/theme-settings");
     expect(routeForScreen("privacy-safety-settings")).toBe("/privacy-safety-settings");
     expect(routeForScreen("notifications")).toBe("/notifications");
+    expect(routeForScreen("notification-detail")).toBe("/notification-detail");
     expect(routeForScreen("notification-settings")).toBe("/notification-settings");
     expect(routeForScreen("help-feedback")).toBe("/help-feedback");
     expect(routeForScreen("trip-create")).toBe("/trip-create");

@@ -29,11 +29,14 @@ foreach ($path in $required) {
   }
 }
 
+$config = Get-Content -LiteralPath (Join-Path $repo "apps\server\src\config.ts") -Raw
+$sandboxConfig = [regex]::Match($config, 'export function createInternalSandboxConfig[\s\S]*?\n}\n\nexport function createProductionConfig').Value
+if (-not $sandboxConfig) {
+  throw "未找到内部沙箱配置边界"
+}
 $server = (
   Get-Content -LiteralPath (Join-Path $repo "apps\server\src\http\internal-sandbox-server.ts") -Raw
-) + (
-  Get-Content -LiteralPath (Join-Path $repo "apps\server\src\config.ts") -Raw
-)
+) + $sandboxConfig
 foreach ($rule in @(
   "127.0.0.1",
   "/v1/internal-sandbox/health",

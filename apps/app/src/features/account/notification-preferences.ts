@@ -1,5 +1,7 @@
 import type { SyntheticNotificationItem } from "@pollycar/contracts";
 
+import { readBrowserStorage, writeBrowserStorage } from "../../infrastructure/browser-storage";
+
 export type NotificationPreferences = Readonly<{
   tripUpdates: boolean;
   ownerUpdates: boolean;
@@ -13,8 +15,7 @@ export const defaultNotificationPreferences: NotificationPreferences = Object.fr
 const storageKey = "rego.preference.notifications.v1";
 
 export function readNotificationPreferences(): NotificationPreferences {
-  if (typeof window === "undefined") return defaultNotificationPreferences;
-  const stored = window.localStorage.getItem(storageKey);
+  const stored = readBrowserStorage(storageKey);
   if (!stored) return defaultNotificationPreferences;
   try {
     const value = JSON.parse(stored) as Partial<NotificationPreferences>;
@@ -28,8 +29,7 @@ export function readNotificationPreferences(): NotificationPreferences {
 }
 
 export function writeNotificationPreferences(preferences: NotificationPreferences): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(storageKey, JSON.stringify(preferences));
+  writeBrowserStorage(storageKey, JSON.stringify(preferences));
 }
 
 export function shouldShowNotification(

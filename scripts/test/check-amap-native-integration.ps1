@@ -4,9 +4,22 @@ $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $policyPath = Join-Path $repo "apps\app\plugins\amap-build-policy.cjs"
 $pluginPath = Join-Path $repo "apps\app\plugins\with-pollycar-map-module.cjs"
 $nativeModulePath = Join-Path $repo "apps\app\src\native\map-native-module.ts"
+$webLoaderPath = Join-Path $repo "apps\app\src\native\web-amap-loader.ts"
+$mapPickerPath = Join-Path $repo "apps\app\src\components\mobility\map-point-picker.tsx"
+$androidModulePath = Join-Path $repo "apps\app\modules\pollycar-map\android\src\main\java\expo\modules\pollycarmap\PollyCarMapModule.kt"
+$iosModulePath = Join-Path $repo "apps\app\modules\pollycar-map\ios\PollyCarMapModule.swift"
 $signingEvidencePath = Join-Path $repo "scripts\mobile\get-android-signing-evidence.ps1"
 
-foreach ($path in @($policyPath, $pluginPath, $nativeModulePath, $signingEvidencePath)) {
+foreach ($path in @(
+  $policyPath,
+  $pluginPath,
+  $nativeModulePath,
+  $webLoaderPath,
+  $mapPickerPath,
+  $androidModulePath,
+  $iosModulePath,
+  $signingEvidencePath
+)) {
   if (-not (Test-Path -LiteralPath $path)) {
     throw "高德原生接入检查缺少文件: $path"
   }
@@ -52,6 +65,24 @@ assert.throws(
   /AMAP_KEY_PUBLIC_ENV_FORBIDDEN/,
 );
 
+assert.throws(
+  () => resolveAmapBuildPolicy(productionConfig, {
+    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY: "browser-key",
+  }),
+  /AMAP_WEB_PRODUCTION_APPROVAL_REQUIRED/,
+);
+
+assert.deepEqual(
+  resolveAmapBuildPolicy(productionConfig, {
+    POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED: "true",
+    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED: "true",
+    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY: "browser-key",
+    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE: "browser-security-code",
+    EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE: "approval-1",
+  }),
+  { enabled: false, androidEnabled: false, iosEnabled: false },
+);
+
 const androidPolicy = resolveAmapBuildPolicy(productionConfig, {
   POLLYCAR_AMAP_NATIVE_SDK_ENABLED: "true",
   POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED: "true",
@@ -91,6 +122,10 @@ finally {
 
 $plugin = Get-Content -LiteralPath $pluginPath -Raw
 $nativeModule = Get-Content -LiteralPath $nativeModulePath -Raw
+$webLoader = Get-Content -LiteralPath $webLoaderPath -Raw
+$mapPicker = Get-Content -LiteralPath $mapPickerPath -Raw
+$androidModule = Get-Content -LiteralPath $androidModulePath -Raw
+$iosModule = Get-Content -LiteralPath $iosModulePath -Raw
 
 foreach ($required in @(
   "resolveAmapBuildPolicy",
@@ -111,6 +146,55 @@ foreach ($required in @(
 )) {
   if ($nativeModule -notmatch [regex]::Escape($required)) {
     throw "高德隐私初始化契约缺少: $required"
+  }
+}
+
+foreach ($required in @(
+  "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED",
+  "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY",
+  "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE",
+  "_AMapSecurityConfig",
+  "https://webapi.amap.com/maps?v=2.0"
+)) {
+  if ($webLoader -notmatch [regex]::Escape($required)) {
+    throw "高德 Web JS API 受控加载缺少: $required"
+  }
+}
+
+foreach ($required in @(
+  "isWebAmapViewConfigured",
+  "amapRequested",
+  "nativeMapModule.gates.realDeviceLocationEnabled",
+  "地图服务由高德地图提供"
+)) {
+  if ($mapPicker -notmatch [regex]::Escape($required)) {
+    throw "前台地图产品化门禁缺少: $required"
+  }
+}
+
+foreach ($module in @($androidModule, $iosModule)) {
+  if ($module -notmatch '"realDeviceLocationEnabled"\s*(to|:)\s*false') {
+    throw "原生地图模块不得把 SDK 可用误报为设备定位已启用"
+  }
+  foreach ($required in @(
+    '"backgroundLocationEnabled"',
+    '"realVehicleLocationStreamEnabled"'
+  )) {
+    if ($module -notmatch ([regex]::Escape($required) + '\s*(to|:)\s*false')) {
+      throw "原生地图模块缺少关闭态门禁: $required"
+    }
+  }
+}
+
+foreach ($required in @(
+  "PollyCarAmapApiKey",
+  "AMapServices.shared().apiKey",
+  "MAMapView.updatePrivacyShow",
+  "MAMapView.updatePrivacyAgree",
+  "AMAP_PRIVACY_CONSENT_REQUIRED"
+)) {
+  if ($iosModule -notmatch [regex]::Escape($required)) {
+    throw "iOS 高德 Key 或隐私初始化缺少: $required"
   }
 }
 
@@ -142,10 +226,10 @@ $publicKeyScanRoots = @(
   (Join-Path $repo "apps\app\src"),
   (Join-Path $repo "apps\app\app.json")
 )
-$publicKeyReference = Get-ChildItem -LiteralPath $publicKeyScanRoots -Recurse -File |
-  Select-String -Pattern "EXPO_PUBLIC_.*AMAP.*KEY" -CaseSensitive:$false
-if ($publicKeyReference) {
-  throw "App 源码出现公开高德 Key 环境变量: $($publicKeyReference.Path)"
+$forbiddenServerKeyReference = Get-ChildItem -LiteralPath $publicKeyScanRoots -Recurse -File |
+  Select-String -Pattern "(EXPO_PUBLIC_.*AMAP.*WEB_SERVICE.*KEY|POLLYCAR_AMAP_WEB_SERVICE_KEY)" -CaseSensitive:$false
+if ($forbiddenServerKeyReference) {
+  throw "App 源码出现禁止进入客户端的高德 Web Service Key: $($forbiddenServerKeyReference.Path)"
 }
 
-Write-Host "高德原生 SDK 关闭态、批准、标识、依赖、Key 和隐私初始化门禁检查通过。"
+Write-Host "高德前台地图的关闭态、批准、标识、Key 隔离、隐私初始化和定位边界检查通过。"

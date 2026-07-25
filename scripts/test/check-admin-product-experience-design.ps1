@@ -83,7 +83,7 @@ foreach ($rule in @(
 
 $scenarios = Get-Content -LiteralPath (Join-Path $repo "spec\tests\admin-product-experience-scenarios.yaml") -Raw
 $scenarioCount = ([regex]::Matches($scenarios, '(?m)^\s{2}- id: "ADMIN-UX-[0-9]{3}"\s*$')).Count
-if ($scenarioCount -ne 88) { throw "运营后台产品化验收场景应为 88 项，实际为 $scenarioCount" }
+if ($scenarioCount -ne 91) { throw "运营后台产品化验收场景应为 91 项，实际为 $scenarioCount" }
 foreach ($category in @("entry", "identity", "navigation", "shell", "pagination", "language", "responsive", "accessibility", "recovery", "operations_task", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "executive_dashboard", "audit_system", "data_reports")) {
   if ($scenarios -notmatch [regex]::Escape("category: $category")) { throw "运营后台产品化场景缺少类别: $category" }
 }

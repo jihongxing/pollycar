@@ -5,16 +5,21 @@
   "type": "module",
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "node scripts/run-expo-with-amap.mjs start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "node scripts/run-expo-with-amap.mjs start --web",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run src",
+    "test": "vitest run src scripts",
     "build": "node scripts/build-brand-environment.mjs sandbox",
     "build:sandbox": "node scripts/build-brand-environment.mjs sandbox",
     "build:demo": "node scripts/build-brand-environment.mjs demo",
-    "build:production": "node scripts/build-brand-environment.mjs production",
+    "build:production": "node scripts/run-production-gated-command.mjs node scripts/build-brand-environment.mjs production",
+    "android:production": "node scripts/run-production-gated-command.mjs pnpm exec expo run:android --variant release",
+    "ios:production": "node scripts/run-production-gated-command.mjs pnpm exec expo run:ios --configuration Release",
+    "eas:production": "node scripts/run-production-gated-command.mjs pnpm exec eas build --profile production --platform all",
+    "ci:production:gate": "node scripts/check-production-release-readiness.mjs",
+    "eas-build-pre-install": "node scripts/check-production-build-hook.mjs",
     "check:production-brand": "node scripts/check-production-brand-output.mjs dist-production"
   },
   "dependencies": {
@@ -22,6 +27,8 @@
     "@react-native-community/datetimepicker": "^9.1.0",
     "@tanstack/react-query": "5.101.2",
     "expo": "~57.0.4",
+    "expo-image-picker": "~57.0.5",
+    "expo-modules-core": "~57.0.3",
     "expo-router": "~57.0.4",
     "expo-splash-screen": "~57.0.2",
     "expo-status-bar": "~57.0.0",
@@ -32,6 +39,7 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
-    "@types/react": "~19.2.2"
+    "@types/react": "~19.2.2",
+    "eas-cli": "^21.2.0"
   }
 }

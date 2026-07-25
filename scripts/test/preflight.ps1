@@ -8,6 +8,9 @@ $ErrorActionPreference = "Stop"
 Write-Host "== 治理检查 =="
 & "$PSScriptRoot\check-doc-governance.ps1"
 
+Write-Host "== 生产能力门禁对齐检查 =="
+& "$PSScriptRoot\check-feature-gate-alignment.ps1"
+
 Write-Host "== 品牌安全检查 =="
 & "$PSScriptRoot\check-brand-safety.ps1"
 
@@ -29,6 +32,12 @@ Write-Host "== OpenAPI 操作策略检查 =="
 if ($FullGovernance) {
   Write-Host "== 生产准备机器契约检查 =="
   & "$PSScriptRoot\check-production-contracts.ps1"
+
+  Write-Host "== 共享预生产架构与审批门禁检查 =="
+  & "$PSScriptRoot\check-shared-preproduction-design.ps1"
+
+  Write-Host "== 真实账号与认证生产接入准备检查 =="
+  & "$PSScriptRoot\check-production-authentication-readiness.ps1"
 
   Write-Host "== 运营后台设计与准入检查 =="
   & "$PSScriptRoot\check-admin-specs.ps1"

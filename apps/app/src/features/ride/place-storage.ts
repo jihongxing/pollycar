@@ -1,5 +1,7 @@
 import type { RidePlace } from "./ride-model";
 
+import { readBrowserStorage, writeBrowserStorage } from "../../infrastructure/browser-storage";
+
 const savedPlacesKey = "pollycar.ride.saved-places";
 const recentPlacesKey = "pollycar.ride.recent-places";
 const maximumRecentPlaces = 8;
@@ -48,9 +50,8 @@ function readArray(key: string): readonly RidePlace[] {
 }
 
 function read(key: string): unknown {
-  if (typeof window === "undefined") return undefined;
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = readBrowserStorage(key);
     return raw ? JSON.parse(raw) : undefined;
   } catch {
     return undefined;
@@ -58,6 +59,5 @@ function read(key: string): unknown {
 }
 
 function write(key: string, value: unknown): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
+  writeBrowserStorage(key, JSON.stringify(value));
 }

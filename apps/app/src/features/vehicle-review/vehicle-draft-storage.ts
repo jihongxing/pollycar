@@ -1,17 +1,37 @@
+import {
+  readBrowserStorage,
+  removeBrowserStorage,
+  writeBrowserStorage,
+} from "../../infrastructure/browser-storage";
+
 export type VehicleFormDraft = Readonly<{
   vehicleType: string;
   insuranceDate: string;
   maxPassengerCount: 1 | 2 | 3;
+  preparedMaterials: readonly VehicleMaterialCode[];
   updatedAt: string;
 }>;
 
+export type VehicleMaterialCode =
+  | "driver_license"
+  | "vehicle_registration"
+  | "insurance_proof";
+
 const storageKey = "pollycar.vehicle-form.draft";
 let nativeDraft: VehicleFormDraft | undefined;
+const materialCodes: readonly VehicleMaterialCode[] = [
+  "driver_license",
+  "vehicle_registration",
+  "insurance_proof",
+];
+
+function isMaterialCode(value: unknown): value is VehicleMaterialCode {
+  return typeof value === "string" && materialCodes.includes(value as VehicleMaterialCode);
+}
 
 export function readVehicleFormDraft(): VehicleFormDraft | undefined {
-  if (typeof window === "undefined") return nativeDraft;
-  const value = window.localStorage.getItem(storageKey);
-  if (!value) return undefined;
+  const value = readBrowserStorage(storageKey);
+  if (!value) return nativeDraft;
   try {
     const parsed = JSON.parse(value) as Partial<VehicleFormDraft>;
     if (
@@ -25,6 +45,9 @@ export function readVehicleFormDraft(): VehicleFormDraft | undefined {
       vehicleType: parsed.vehicleType,
       insuranceDate: parsed.insuranceDate,
       maxPassengerCount: (parsed.maxPassengerCount ?? 1) as 1 | 2 | 3,
+      preparedMaterials: Array.isArray(parsed.preparedMaterials)
+        ? parsed.preparedMaterials.filter(isMaterialCode)
+        : [],
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date(0).toISOString(),
     };
   } catch {
@@ -37,15 +60,20 @@ export function saveVehicleFormDraft(
     vehicleType: string;
     insuranceDate: string;
     maxPassengerCount: 1 | 2 | 3;
+    preparedMaterials?: readonly VehicleMaterialCode[];
   }>,
 ): VehicleFormDraft {
-  const stored = { ...draft, updatedAt: new Date().toISOString() };
+  const stored = {
+    ...draft,
+    preparedMaterials: draft.preparedMaterials?.filter(isMaterialCode) ?? [],
+    updatedAt: new Date().toISOString(),
+  };
   nativeDraft = stored;
-  if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify(stored));
+  writeBrowserStorage(storageKey, JSON.stringify(stored));
   return stored;
 }
 
 export function clearVehicleFormDraft(): void {
   nativeDraft = undefined;
-  if (typeof window !== "undefined") window.localStorage.removeItem(storageKey);
+  removeBrowserStorage(storageKey);
 }

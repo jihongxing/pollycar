@@ -39,6 +39,7 @@ export async function startInternalSandboxHttpServer(
     featureGates?: Partial<FeatureGates>;
     allowedOrigins?: readonly string[];
     executiveStateDir?: string;
+    avatarObjectDirectory?: string;
   }> = {},
 ): Promise<InternalSandboxHttpServer> {
   const sandbox = createInternalSandbox(
@@ -48,6 +49,9 @@ export async function startInternalSandboxHttpServer(
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
       ...(options.executiveStateDir
         ? { executiveStateDir: options.executiveStateDir }
+        : {}),
+      ...(options.avatarObjectDirectory
+        ? { avatarObjectDirectory: options.avatarObjectDirectory }
         : {}),
     },
   );

@@ -122,18 +122,66 @@ export function vehicleReviewMaterialCopy(review: VehicleReviewView): Readonly<{
   title: string;
   description: string;
 }> {
-  const insuranceRequested =
-    review.requestedMaterialCodes.length === 0 ||
-    review.requestedMaterialCodes.some((code) => code.toLowerCase().includes("insurance"));
-  return insuranceRequested
-    ? {
-        title: "更新保险有效期",
-        description: "当前日期信息不完整。补充有效日期后，其他已确认内容会保持不变。",
-      }
-    : {
-        title: "补充车辆资料",
-        description: "请按当前提示补充缺少的信息，其他已确认内容会保持不变。",
-      };
+  const materials = vehicleReviewMaterialRequirements(review);
+  if (materials.length === 1) {
+    return {
+      title: materials[0]!.title,
+      description: materials[0]!.description,
+    };
+  }
+  return {
+    title: "补充车辆资料",
+    description: "请逐项补交当前需要的材料，其他已确认内容会保持不变。",
+  };
+}
+
+export type VehicleReviewMaterialRequirement = Readonly<{
+  code: "driver_license" | "vehicle_registration" | "insurance_proof";
+  icon: "account" | "car" | "safety";
+  title: string;
+  description: string;
+  needsInsuranceDate?: boolean;
+}>;
+
+const materialRequirements: readonly VehicleReviewMaterialRequirement[] = [
+  {
+    code: "driver_license",
+    icon: "account",
+    title: "补交驾驶资格材料",
+    description: "请补交可用于确认驾驶资格的材料。",
+  },
+  {
+    code: "vehicle_registration",
+    icon: "car",
+    title: "补交车辆材料",
+    description: "请补交与本次申请车辆一致的材料。",
+  },
+  {
+    code: "insurance_proof",
+    icon: "safety",
+    title: "更新保险有效期",
+    description: "请补充仍在有效期内的保险材料和到期日。",
+    needsInsuranceDate: true,
+  },
+];
+
+export function vehicleReviewMaterialRequirements(
+  review: VehicleReviewView,
+): readonly VehicleReviewMaterialRequirement[] {
+  const requested = review.requestedMaterialCodes.map((code) => code.toLowerCase());
+  const matches = (requirement: VehicleReviewMaterialRequirement) => {
+    if (requirement.code === "driver_license") {
+      return requested.some((code) => code.includes("driver") || code.includes("license"));
+    }
+    if (requirement.code === "vehicle_registration") {
+      return requested.some((code) => code.includes("vehicle") || code.includes("registration"));
+    }
+    return requested.some((code) =>
+      code.includes("insurance") || code.includes("policy") || code.includes("expiry") || code.includes("expiration"),
+    );
+  };
+  const selected = materialRequirements.filter(matches);
+  return selected.length > 0 ? selected : [materialRequirements[2]!];
 }
 
 export function formatVehicleReviewDate(value: string | undefined): string {

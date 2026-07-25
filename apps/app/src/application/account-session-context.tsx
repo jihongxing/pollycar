@@ -16,6 +16,11 @@ import { HttpAccountSessionClient } from "../infrastructure/http-account-session
 import { resolveApiBaseUrl } from "../infrastructure/api-base-url";
 import { HttpPhoneAuthenticationClient } from "../infrastructure/http-phone-authentication-client";
 import {
+  readBrowserStorage,
+  removeBrowserStorage,
+  writeBrowserStorage,
+} from "../infrastructure/browser-storage";
+import {
   setSessionToken,
   subscribeToSessionAuthenticationFailure,
 } from "../infrastructure/session-credentials";
@@ -139,12 +144,10 @@ function resolveDeviceId(): string {
 }
 
 function readStoredValue(key: string): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  return window.localStorage.getItem(key) ?? undefined;
+  return readBrowserStorage(key);
 }
 
 function writeStoredValue(key: string, value: string | undefined): void {
-  if (typeof window === "undefined") return;
-  if (value === undefined) window.localStorage.removeItem(key);
-  else window.localStorage.setItem(key, value);
+  if (value === undefined) removeBrowserStorage(key);
+  else writeBrowserStorage(key, value);
 }

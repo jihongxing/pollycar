@@ -87,9 +87,15 @@ actions:
   - id: "trust_profile.avatar.submit"
     resource: "trust_profile"
     allowed_roles: ["passenger", "driver"]
-    scope: "self_synthetic_asset"
+    scope: "self_avatar"
     maximum_classification: "L2"
     audit: "strict"
+  - id: "trust_profile.avatar.public.read"
+    resource: "trust_profile_avatar_media"
+    allowed_roles: ["passenger", "driver"]
+    scope: "approved_random_reference"
+    maximum_classification: "L2"
+    audit: "standard"
   - id: "trip_rating.self.read"
     resource: "trip_rating"
     allowed_roles: ["passenger", "driver"]
@@ -1075,6 +1081,12 @@ actions:
     resource: "admin_audit_investigation"
     allowed_roles: ["technical_operations"]
     scope: "platform_controlled_investigation_without_domain_state_mutation"
+    maximum_classification: "L2"
+    audit: "strict"
+  - id: "admin_global_search.read"
+    resource: "admin_global_search"
+    allowed_roles: ["platform_access_administrator", "operations_officer", "operations_lead", "operator_management_officer", "reviewer", "senior_reviewer", "customer_support", "support_lead", "safety_officer", "safety_lead", "finance_officer", "finance_lead", "privacy_compliance", "data_analyst", "auditor", "technical_operations", "executive_sponsor", "operator_account_administrator", "operator_operations_lead", "operator_fleet_officer", "operator_customer_support", "operator_safety_liaison", "operator_finance_officer", "operator_finance_lead", "operator_auditor", "operator_executive"]
+    scope: "current_work_identity_available_route_permissions_and_authorized_organization_scope_only"
     maximum_classification: "L2"
     audit: "strict"
   - id: "admin_data_report.read"

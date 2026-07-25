@@ -84,17 +84,97 @@ test("最大字体下核心页面不横向溢出且保持屏幕阅读器语义",
 
 test("服务通知、通知设置和帮助反馈具备完整无障碍语义", async ({ page }) => {
   await openAuthenticatedPage(page, "/notifications");
-  await expect(page.getByRole("heading", { name: /需要留意|服务状态已是最新/ })).toBeVisible();
+  await expect(page.getByText("服务通知", { exact: true }).first()).toBeVisible();
+  const firstNotification = page.getByRole("button", {
+    name: /准备车辆资料|补充车辆资料|参与资格可以申请|确认启用参与资格/,
+  }).first();
+  await expect(firstNotification).toBeVisible();
+  await firstNotification.click();
+  await expect(page).toHaveURL(/\/notification-detail$/);
+  await expect(page.getByText("通知详情", { exact: true }).first()).toBeVisible();
+  await expectNoSeriousViolations(page);
+  await page.evaluate(() => sessionStorage.removeItem("rego.notification-center.detail"));
+  await page.goto("/notification-detail");
+  await expect(page.getByLabel(/这条通知已不在当前列表/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "返回服务通知" })).toBeVisible();
   await expectNoSeriousViolations(page);
 
   await page.goto("/notification-settings");
   await expect(page.getByRole("switch", { name: "行程进展" })).toBeVisible();
-  await expect(page.getByRole("switch", { name: "安全与重要状态" })).toBeDisabled();
+  await expect(page.getByText("安全与账户提醒")).toBeVisible();
+  await expect(page.getByText("始终开启")).toBeVisible();
   await expectNoSeriousViolations(page);
 
   await page.goto("/help-feedback");
   await expect(page.getByRole("textbox", { name: "反馈说明" })).toBeVisible();
   await expect(page.getByRole("button", { name: "分享反馈" })).toBeDisabled();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async () => undefined,
+    });
+  });
+  await page.getByRole("textbox", { name: "反馈说明" }).fill("希望改进行程通知的阅读体验");
+  await page.getByRole("button", { name: "分享反馈" }).click();
+  await expect(
+    page.getByRole("status", {
+      name: "已打开分享菜单。请选择你希望使用的联系渠道。",
+    }),
+  ).toBeVisible();
+  await expectNoSeriousViolations(page);
+});
+
+test("登录协议入口具有可访问行动", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    localStorage.removeItem("rego.authentication.refresh-token");
+    localStorage.removeItem("rego.authentication.device-id");
+  });
+  await page.reload();
+  const legalLink = page.getByRole("link", {
+    name: "查看服务协议、隐私政策和手机号认证说明",
+  });
+  await expect(legalLink).toBeVisible();
+  await legalLink.click();
+  await expect(page).toHaveURL(/\/legal-information$/);
+  await expect(page.getByRole("heading", { name: "使用服务前，请了解这些内容" })).toBeVisible();
+  await expectNoSeriousViolations(page);
+
+  await page.getByRole("button", { name: "账户使用，查看" }).click();
+  await expect(page).toHaveURL(/\/service-agreement$/);
+  await expect(page.getByText("适用于账户使用、乘客行程以及通过准入后的车主参与。")).toBeVisible();
+  await expectNoSeriousViolations(page);
+  await page.getByRole("button", { name: "返回" }).click();
+
+  await page.getByRole("button", { name: "信息如何使用，查看" }).click();
+  await expect(page).toHaveURL(/\/privacy-policy$/);
+  await expect(page.getByText(/建议在 24 小时内发起，会话最多开放 72 小时/)).toBeVisible();
+  await expectNoSeriousViolations(page);
+  await page.getByRole("button", { name: "返回" }).click();
+
+  await page.getByRole("button", { name: "登录与设备，查看" }).click();
+  await expect(page).toHaveURL(/\/phone-auth-notice$/);
+  await expect(page.getByText("验证码用于确认当前手机号可由本人使用，请勿转交他人。")).toBeVisible();
+  await expectNoSeriousViolations(page);
+});
+
+test("身份、车辆和实名复核辅助页具有可访问恢复路径", async ({ page }) => {
+  await openAuthenticatedPage(page, "/identity-settings");
+  await expect(page.getByText("当前使用", { exact: true })).toBeVisible();
+  await expect(page.getByText("可用身份", { exact: true })).toBeVisible();
+  await expectNoSeriousViolations(page);
+
+  await page.goto("/vehicle-settings");
+  await expect(page.getByText("车辆信息", { exact: true })).toBeVisible();
+  await expect(page.getByText("审核状态", { exact: true })).toBeVisible();
+  await expectNoSeriousViolations(page);
+
+  await page.goto("/adult-eligibility-appeal");
+  await expect(
+    page.getByRole("textbox", { name: "复核说明" }).or(
+      page.getByRole("button", { name: "返回我的实名" }),
+    ),
+  ).toBeVisible();
   await expectNoSeriousViolations(page);
 });
 

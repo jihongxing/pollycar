@@ -97,6 +97,7 @@ import {
   FileAdminAuditEventStore,
   FileExecutiveGovernanceStateStore,
 } from "./persistence/admin-governance-file-store.js";
+import { FileAvatarObjectStore } from "./persistence/file-avatar-object-store.js";
 
 export function createInternalSandbox(
   now: () => Date = () => new Date(0),
@@ -104,6 +105,7 @@ export function createInternalSandbox(
     featureGates?: Partial<FeatureGates>;
     allowedOrigins?: readonly string[];
     executiveStateDir?: string;
+    avatarObjectDirectory?: string;
   }> = {},
 ) {
   const config = createInternalSandboxConfig(
@@ -153,8 +155,13 @@ export function createInternalSandbox(
     postgres?.locationLifecycle ?? new MemoryRepository<LocationLifecycleRecord>();
   const adultEligibilityRepository: Repository<RealNameVerificationRecord> =
     postgres?.identityVerifications ?? new MemoryRepository<RealNameVerificationRecord>();
-  const trustProfileRepository = new MemoryRepository<TrustProfileRecord>();
+  const trustProfileRepository: Repository<TrustProfileRecord> =
+    postgres?.trustProfiles ?? new MemoryRepository<TrustProfileRecord>();
   const tripRatingRepository = new MemoryRepository<TripRatingRecord>();
+  const avatarObjectStore = new FileAvatarObjectStore(
+    options.avatarObjectDirectory ??
+      join(process.cwd(), ".data", "internal-sandbox", "avatar-objects"),
+  );
   const goodwillCancellationRepository: Repository<GoodwillCancellationRecord> =
     postgres?.goodwillCancellations ?? new MemoryRepository<GoodwillCancellationRecord>();
   const accountSessionRepository: Repository<AccountSessionRecord> =
@@ -210,6 +217,7 @@ export function createInternalSandbox(
     tripRatingRepository,
     syntheticTripRepository,
     audit,
+    avatarObjectStore,
     now,
   );
   const decoratePublicProfile = async (profile: import("@pollycar/contracts").TripPartyPublicProfile) => {

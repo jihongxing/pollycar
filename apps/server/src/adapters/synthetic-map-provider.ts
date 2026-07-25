@@ -49,11 +49,12 @@ export class SyntheticMapProvider implements MapProvider {
     const nearest = places
       .map((item) => ({ item, distance: squaredDistance(item.location, request.location) }))
       .sort((left, right) => left.distance - right.distance)[0];
-    return nearest && nearest.distance <= 0.01
-      ? nearest.item
+    const radiusDegrees = Math.max(request.radiusMeters, 50) / 111_000;
+    return nearest && nearest.distance <= radiusDegrees ** 2
+      ? { ...nearest.item, location: request.location }
       : {
-          placeId: `manual-${request.location.latitude.toFixed(5)}-${request.location.longitude.toFixed(5)}`,
-          name: "地图选定位置",
+        placeId: `manual-${request.location.latitude.toFixed(5)}-${request.location.longitude.toFixed(5)}`,
+        name: "地图选定位置",
           formattedAddress: `${request.location.latitude.toFixed(5)}, ${request.location.longitude.toFixed(5)}`,
           location: request.location,
           kind: "manual_pin",

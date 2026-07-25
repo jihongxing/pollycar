@@ -1,6 +1,7 @@
 export * from "./countdown-action";
 export * from "./driver-vehicle-card";
 export * from "./map-surface";
+export * from "./map-point-picker";
 export * from "./mobility-bottom-sheet";
 export * from "./mobility-floating-action";
 export * from "./mobility-page";

@@ -1,0 +1,80 @@
+name: pollycar-production-readiness
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    user: "0:0"
+    environment:
+      POSTGRES_DB: pollycar
+      POSTGRES_USER: pollycar
+      POSTGRES_PASSWORD_FILE: /run/local-production/postgres-password.txt
+    command:
+      - sh
+      - -ec
+      - |
+        cp /run/local-production/postgres-server.crt /var/lib/postgresql/server.crt
+        cp /run/local-production/postgres-server.key /var/lib/postgresql/server.key
+        chown postgres:postgres /var/lib/postgresql/server.crt /var/lib/postgresql/server.key
+        chmod 600 /var/lib/postgresql/server.key
+        exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./secrets:/run/local-production:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pollycar -d pollycar"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - production-readiness
+
+  otel-collector:
+    image: docker.io/otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    networks:
+      - production-readiness
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      POLLYCAR_PRODUCTION_DATABASE_CA_PATH: /run/local-production/postgres-ca.crt
+      POLLYCAR_PRODUCTION_PUBLIC_BASE_URL: https://api.pollycar.example
+      POLLYCAR_PRODUCTION_ALLOWED_ORIGINS: https://app.pollycar.example,https://admin.pollycar.example
+      POLLYCAR_SECRET_PROVIDER_REFERENCE: vault://local-production/pollycar
+      POLLYCAR_OTLP_ENDPOINT: https://otel.pollycar.example
+      POLLYCAR_PRODUCTION_HOST: 0.0.0.0
+      POLLYCAR_PRODUCTION_PORT: "4310"
+    volumes:
+      - ./secrets:/run/local-production:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - production-readiness
+
+  proxy:
+    image: docker.io/library/caddy:2-alpine
+    ports:
+      - "127.0.0.1:8444:8443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certificates:/etc/caddy/tls:ro
+    depends_on:
+      server:
+        condition: service_started
+    networks:
+      - production-readiness
+
+networks:
+  production-readiness:
+    name: pollycar-production-readiness
+
+volumes:
+  postgres-data:
+    name: pollycar-production-readiness-postgres-data

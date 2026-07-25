@@ -1,0 +1,54 @@
+version: "1.0"
+status: "implemented_production_disabled"
+updated_at: "2026-07-19"
+
+purpose:
+  user_task: "选择、预览并保存与行程相关的账户头像"
+  data_classification: "L2"
+  production_enabled: false
+  real_data_ingestion: false
+
+accepted_media:
+  mime_types:
+    - "image/jpeg"
+    - "image/png"
+    - "image/webp"
+  maximum_bytes: 1500000
+  minimum_width: 128
+  minimum_height: 128
+  maximum_width: 4096
+  maximum_height: 4096
+
+storage:
+  original_bytes_in_business_database: false
+  object_store_required: true
+  random_object_key_required: true
+  independent_access_token_required: true
+  replacement_revokes_previous_token: true
+  private_write_required: true
+  public_read_requires_approved_reference: true
+  replace_deletes_previous_object: true
+  failed_profile_write_deletes_new_object: true
+
+security:
+  authentication_required_for_upload: true
+  idempotency_required: true
+  audit_required: true
+  declared_size_validation_required: true
+  decoded_size_validation_required: true
+  file_signature_validation_required: true
+  dimension_validation_required: true
+  content_type_nosniff_required: true
+  restrictive_content_security_policy_required: true
+
+production_prerequisites:
+  - "privacy_impact_assessment"
+  - "approved_private_object_storage"
+  - "encryption_and_key_rotation"
+  - "image_reencoding_and_metadata_stripping"
+  - "malware_scanning"
+  - "content_safety_moderation"
+  - "rate_limits_and_account_quota"
+  - "orphan_cleanup_and_account_deletion"
+  - "cdn_access_and_cache_invalidation"
+  - "mobile_device_acceptance"

@@ -136,6 +136,105 @@ describe("运营后台合成认证与授权导航", () => {
       });
   });
 
+  it("发布前验收补齐运营专员、主体管理、客服负责人和运营公司安全联络身份", () => {
+    const service = new AdminAuthenticationService(true, true);
+    const samples = [
+      ["ops@rego.example", "synthetic-operations-officer-001", "operations_officer"],
+      ["ops@rego.example", "synthetic-operator-management-officer-001", "operator_management_officer"],
+      ["support@rego.example", "synthetic-support-lead-001", "support_lead"],
+      ["safety@rego.example", "synthetic-operator-safety-liaison-001", "operator_safety_liaison"],
+    ] as const;
+
+    for (const [email, workIdentityId, productRole] of samples) {
+      const session = login(service, email, workIdentityId);
+      expect(session.workIdentity.productRole).toBe(productRole);
+      expect(session.navigation.items.some(
+        (navigationItem) => navigationItem.availability === "available",
+      )).toBe(true);
+    }
+  });
+
+  it("发布前验收角色导航与冻结权限矩阵保持一致", () => {
+    const service = new AdminAuthenticationService(
+      true, true, undefined, true, true, true, true, true, true,
+      undefined, true, true, true,
+    );
+    const samples = [
+      ["access.admin@rego.example", "synthetic-platform-access-admin-001", ["workbench", "organization_accounts", "audit_system"]],
+      ["ops@rego.example", "synthetic-operations-officer-001", ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"]],
+      ["ops@rego.example", "synthetic-platform-ops-001", ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports", "executive_dashboard"]],
+      ["ops@rego.example", "synthetic-operator-management-officer-001", ["workbench", "operator_management", "driver_vehicle"]],
+      ["review@rego.example", "synthetic-reviewer-001", ["workbench", "driver_vehicle"]],
+      ["review@rego.example", "synthetic-senior-reviewer-001", ["workbench", "operator_management", "driver_vehicle"]],
+      ["support@rego.example", "synthetic-support-001", ["workbench", "trip_operations", "support_safety"]],
+      ["support@rego.example", "synthetic-support-lead-001", ["workbench", "trip_operations", "support_safety", "data_reports"]],
+      ["safety@rego.example", "synthetic-safety-officer-001", ["workbench", "driver_vehicle", "trip_operations", "support_safety"]],
+      ["safety@rego.example", "synthetic-safety-lead-001", ["workbench", "support_safety", "data_reports", "executive_dashboard"]],
+      ["finance@rego.example", "synthetic-finance-officer-001", ["workbench", "finance_operations"]],
+      ["finance@rego.example", "synthetic-finance-lead-001", ["workbench", "finance_operations", "data_reports", "executive_dashboard"]],
+      ["governance@rego.example", "synthetic-privacy-compliance-001", ["workbench", "support_safety", "finance_operations", "data_reports", "executive_dashboard", "audit_system"]],
+      ["analytics@rego.example", "synthetic-data-analyst-001", ["workbench", "data_reports"]],
+      ["audit@rego.example", "synthetic-auditor-001", ["workbench", "organization_accounts", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"]],
+      ["technical@rego.example", "synthetic-technical-ops-001", ["workbench", "audit_system"]],
+      ["executive@rego.example", "synthetic-executive-sponsor-001", ["workbench", "data_reports", "executive_dashboard"]],
+      ["operator.admin@rego.example", "synthetic-operator-account-admin-001", ["workbench", "organization_accounts", "audit_system"]],
+      ["lin.yun@rego.example", "synthetic-operator-ops-001", ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"]],
+      ["fleet@rego.example", "synthetic-operator-fleet-001", ["workbench", "operator_management", "driver_vehicle"]],
+      ["support@rego.example", "synthetic-operator-support-001", ["workbench", "trip_operations", "support_safety"]],
+      ["safety@rego.example", "synthetic-operator-safety-liaison-001", ["workbench", "driver_vehicle", "trip_operations", "support_safety"]],
+      ["finance@rego.example", "synthetic-operator-finance-officer-001", ["workbench", "finance_operations"]],
+      ["finance@rego.example", "synthetic-operator-finance-lead-001", ["workbench", "finance_operations", "data_reports"]],
+      ["audit@rego.example", "synthetic-operator-auditor-001", ["workbench", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"]],
+      ["executive@rego.example", "synthetic-operator-executive-001", ["workbench", "data_reports", "executive_dashboard"]],
+    ] as const;
+
+    for (const [email, workIdentityId, expectedDomains] of samples) {
+      const session = login(service, email, workIdentityId);
+      const actualDomains = session.navigation.items
+        .filter((navigationItem) =>
+          navigationItem.availability === "available" &&
+          session.navigation.routePermissions.includes(
+            `${navigationItem.id}:read`,
+          ),
+        )
+        .map((navigationItem) => navigationItem.id);
+      expect(actualDomains).toEqual(expectedDomains);
+    }
+  });
+
+  it("切换工作身份时签发新会话并立即撤销旧访问令牌", () => {
+    const service = new AdminAuthenticationService(true, true);
+    const challenge = service.startLogin(
+      "lin.yun@rego.example",
+      "Rego-Internal-2026!",
+    );
+    const verification = service.verifyMfa(challenge.challengeId, "826419");
+    const platformSession = service.selectWorkIdentity(
+      verification.selectionToken,
+      "synthetic-platform-ops-001",
+    );
+
+    const operatorSession = service.switchWorkIdentity(
+      platformSession.accessToken,
+      "synthetic-operator-ops-001",
+    );
+
+    expect(operatorSession.workIdentity).toMatchObject({
+      type: "operator",
+      organizationId: "operator-huhang",
+    });
+    expect(operatorSession.sessionFamilyId)
+      .not.toBe(platformSession.sessionFamilyId);
+    expect(() => service.getNavigation(platformSession.accessToken))
+      .toThrow("SESSION_EXPIRED");
+    expect(service.getNavigation(operatorSession.accessToken).organizationContext)
+      .toMatchObject({
+        organizationType: "operator",
+        organizationId: "operator-huhang",
+        fixed: true,
+      });
+  });
+
   it("拒绝篡改或跨组织复用游标", () => {
     const service = new AdminAuthenticationService(true, true);
     const platform = login(service, "ops@rego.example", "synthetic-platform-ops-001");

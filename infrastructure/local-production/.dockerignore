@@ -1,0 +1,5 @@
+certificates/
+secrets/
+state/*
+!state/server-bundle/
+!state/server-bundle/**

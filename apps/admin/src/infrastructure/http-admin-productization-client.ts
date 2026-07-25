@@ -31,6 +31,8 @@ import type {
   AdminFinanceDirectoryPage,
   AdminFinanceDirectoryQuery,
   AdminFinanceResourceKind,
+  AdminGlobalSearchQuery,
+  AdminGlobalSearchResponse,
   AdminInvitationSummary,
   AdminMembershipActionCommand,
   AdminMembershipActionResult,
@@ -110,6 +112,20 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
     });
   }
 
+  public switchWorkIdentity(
+    accessToken: string,
+    workIdentityId: string,
+  ): Promise<AdminProductSession> {
+    return this.request("/v1/internal-sandbox/admin/auth/work-identities/switch", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ workIdentityId }),
+    });
+  }
+
   public refreshSession(refreshToken: string): Promise<AdminProductSession> {
     return this.request("/v1/internal-sandbox/admin/auth/session/refresh", {
       method: "POST",
@@ -128,6 +144,22 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
     return this.request("/v1/internal-sandbox/admin/navigation", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+  }
+
+  public searchAcrossDomains(
+    accessToken: string,
+    query: AdminGlobalSearchQuery,
+  ): Promise<AdminGlobalSearchResponse> {
+    const parameters = new URLSearchParams({
+      query: query.query,
+      ...(query.limitPerDomain
+        ? { limit_per_domain: String(query.limitPerDomain) }
+        : {}),
+    });
+    return this.request(
+      `/v1/internal-sandbox/admin/search?${parameters.toString()}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
   }
 
   public listOperationsTasks(

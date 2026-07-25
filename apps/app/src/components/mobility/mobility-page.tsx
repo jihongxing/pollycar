@@ -70,6 +70,7 @@ export function MobilityPage({
         </View>
         {hero ? <View style={{ borderBottomColor: accent }}>{hero}</View> : null}
         <ScrollView
+          tabIndex={0}
           style={styles.content}
           contentContainerStyle={{
             gap: theme.spacing.lg,

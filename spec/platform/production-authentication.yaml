@@ -1,0 +1,127 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.production-authentication"
+language: "zh-CN"
+status: "reviewing"
+source_document: "docs/decisions/0030-真实账号与认证生产接入准备.md"
+
+production_enabled: false
+phase: "real_accounts_and_authentication_readiness"
+production_authentication_enabled: false
+authentication_routes_enabled: false
+production_migrations_enabled: false
+real_phone_data_enabled: false
+real_sms_delivery_enabled: false
+real_identity_verification_enabled: false
+real_biometric_verification_enabled: false
+real_admin_accounts_enabled: false
+
+separation:
+  consumer_phone_authentication_independent: true
+  adult_eligibility_independent: true
+  admin_workforce_authentication_independent: true
+  phone_authentication_grants_business_access: false
+  phone_authentication_replaces_adult_eligibility: false
+  app_account_reuse_for_admin_forbidden: true
+
+consumer_phone:
+  strategy: "login_or_register"
+  mainland_china_only_decision: "pending"
+  provider_selected: false
+  enterprise_account_ready: false
+  sender_approved: false
+  template_approved: false
+  test_secret_reference_ready: false
+  data_processing_terms_approved: false
+  six_digit_code_required: true
+  code_ttl_minutes: 5
+  maximum_verification_attempts: 5
+  code_hmac_digest_only: true
+  phone_encryption_required: true
+  phone_lookup_digest_required: true
+  account_enumeration_forbidden: true
+  unknown_delivery_auto_retry_forbidden: true
+  refresh_token_rotation_required: true
+  refresh_token_replay_revokes_family: true
+
+adult_eligibility:
+  provider_selected: false
+  enterprise_contract_ready: false
+  test_environment_ready: false
+  identity_document_processing_approved: false
+  biometric_processing_approved: false
+  data_residency_approved: false
+  retention_and_deletion_approved: false
+  callback_signature_required: true
+  idempotency_required: true
+  unknown_result_query_required: true
+  manual_review_required: true
+  appeal_required: true
+  raw_identity_data_in_business_payload_forbidden: true
+
+admin_workforce:
+  strategy_decision: "pending"
+  recommended_strategy: "managed_oidc"
+  managed_oidc_selected: false
+  self_managed_password_selected: false
+  identity_tenant_ready: false
+  test_application_ready: false
+  managed_secret_reference_ready: false
+  phishing_resistant_mfa_decision: "pending"
+  sms_mfa_forbidden: true
+  employee_departure_sync_required: true
+  server_side_work_identity_switch_required: true
+  session_revocation_required: true
+  recovery_separation_of_duties_required: true
+
+cryptography:
+  phone_encryption_key_reference_ready: false
+  phone_digest_key_reference_ready: false
+  otp_hmac_key_reference_ready: false
+  session_signing_key_reference_ready: false
+  raw_secrets_allowed: false
+  image_embedded_secrets_allowed: false
+  managed_secret_references_required: true
+
+pending_decisions:
+  phone_scope: "pending"
+  recycled_number_policy: "pending"
+  consumer_account_recovery: "pending"
+  admin_account_strategy: "pending"
+  admin_mfa_strategy: "pending"
+  session_lifetimes_and_device_limits: "pending"
+  adult_eligibility_and_legal_gender: "pending"
+  retention_periods: "pending"
+  fraud_and_support_ownership: "pending"
+  preproduction_data_scope: "synthetic_and_provider_test_data_only"
+
+approval_gate:
+  all_approvals_required_for_provider_testing: true
+  immutable_evidence_reference_required: true
+  product_and_account_policy:
+    approved: false
+    evidence_reference: null
+  security:
+    approved: false
+    evidence_reference: null
+  privacy_and_legal:
+    approved: false
+    evidence_reference: null
+  operations_and_customer_support:
+    approved: false
+    evidence_reference: null
+  supplier_procurement_and_finance:
+    approved: false
+    evidence_reference: null
+  production_decision:
+    approved: false
+    evidence_reference: null
+
+implementation_boundary:
+  readiness_configuration_implemented: true
+  disabled_sms_adapter_implemented: true
+  disabled_identity_adapter_implemented: true
+  synthetic_account_model_unchanged: true
+  synthetic_fixed_code_unchanged: true
+  production_database_schema_created: false
+  production_http_routes_mounted: false
+  supplier_sdk_integrated: false

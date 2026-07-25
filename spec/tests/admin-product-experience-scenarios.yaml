@@ -358,3 +358,15 @@ scenarios:
     category: data_reports
     title: "报表不开放人员级数据真实数据和导出能力且审计角色保持只读"
     expected: "data_reports_boundary_and_read_only"
+  - id: "ADMIN-UX-089"
+    category: navigation
+    title: "跨域搜索仅聚合当前工作身份可访问且已开放的领域并按领域分组"
+    expected: "global_search_server_authorization_and_grouping"
+  - id: "ADMIN-UX-090"
+    category: recovery
+    title: "搜索结果跳转继续经过前端路由权限校验并保留主从工作区返回上下文"
+    expected: "global_search_controlled_navigation_recovery"
+  - id: "ADMIN-UX-091"
+    category: accessibility
+    title: "全局搜索支持键盘打开关闭焦点恢复且审计不记录原始搜索词"
+    expected: "global_search_accessibility_and_digest_only_audit"

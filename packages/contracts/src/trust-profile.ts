@@ -13,8 +13,10 @@ export type AccountTrustProfile = Readonly<{
   accountId: string;
   avatar: Readonly<{
     state: AvatarModerationState;
+    source: "default" | "preset" | "custom";
     publicUrl?: string;
     rejectionReason?: "face_missing" | "multiple_people" | "unsafe_content";
+    customUploadEnabled: true;
     realUploadEnabled: false;
     synthetic: true;
   }>;
@@ -27,6 +29,14 @@ export type AccountTrustProfile = Readonly<{
 
 export type SubmitAvatarCommand = Readonly<{
   asset: SyntheticAvatarAsset;
+  idempotencyKey: string;
+}>;
+
+export type SubmitCustomAvatarCommand = Readonly<{
+  fileName: string;
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  byteSize: number;
+  contentBase64: string;
   idempotencyKey: string;
 }>;
 
@@ -53,5 +63,6 @@ export type FairnessMonitoringReport = Readonly<{
 export interface TrustProfileClient {
   getProfile(): Promise<AccountTrustProfile>;
   submitAvatar(command: SubmitAvatarCommand): Promise<AccountTrustProfile>;
+  submitCustomAvatar(command: SubmitCustomAvatarCommand): Promise<AccountTrustProfile>;
   getFairnessReport(): Promise<FairnessMonitoringReport>;
 }

@@ -14,8 +14,8 @@
     "source_document": {"type": "string"},
     "scenarios": {
       "type": "array",
-      "minItems": 88,
-      "maxItems": 88,
+      "minItems": 91,
+      "maxItems": 91,
       "uniqueItems": true,
       "items": {
         "type": "object",

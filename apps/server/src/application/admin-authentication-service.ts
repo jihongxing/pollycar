@@ -57,6 +57,10 @@ import type {
   AdminFinanceDirectoryQuery,
   AdminFinanceOperationsCommand,
   AdminFinanceResourceKind,
+  AdminGlobalSearchGroup,
+  AdminGlobalSearchQuery,
+  AdminGlobalSearchResponse,
+  AdminGlobalSearchResultItem,
   AdminSafetyCaseAction,
   AdminSafetyInvestigation,
   AdminSupportCase,
@@ -149,6 +153,7 @@ type Selection = Readonly<{
 }>;
 
 type SessionRecord = {
+  accountEmail: string;
   sessionFamilyId: string;
   accessToken: string;
   refreshToken: string;
@@ -158,6 +163,7 @@ type SessionRecord = {
   lastUsedAt: number;
   accessExpiresAt: number;
   absoluteExpiresAt: number;
+  mfaVerifiedAt: number;
   revoked: boolean;
 };
 
@@ -368,12 +374,12 @@ const roleDomains: Readonly<Record<AdminProductRole, readonly AdminNavigationDom
     operations_lead: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports", "executive_dashboard"],
     operator_management_officer: ["workbench", "operator_management", "driver_vehicle"],
     reviewer: ["workbench", "driver_vehicle"],
-    senior_reviewer: ["workbench", "driver_vehicle", "audit_system"],
+    senior_reviewer: ["workbench", "operator_management", "driver_vehicle"],
     customer_support: ["workbench", "trip_operations", "support_safety"],
     support_lead: ["workbench", "trip_operations", "support_safety", "data_reports"],
-    safety_officer: ["workbench", "trip_operations", "support_safety"],
-    safety_lead: ["workbench", "trip_operations", "support_safety", "data_reports", "executive_dashboard"],
-    finance_officer: ["workbench", "finance_operations", "data_reports"],
+    safety_officer: ["workbench", "driver_vehicle", "trip_operations", "support_safety"],
+    safety_lead: ["workbench", "support_safety", "data_reports", "executive_dashboard"],
+    finance_officer: ["workbench", "finance_operations"],
     finance_lead: ["workbench", "finance_operations", "data_reports", "executive_dashboard"],
     privacy_compliance: ["workbench", "support_safety", "finance_operations", "data_reports", "executive_dashboard", "audit_system"],
     data_analyst: ["workbench", "data_reports"],
@@ -382,12 +388,12 @@ const roleDomains: Readonly<Record<AdminProductRole, readonly AdminNavigationDom
     executive_sponsor: ["workbench", "data_reports", "executive_dashboard"],
     operator_account_administrator: ["workbench", "organization_accounts", "audit_system"],
     operator_operations_lead: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"],
-    operator_fleet_officer: ["workbench", "driver_vehicle"],
+    operator_fleet_officer: ["workbench", "operator_management", "driver_vehicle"],
     operator_customer_support: ["workbench", "trip_operations", "support_safety"],
-    operator_safety_liaison: ["workbench", "trip_operations", "support_safety"],
-    operator_finance_officer: ["workbench", "finance_operations", "data_reports"],
+    operator_safety_liaison: ["workbench", "driver_vehicle", "trip_operations", "support_safety"],
+    operator_finance_officer: ["workbench", "finance_operations"],
     operator_finance_lead: ["workbench", "finance_operations", "data_reports"],
-    operator_auditor: ["workbench", "organization_accounts", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"],
+    operator_auditor: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"],
     operator_executive: ["workbench", "data_reports", "executive_dashboard"],
   });
 
@@ -667,7 +673,32 @@ export class AdminAuthenticationService {
     }
     this.selections.delete(selectionToken);
     this.revokeOldestIfNeeded(selection.email);
-    return this.issueSession(identity);
+    return this.issueSession(identity, selection.email);
+  }
+
+  public switchWorkIdentity(
+    accessToken: string,
+    workIdentityId: string,
+  ): AdminProductSession {
+    const current = this.authenticate(accessToken);
+    const now = this.now().getTime();
+    if (current.mfaVerifiedAt + 15 * 60_000 <= now) {
+      throw new Error("ADMIN_AUTH_MFA_FRESHNESS_REQUIRED");
+    }
+    const account = this.accounts.get(current.accountEmail);
+    const identity = account?.workIdentities.find(
+      (candidate) => candidate.workIdentityId === workIdentityId,
+    );
+    if (!identity || !this.isWorkIdentityActive(identity)) {
+      throw new Error("ADMIN_WORK_IDENTITY_FORBIDDEN");
+    }
+    if (identity.workIdentityId === current.workIdentity.workIdentityId) {
+      return this.toSession(current);
+    }
+    current.revoked = true;
+    this.sessionsByAccess.delete(current.accessToken);
+    this.revokeOldestIfNeeded(current.accountEmail);
+    return this.issueSession(identity, current.accountEmail, current.mfaVerifiedAt);
   }
 
   public refreshSession(refreshToken: string): AdminProductSession {
@@ -697,6 +728,287 @@ export class AdminAuthenticationService {
 
   public getNavigation(accessToken: string): AdminNavigationManifest {
     return this.navigationFor(this.authenticate(accessToken));
+  }
+
+  public async searchAcrossDomains(
+    accessToken: string,
+    query: AdminGlobalSearchQuery,
+    dependencies: Readonly<{
+      operatorManagement: AdminOperatorManagementService;
+      adminReviews: AdminReviewTaskService;
+      tripCaseManagement: AdminTripCaseManagementService;
+      financeOperations: AdminFinanceOperationsService;
+      executiveDashboard: ExecutiveDashboardQueryService;
+      adminAccess: AdminAccessService;
+      requestContext: Readonly<{ correlationId: string; requestId: string }>;
+    }>,
+  ): Promise<AdminGlobalSearchResponse> {
+    const session = this.authenticate(accessToken);
+    const normalizedQuery = validateGlobalSearchQuery(query.query);
+    const limitPerDomain = query.limitPerDomain ?? 5;
+    if (![3, 5, 10].includes(limitPerDomain)) {
+      throw new Error("VALIDATION_FAILED");
+    }
+    const navigation = this.navigationFor(session);
+    const visibleDomains = navigation.items
+      .filter((item) =>
+        item.availability === "available" &&
+        navigation.routePermissions.includes(`${item.id}:read`),
+      );
+    const groups: AdminGlobalSearchGroup[] = [];
+
+    for (const navigationItem of visibleDomains) {
+      const result = await this.searchDomain(
+        accessToken,
+        normalizedQuery,
+        limitPerDomain,
+        navigationItem,
+        dependencies,
+      );
+      if (result.items.length > 0) groups.push(result);
+    }
+
+    const totalResults = groups.reduce(
+      (total, group) => total + group.items.length,
+      0,
+    );
+    dependencies.adminAccess.recordGlobalSearchEvent(
+      actorFor(session, dependencies.requestContext),
+      {
+        queryDigest: digest(normalizedQuery),
+        searchedDomains: visibleDomains.map((item) => item.id),
+        resultCount: totalResults,
+      },
+    );
+    return {
+      groups,
+      totalResults,
+      asOf: this.now().toISOString(),
+      synthetic: true,
+    };
+  }
+
+  private async searchDomain(
+    accessToken: string,
+    query: string,
+    limit: number,
+    navigationItem: AdminNavigationItem,
+    dependencies: Readonly<{
+      operatorManagement: AdminOperatorManagementService;
+      adminReviews: AdminReviewTaskService;
+      tripCaseManagement: AdminTripCaseManagementService;
+      financeOperations: AdminFinanceOperationsService;
+      executiveDashboard: ExecutiveDashboardQueryService;
+      adminAccess: AdminAccessService;
+      requestContext: Readonly<{ correlationId: string; requestId: string }>;
+    }>,
+  ): Promise<AdminGlobalSearchGroup> {
+    let items: AdminGlobalSearchResultItem[] = [];
+    let hasMore = false;
+
+    switch (navigationItem.id) {
+      case "workbench": {
+        const page = this.listOperationsTasks(accessToken, {
+          search: query,
+          pageSize: 25,
+        });
+        items = page.items.map((item) => ({
+          resultId: item.taskId,
+          domain: navigationItem.id,
+          kind: "task",
+          title: item.title,
+          description: `${item.operatorName} · ${operationsTaskStatusLabel(item.status)}`,
+          route: `/admin/workbench/tasks/${encodeURIComponent(item.taskId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "organization_accounts": {
+        const page = this.listMemberships(accessToken, {
+          search: query,
+          pageSize: 25,
+        });
+        items = page.items.map((item) => ({
+          resultId: item.membershipId,
+          domain: navigationItem.id,
+          kind: "membership",
+          title: item.displayName,
+          description: `${item.organizationName} · ${item.productRoleName}`,
+          route: `/admin/organization-accounts/${encodeURIComponent(item.membershipId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "operator_management": {
+        const page = this.listOperators(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.operatorManagement,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.operatorId,
+          domain: navigationItem.id,
+          kind: "operator",
+          title: item.operatorName,
+          description: item.cityNames.join("、") || "运营主体",
+          route: `/admin/operators/${encodeURIComponent(item.operatorId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "driver_vehicle": {
+        const [drivers, vehicles] = await Promise.all([
+          this.listDrivers(
+            accessToken,
+            { search: query, pageSize: 25 },
+            dependencies.adminReviews,
+          ),
+          this.listVehicles(
+            accessToken,
+            { search: query, pageSize: 25 },
+            dependencies.adminReviews,
+          ),
+        ]);
+        items = [
+          ...drivers.items.map((item) => ({
+            resultId: item.driverAccountId,
+            domain: navigationItem.id,
+            kind: "driver" as const,
+            title: item.displayNameMasked,
+            description: `${item.operatorName} · 车主档案`,
+            route: `/admin/fleet/drivers/${encodeURIComponent(item.driverAccountId)}`,
+          })),
+          ...vehicles.items.map((item) => ({
+            resultId: item.vehicleId,
+            domain: navigationItem.id,
+            kind: "vehicle" as const,
+            title: item.plateMasked,
+            description: `${item.driverNameMasked} · ${item.vehicleSummary}`,
+            route: `/admin/fleet/vehicles/${encodeURIComponent(item.vehicleId)}`,
+          })),
+        ];
+        hasMore = drivers.pageInfo.hasNextPage ||
+          vehicles.pageInfo.hasNextPage ||
+          items.length > limit;
+        break;
+      }
+      case "trip_operations": {
+        const page = this.listTrips(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.tripCaseManagement,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.tripId,
+          domain: navigationItem.id,
+          kind: "trip",
+          title: item.routeSummary,
+          description: `${item.operatorName} · ${item.tripId}`,
+          route: `/admin/trips/${encodeURIComponent(item.tripId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "support_safety": {
+        const page = this.listCases(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.tripCaseManagement,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.caseId,
+          domain: navigationItem.id,
+          kind: "case",
+          title: item.summary,
+          description: `${item.operatorName} · ${item.kind === "support" ? "客服案件" : "安全事件"}`,
+          route: `/admin/cases/${item.kind}/${encodeURIComponent(item.caseId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "finance_operations": {
+        const page = this.listFinanceResources(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.financeOperations,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.resourceId,
+          domain: navigationItem.id,
+          kind: "finance",
+          title: item.summary,
+          description: item.operatorName ?? "平台财务事项",
+          route: `/admin/finance/${item.kind}/${encodeURIComponent(item.resourceId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "data_reports": {
+        const page = this.listDataReports(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.adminAccess,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.reportId,
+          domain: navigationItem.id,
+          kind: "report",
+          title: item.title,
+          description: item.summary,
+          route: `/admin/reports/${encodeURIComponent(item.reportId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "executive_dashboard": {
+        const page = this.listExecutiveResources(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.executiveDashboard,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.resourceId,
+          domain: navigationItem.id,
+          kind: "executive",
+          title: item.title,
+          description: executiveSearchDescription(item),
+          route: `/admin/executive/${item.kind}/${encodeURIComponent(item.resourceId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+      case "audit_system": {
+        const page = this.listAuditResources(
+          accessToken,
+          { search: query, pageSize: 25 },
+          dependencies.adminAccess,
+          dependencies.requestContext,
+        );
+        items = page.items.map((item) => ({
+          resultId: item.resourceId,
+          domain: navigationItem.id,
+          kind: "audit",
+          title: item.title,
+          description: `${item.organizationName} · ${item.summary}`,
+          route: `/admin/governance/${item.kind}/${encodeURIComponent(item.resourceId)}`,
+        }));
+        hasMore = page.pageInfo.hasNextPage || items.length > limit;
+        break;
+      }
+    }
+
+    return {
+      domain: navigationItem.id,
+      label: navigationItem.label,
+      items: items.slice(0, limit),
+      hasMore,
+    };
   }
 
   public listOperationsTasks(
@@ -3886,9 +4198,14 @@ export class AdminAuthenticationService {
     }
   }
 
-  private issueSession(identity: AdminWorkIdentitySummary): AdminProductSession {
+  private issueSession(
+    identity: AdminWorkIdentitySummary,
+    accountEmail: string,
+    mfaVerifiedAt = this.now().getTime(),
+  ): AdminProductSession {
     const now = this.now().getTime();
     const record: SessionRecord = {
+      accountEmail,
       sessionFamilyId: token("session-family"),
       accessToken: token("admin-access"),
       refreshToken: token("admin-refresh"),
@@ -3898,6 +4215,7 @@ export class AdminAuthenticationService {
       lastUsedAt: now,
       accessExpiresAt: now + 15 * 60_000,
       absoluteExpiresAt: now + 8 * 60 * 60_000,
+      mfaVerifiedAt,
       revoked: false,
     };
     this.sessionsByAccess.set(record.accessToken, record);
@@ -4206,7 +4524,11 @@ function createAccounts(): readonly AccountFixture[] {
     account("operator.admin@rego.example", [
       identity("synthetic-operator-account-admin-001", "operator", "operator-huhang", "沪行出行服务", "operator_account_administrator", "运营公司账号管理员", "restricted"),
     ]),
-    account("ops@rego.example", [platformOperations]),
+    account("ops@rego.example", [
+      platformOperations,
+      identity("synthetic-operations-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "operations_officer", "平台运营专员", "sensitive"),
+      identity("synthetic-operator-management-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "operator_management_officer", "运营公司管理专员", "sensitive"),
+    ]),
     account("lin.yun@rego.example", [platformOperations, operatorOperations]),
     account("finance@rego.example", [
       identity("synthetic-finance-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "finance_officer", "平台财务经办", "restricted"),
@@ -4216,6 +4538,7 @@ function createAccounts(): readonly AccountFixture[] {
     ]),
     account("support@rego.example", [
       identity("synthetic-support-001", "platform", "platform-pollycar", "PollyCar 平台", "customer_support", "平台客服", "sensitive"),
+      identity("synthetic-support-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "support_lead", "平台客服负责人", "sensitive"),
       identity("synthetic-operator-support-001", "operator", "operator-huhang", "沪行出行服务", "operator_customer_support", "运营公司客服", "sensitive"),
     ]),
     account("review@rego.example", [
@@ -4228,6 +4551,7 @@ function createAccounts(): readonly AccountFixture[] {
     account("safety@rego.example", [
       identity("synthetic-safety-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "safety_officer", "平台安全专员", "restricted"),
       identity("synthetic-safety-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "safety_lead", "平台安全负责人", "restricted"),
+      identity("synthetic-operator-safety-liaison-001", "operator", "operator-huhang", "沪行出行服务", "operator_safety_liaison", "运营公司安全联络人", "sensitive"),
     ]),
     account("audit@rego.example", [
       identity("synthetic-auditor-001", "platform", "platform-pollycar", "PollyCar 平台", "auditor", "平台审计", "restricted"),
@@ -5252,6 +5576,7 @@ function auditEventTitle(event: AdminAuditEvent): string {
     executive_decision_opinion_recorded: "高层治理意见记录",
     executive_export_requested: "高层受控导出申请",
     executive_export_downloaded: "高层受控导出下载",
+    admin_global_search_performed: "跨域搜索已执行",
     audit_event_viewed: "审计资源查看",
     audit_investigation_opened: "审计调查创建",
     audit_investigation_assigned: "审计调查分派",
@@ -5513,6 +5838,15 @@ function executiveDomainLabel(
     finance: "财务",
     safety_compliance: "安全合规",
   }[domain];
+}
+
+function executiveSearchDescription(
+  item: AdminExecutiveDirectoryItem,
+): string {
+  return ({
+    restoration_review_pending: "安全恢复仍在等待独立复核",
+    nonzero_reconciliation_difference: "仍有未闭环的对账差异",
+  } as Record<string, string>)[item.summary] ?? item.summary;
 }
 
 function caseDirectoryItemForSupport(
@@ -5881,6 +6215,26 @@ function token(prefix: string): string {
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function validateGlobalSearchQuery(value: string): string {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (normalized.length < 2 || normalized.length > 80) {
+    throw new Error("VALIDATION_FAILED");
+  }
+  return normalized;
+}
+
+function operationsTaskStatusLabel(
+  status: AdminOperationsTask["status"],
+): string {
+  return ({
+    unassigned: "待分派",
+    processing: "处理中",
+    waiting_review: "待复核",
+    blocked: "受阻",
+    completed: "已完成",
+  } as const)[status];
 }
 
 function safeEqual(left: string, right: string): boolean {

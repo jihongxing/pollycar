@@ -75,6 +75,9 @@ async function start(finance = false) {
     featureGates: {
       syntheticAdminMultiOrganization: true,
       syntheticAdminFinanceOperations: finance,
+      syntheticFinancialLedger: finance,
+      syntheticFinancialReconciliation: finance,
+      syntheticOperatorFunds: finance,
     },
   });
   servers.push(server);

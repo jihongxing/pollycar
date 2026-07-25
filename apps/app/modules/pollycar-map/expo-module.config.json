@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["PollyCarMapModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.pollycarmap.PollyCarMapModule"]
+  }
+}

@@ -10,6 +10,10 @@ import {
 } from "react";
 import { HttpSafetyCaseClient } from "../infrastructure/http-safety-case-client";
 import { resolveApiBaseUrl } from "../infrastructure/api-base-url";
+import {
+  readBrowserSessionStorage,
+  writeBrowserSessionStorage,
+} from "../infrastructure/browser-storage";
 import { executeWriteWithReconciliation } from "./unknown-result-recovery";
 
 type SafetyCaseContextValue = Readonly<{
@@ -34,17 +38,14 @@ export function SafetyCaseProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [activeTripId, setActiveTripId] = useState<string | undefined>(() => {
-    if (typeof window === "undefined") return undefined;
-    return window.sessionStorage.getItem("pollycar.safety.active-trip") ?? undefined;
+    return readBrowserSessionStorage("pollycar.safety.active-trip");
   });
   const activeTripIdRef = useRef(activeTripId);
   const latestRequestIdRef = useRef(0);
   const activateTrip = useCallback((tripId: string) => {
     activeTripIdRef.current = tripId;
     setActiveTripId(tripId);
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem("pollycar.safety.active-trip", tripId);
-    }
+    writeBrowserSessionStorage("pollycar.safety.active-trip", tripId);
   }, []);
   const commitDashboard = useCallback((tripId: string, requestId: number, next: SafetyDashboard) => {
     if (requestId !== latestRequestIdRef.current || activeTripIdRef.current !== tripId) return;

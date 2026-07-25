@@ -90,6 +90,47 @@ test("车主身份必须切回乘客后才能查看我的行程", async ({ page 
   await expect(page.getByRole("button", { name: "车主身份已通过，切换为车主" })).toBeVisible();
 });
 
+test("账户与登录支持确认退出并保留设备偏好", async ({ page }) => {
+  await openAuthenticatedPage(page, "/account-login");
+  await page.evaluate(() => {
+    localStorage.setItem("pollycar.preference.theme", "dark");
+    localStorage.setItem("pollycar.notification.preferences", JSON.stringify({
+      tripUpdates: false,
+      ownerUpdates: true,
+    }));
+    sessionStorage.setItem("rego.journey.passenger-trip-id", "logout-context-trip");
+  });
+
+  const trigger = page.getByRole("button", { name: "退出登录" });
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "退出当前账户？" });
+  await expect(dialog.getByRole("button", { name: "返回", exact: true })).toBeFocused();
+  await dialog.getByRole("button", { name: "退出登录" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("欢迎回来")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        refreshToken: localStorage.getItem("rego.authentication.refresh-token"),
+        theme: localStorage.getItem("pollycar.preference.theme"),
+        notifications: localStorage.getItem("pollycar.notification.preferences"),
+        journey: sessionStorage.getItem("rego.journey.passenger-trip-id"),
+        identity: localStorage.getItem("pollycar.preference.identity"),
+      })),
+    )
+    .toEqual({
+      refreshToken: null,
+      theme: "dark",
+      notifications: JSON.stringify({
+        tripUpdates: false,
+        ownerUpdates: true,
+      }),
+      journey: null,
+      identity: null,
+    });
+});
+
 test("身份切换清理旅程上下文并阻止跨身份深链", async ({ page }) => {
   const completedTrip = syntheticTrip(
     "completed",
@@ -521,7 +562,7 @@ test("App 重启后恢复身份和主题偏好", async ({ page }) => {
   await page.getByRole("button", { name: "切换为车主身份" }).click();
   await expect(page).toHaveURL(/\/owner-workbench$/);
   await page.goto("/theme-settings");
-  await page.getByRole("button", { name: "暗色外观，切换" }).click();
+  await page.getByRole("radio", { name: "暗色" }).click();
 
   await expect.poll(() => page.evaluate(() => localStorage.getItem("pollycar.preference.identity"))).toBe("owner");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("pollycar.preference.theme"))).toBe("dark");
@@ -546,12 +587,11 @@ test("通知设置保存在当前设备且安全提醒不可关闭", async ({ pa
 
   const tripUpdates = page.getByRole("switch", { name: "行程进展" });
   const ownerUpdates = page.getByRole("switch", { name: "车主准备进展" });
-  const safetyUpdates = page.getByRole("switch", { name: "安全与重要状态" });
 
   await expect(tripUpdates).toHaveAttribute("aria-checked", "true");
   await expect(ownerUpdates).toHaveAttribute("aria-checked", "true");
-  await expect(safetyUpdates).toHaveAttribute("aria-checked", "true");
-  await expect(safetyUpdates).toBeDisabled();
+  await expect(page.getByText("安全与账户提醒")).toBeVisible();
+  await expect(page.getByText("始终开启")).toBeVisible();
 
   await tripUpdates.click();
   await expect(tripUpdates).toHaveAttribute("aria-checked", "false");
@@ -560,6 +600,82 @@ test("通知设置保存在当前设备且安全提醒不可关闭", async ({ pa
     "aria-checked",
     "false",
   );
+});
+
+test("登录前可查看协议并返回保留输入", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    localStorage.removeItem("rego.authentication.refresh-token");
+    localStorage.removeItem("rego.authentication.device-id");
+  });
+  await page.reload();
+
+  const phone = page.getByRole("textbox", { name: "手机号" });
+  await phone.fill("18800000007");
+  await page.getByRole("link", {
+    name: "查看服务协议、隐私政策和手机号认证说明",
+  }).click();
+  await expect(page).toHaveURL(/\/legal-information$/);
+  await expect(page.getByText("2026年7月19日")).toBeVisible();
+  await page.getByRole("button", { name: "信息如何使用，查看" }).click();
+  await expect(page).toHaveURL(/\/privacy-policy$/);
+  await expect(page.getByText(/建议在 24 小时内发起，会话最多开放 72 小时/)).toBeVisible();
+  await page.getByRole("button", { name: "返回" }).click();
+  await page.getByRole("button", { name: "返回" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(phone).toHaveValue("18800000007");
+});
+
+test("法律说明支持登录前直达并返回协议目录", async ({ page }) => {
+  await page.goto("/service-agreement");
+  await expect(page.getByText("服务协议", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("车辆、资格、额度和安全状态会在开始参与前分别确认。")).toBeVisible();
+  await page.getByRole("button", { name: "返回" }).click();
+  await expect(page).toHaveURL(/\/legal-information$/);
+
+  await page.goto("/phone-auth-notice");
+  await expect(page.getByText("手机号认证说明", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("退出后需重新验证手机号；账户资料和行程记录不会因此删除。")).toBeVisible();
+});
+
+test("身份与车辆详情使用辅助页面分组并保留真实处理入口", async ({ page }) => {
+  await openAuthenticatedPage(page, "/identity-settings");
+  await expect(page.getByText("当前使用", { exact: true })).toBeVisible();
+  await expect(page.getByText("乘客身份", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("切换身份只改变当前工作台，不会改变车辆、资格、额度或安全状态。")).toBeVisible();
+
+  await page.goto("/vehicle-settings");
+  await expect(page.getByText("车辆信息", { exact: true })).toBeVisible();
+  await expect(page.getByText("审核状态", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /开始准备|查看审核|补充资料/ })).toBeVisible();
+  await expect(page.getByText("车辆审核完成后，开始参与时仍会确认资格、额度和安全状态。")).toBeVisible();
+});
+
+test("服务通知先进入详情再前往相关页面", async ({ page }) => {
+  await openAuthenticatedPage(page, "/notifications");
+  const notification = page.getByRole("button", {
+    name: /准备车辆资料|补充车辆资料|参与资格可以申请|确认启用参与资格/,
+  }).first();
+  await notification.click();
+
+  await expect(page).toHaveURL(/\/notification-detail$/);
+  await expect(page.getByText(/需要查看|已更新/)).toBeVisible();
+  const relatedAction = page.getByRole("button", {
+    name: /查看车辆状态|查看参与资格/,
+  });
+  await expect(relatedAction).toBeVisible();
+  await relatedAction.click();
+  await expect(page).toHaveURL(/\/(vehicle-settings|review-needs-material|eligibility-settings)$/);
+});
+
+test("参与额度保持低频说明结构", async ({ page }) => {
+  await openAuthenticatedPage(page, "/quota-settings");
+  await expect(page.getByText("滚动额度", { exact: true })).toBeVisible();
+  await expect(page.getByText("24 小时", { exact: true })).toBeVisible();
+  await expect(page.getByText("7 天", { exact: true })).toBeVisible();
+  await expect(page.getByText("30 天", { exact: true })).toBeVisible();
+  await expect(page.getByText("不可增加或转让")).toBeVisible();
+  await expect(page.getByText("开始参与时仍会确认车辆、资格、额度和安全状态。")).toBeVisible();
 });
 
 test("离线提示在网络恢复后自动消失并同步", async ({ page, context }) => {

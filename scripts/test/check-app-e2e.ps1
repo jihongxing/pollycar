@@ -74,19 +74,20 @@ foreach ($rule in @(
 $core = Get-Content -LiteralPath (Join-Path $repo "tests\e2e\app-core-flow.spec.ts") -Raw
 foreach ($rule in @(
   "默认入口进入叫车首页并可选择三人行程",
-  "乘车人数（必选）",
+  "必选 · 最多 3 人",
   "身份切换面板保持单 App 双身份语义",
   "车主申请流程使用真实 URL 和浏览器返回",
   "车主首页突出自主接单、车辆容量和订单资金入口",
   "底部主导航连接身份首页和我的页面",
-  "我的页面提供账户、身份、车辆、资格、配额、主题和隐私安全入口",
+  "我的页面提供乘客任务、车主准备和跨身份通用设置入口",
   "消息中心提供行程与车辆通知并保留沙箱边界",
   "申请和审核流程不显示底部主导航",
   "account-profile",
-  "identity-settings",
-  "vehicle-settings",
-  "eligibility-settings",
-  "quota-settings",
+  "ride-history",
+  "adult-eligibility",
+  "notification-settings",
+  "help-feedback",
+  "account-login",
   "theme-settings",
   "privacy-safety-settings",
   "消息中心提供行程与车辆通知并保留沙箱边界",
@@ -103,7 +104,7 @@ foreach ($rule in @(
   "toBeFocused",
   "底部主导航和我的页面具有可访问名称",
   "最大字体下核心页面不横向溢出且保持屏幕阅读器语义",
-  "合成车辆类型",
+  "车辆类型",
   "保险有效期"
 )) {
   if ($accessibility -notmatch [regex]::Escape($rule)) { throw "App 可访问性测试缺少: $rule" }
@@ -136,7 +137,7 @@ foreach ($rule in @(
   "获取验证码",
   "验证并登录",
   "completeAdultEligibility",
-  "进入首页"
+  "进入乘客首页"
 )) {
   if ($authenticationHelper -notmatch [regex]::Escape($rule)) { throw "浏览器认证助手缺少: $rule" }
 }
@@ -147,7 +148,7 @@ foreach ($rule in @(
   "确认取消",
   "防止重复提交",
   "审核页面支持直接深链和刷新恢复",
-  "流程进度",
+  "我的页面在车主审核中显示进度入口",
   "车辆草稿刷新后恢复且浏览器返回保留输入",
   "车辆表单实时校验、格式化并保护未同步修改",
   "车辆草稿同步失败后保留输入和本地恢复能力",

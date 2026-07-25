@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("expo-modules-core", () => ({
+  requireOptionalNativeModule: () => null,
+}));
+
 import { BrowserLocationAdapter } from "./location-adapter";
 
 afterEach(() => vi.unstubAllGlobals());

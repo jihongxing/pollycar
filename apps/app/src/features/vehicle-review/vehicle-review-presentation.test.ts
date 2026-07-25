@@ -5,6 +5,7 @@ import {
   formatVehicleReviewDate,
   vehicleReviewEntryCopy,
   vehicleReviewMaterialCopy,
+  vehicleReviewMaterialRequirements,
   vehicleReviewStatusLabel,
   vehicleReviewTimeline,
 } from "./vehicle-review-presentation";
@@ -78,11 +79,29 @@ describe("车辆审核产品展示模型", () => {
 
     expect(material).toEqual({
       title: "更新保险有效期",
-      description: "当前日期信息不完整。补充有效日期后，其他已确认内容会保持不变。",
+      description: "请补充仍在有效期内的保险材料和到期日。",
     });
     expect(JSON.stringify(material)).not.toMatch(
       /synthetic|insurance_expiration_document|request_material/i,
     );
+  });
+
+  it("按审核请求定向展示多项待补材料", () => {
+    const materials = vehicleReviewMaterialRequirements({
+      ...review("needs_material"),
+      requestedMaterialCodes: [
+        "driver_license_document",
+        "vehicle_registration_document",
+        "insurance_expiration_document",
+      ],
+    });
+
+    expect(materials.map((material) => material.code)).toEqual([
+      "driver_license",
+      "vehicle_registration",
+      "insurance_proof",
+    ]);
+    expect(materials.find((material) => material.code === "insurance_proof")?.needsInsuranceDate).toBe(true);
   });
 });
 

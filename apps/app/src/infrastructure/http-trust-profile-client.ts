@@ -4,6 +4,7 @@ import type {
   ApiErrorResponse,
   FairnessMonitoringReport,
   SubmitAvatarCommand,
+  SubmitCustomAvatarCommand,
   SubmitTripRatingCommand,
   TripRatingView,
   TrustProfileClient,
@@ -16,15 +17,29 @@ export class HttpTrustProfileClient implements TrustProfileClient {
   ) {}
 
   getProfile(): Promise<AccountTrustProfile> {
-    return this.request("/v1/internal-sandbox/app/trust-profile");
+    return this.request<AccountTrustProfile>("/v1/internal-sandbox/app/trust-profile")
+      .then((profile) => this.normalizeProfile(profile));
   }
 
   submitAvatar(command: SubmitAvatarCommand): Promise<AccountTrustProfile> {
-    return this.request("/v1/internal-sandbox/app/trust-profile/avatar", {
+    return this.request<AccountTrustProfile>("/v1/internal-sandbox/app/trust-profile/avatar", {
       method: "POST",
       headers: { "Idempotency-Key": command.idempotencyKey },
       body: JSON.stringify({ asset: command.asset }),
-    });
+    }).then((profile) => this.normalizeProfile(profile));
+  }
+
+  submitCustomAvatar(command: SubmitCustomAvatarCommand): Promise<AccountTrustProfile> {
+    return this.request<AccountTrustProfile>("/v1/internal-sandbox/app/trust-profile/avatar", {
+      method: "POST",
+      headers: { "Idempotency-Key": command.idempotencyKey },
+      body: JSON.stringify({
+        fileName: command.fileName,
+        mimeType: command.mimeType,
+        byteSize: command.byteSize,
+        contentBase64: command.contentBase64,
+      }),
+    }).then((profile) => this.normalizeProfile(profile));
   }
 
   getFairnessReport(): Promise<FairnessMonitoringReport> {
@@ -63,6 +78,18 @@ export class HttpTrustProfileClient implements TrustProfileClient {
     if (response.status === 204) return undefined as TResult;
     const text = await response.text();
     return (text ? JSON.parse(text) : undefined) as TResult;
+  }
+
+  private normalizeProfile(profile: AccountTrustProfile): AccountTrustProfile {
+    const publicUrl = profile.avatar.publicUrl;
+    if (!publicUrl?.startsWith("/")) return profile;
+    return {
+      ...profile,
+      avatar: {
+        ...profile.avatar,
+        publicUrl: `${this.baseUrl}${publicUrl}`,
+      },
+    };
   }
 }
 

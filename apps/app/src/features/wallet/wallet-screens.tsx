@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { AppIcon } from "../../components/app-icon";
+import { AuxiliaryInlineFeedback } from "../../components/auxiliary-page";
 import {
   AppV2BalanceHero,
   AppV2EmptyState,
   AppV2MetricStrip,
   AppV2NavigationRow,
   AppV2StageHeader,
-  AppV2StatusPanel,
   AppV2SummaryList,
 } from "../../components/app-v2-components";
 import { MobilityPage } from "../../components/mobility";
@@ -57,11 +57,6 @@ export function DriverWalletScreen({
         eyebrow="车主 · 费用记录"
         title="资金中心"
         description="核对行程费用、待结算记录和银行卡入口。"
-        tone="driver"
-      />
-      <AppV2StatusPanel
-        title="资金服务暂不可用"
-        description="当前不会产生真实收入，也无法结算、绑卡或提现。"
         tone="driver"
       />
       <AppV2MetricStrip
@@ -141,6 +136,10 @@ export function DriverBankCardScreen({
   const [draft, setDraft] = useState<BankCardDraft>(emptyBankCardDraft);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [bindingAttempted, setBindingAttempted] = useState(false);
+  const updateDraft = (next: BankCardDraft) => {
+    setDraft(next);
+    setBindingAttempted(false);
+  };
   const formDraft = { ...draft, agreementAccepted };
   const errors = validateSyntheticBankCardDraft(formDraft);
   const valid = Object.values(errors).every((message) => message === undefined);
@@ -166,10 +165,11 @@ export function DriverBankCardScreen({
         description="银行卡能力开放后，将使用本人银行卡完成费用结算。"
         tone="driver"
       />
-      <AppV2StatusPanel
-        title="暂不支持绑定银行卡"
+      <AuxiliaryInlineFeedback
+        icon="privacy"
+        title="请勿填写真实银行卡资料"
         description="请勿输入真实姓名、银行卡号或手机号；当前提交不会绑定银行卡。"
-        tone="driver"
+        tone="neutral"
       />
       {wallet.cards.map((card) => (
         <View
@@ -201,7 +201,7 @@ export function DriverBankCardScreen({
           value={draft.holderName}
           placeholder="请输入示例姓名"
           error={draft.holderName.length > 0 ? errors.holderName : undefined}
-          onChangeText={(holderName) => setDraft({ ...draft, holderName })}
+          onChangeText={(holderName) => updateDraft({ ...draft, holderName })}
         />
         <ClosedInput
           label="银行卡号"
@@ -209,14 +209,14 @@ export function DriverBankCardScreen({
           placeholder="请输入 16–19 位示例卡号"
           keyboardType="number-pad"
           error={draft.cardNumber.length > 0 ? errors.cardNumber : undefined}
-          onChangeText={(cardNumber) => setDraft({ ...draft, cardNumber })}
+          onChangeText={(cardNumber) => updateDraft({ ...draft, cardNumber })}
         />
         <ClosedInput
           label="开户行"
           value={draft.bankName}
           placeholder="请输入示例银行名称"
           error={draft.bankName.length > 0 ? errors.bankName : undefined}
-          onChangeText={(bankName) => setDraft({ ...draft, bankName })}
+          onChangeText={(bankName) => updateDraft({ ...draft, bankName })}
         />
         <ClosedInput
           label="预留手机号"
@@ -224,13 +224,16 @@ export function DriverBankCardScreen({
           placeholder="请输入示例手机号"
           keyboardType="phone-pad"
           error={draft.reservedPhone.length > 0 ? errors.reservedPhone : undefined}
-          onChangeText={(reservedPhone) => setDraft({ ...draft, reservedPhone })}
+          onChangeText={(reservedPhone) => updateDraft({ ...draft, reservedPhone })}
         />
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: agreementAccepted }}
           accessibilityLabel="同意银行卡服务协议与隐私说明"
-          onPress={() => setAgreementAccepted((current) => !current)}
+          onPress={() => {
+            setAgreementAccepted((current) => !current);
+            setBindingAttempted(false);
+          }}
           style={styles.checkboxRow}
         >
           <View
@@ -249,10 +252,11 @@ export function DriverBankCardScreen({
           <AppText style={styles.flex}>我已阅读并同意银行卡服务协议与隐私说明</AppText>
         </Pressable>
         {bindingAttempted ? (
-          <AppV2StatusPanel
+          <AuxiliaryInlineFeedback
             title="暂时无法绑定"
             description="银行卡能力尚未开放，本次信息不会被提交。"
-            tone="driver"
+            tone="danger"
+            icon="bank-card"
           />
         ) : null}
       </View>
@@ -297,11 +301,6 @@ export function DriverWithdrawScreen({
         eyebrow="提现 · 金额确认"
         title="确认提现信息"
         description="核对金额、到账银行卡和费用后再提交。"
-        tone="driver"
-      />
-      <AppV2StatusPanel
-        title="暂不支持提现"
-        description="当前不会发起资金指令，也不会产生真实到账。"
         tone="driver"
       />
       <View

@@ -1,0 +1,133 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.shared-preproduction"
+language: "zh-CN"
+status: "reviewing"
+source_document: "docs/decisions/0029-共享预生产基础设施设计与审批.md"
+
+production_enabled: false
+resource_creation_enabled: false
+deployment_enabled: false
+business_routes_enabled: false
+real_data_allowed: false
+synthetic_data_only: true
+
+environment:
+  name: "shared-preproduction"
+  dedicated_cloud_boundary_required: true
+  development_account_reuse_allowed: false
+  production_account_reuse_allowed: false
+  provider_selected: false
+  account_selected: false
+  region_selected: false
+  mainland_china_residency_approval_required: true
+  infrastructure_as_code_required: true
+  console_changes_allowed: false
+  drift_detection_required: true
+
+managed_postgresql:
+  required: true
+  public_endpoint_allowed: false
+  multi_availability_zone_required: true
+  minimum_availability_zones: 2
+  tls_required: true
+  hostname_verification_required: true
+  encryption_at_rest_required: true
+  customer_managed_key_preferred: true
+  point_in_time_recovery_required: true
+  point_in_time_recovery_days: 14
+  daily_backup_retention_days: 35
+  target_rpo_minutes: 5
+  target_rto_minutes: 60
+  cross_region_replication_enabled: false
+
+certificates:
+  managed_certificate_service_required: true
+  self_signed_allowed: false
+  tls_versions:
+    - "1.2"
+    - "1.3"
+  automatic_renewal_required: true
+  expiry_alert_days: 30
+  renewal_failure_blocks_deployment: true
+
+secrets:
+  managed_secret_store_required: true
+  workload_identity_required: true
+  long_lived_cloud_access_keys_allowed: false
+  raw_secret_environment_allowed: false
+  image_embedded_secrets_allowed: false
+  maximum_static_secret_age_days: 90
+  break_glass_dual_approval_required: true
+  secret_access_audit_required: true
+
+network:
+  dedicated_virtual_network_required: true
+  minimum_availability_zones: 2
+  application_public_ip_allowed: false
+  database_public_ip_allowed: false
+  managed_ingress_only: true
+  waf_required: true
+  administrative_vpn_or_identity_proxy_required: true
+  public_ssh_rdp_database_ports_allowed: false
+  default_deny_egress_required: true
+  egress_allowlist_required: true
+  private_service_endpoints_preferred: true
+  network_flow_logs_required: true
+  dns_query_logs_required: true
+
+monitoring_storage:
+  otlp_tls_required: true
+  dedicated_tenant_or_namespace_required: true
+  log_hot_retention_days: 30
+  log_archive_retention_days: 180
+  metrics_retention_days: 90
+  traces_retention_days: 14
+  infrastructure_audit_retention_days: 365
+  encryption_required: true
+  access_audit_required: true
+  request_response_bodies_allowed: false
+  credentials_allowed: false
+  identity_documents_allowed: false
+  biometric_data_allowed: false
+  precise_location_allowed: false
+  payment_data_allowed: false
+
+disaster_recovery:
+  monthly_restore_drill_required: true
+  quarterly_availability_zone_failover_required: true
+  semiannual_region_rebuild_required: true
+  isolated_restore_target_required: true
+  migration_history_validation_required: true
+  health_check_validation_required: true
+  access_control_validation_required: true
+  monitoring_validation_required: true
+  cross_region_backup_enabled: false
+
+approval_gate:
+  all_approvals_required_for_resource_creation: true
+  immutable_evidence_reference_required: true
+  expires_or_revoked_approval_blocks_creation: true
+  product_and_production_decision:
+    approved: false
+    evidence_reference: null
+  engineering_and_operations:
+    approved: false
+    evidence_reference: null
+  security:
+    approved: false
+    evidence_reference: null
+  privacy_and_compliance:
+    approved: false
+    evidence_reference: null
+  finance:
+    approved: false
+    evidence_reference: null
+
+business_capabilities:
+  real_authentication: false
+  real_identity: false
+  real_map: false
+  real_location: false
+  real_payment: false
+  real_settlement: false
+  real_withdrawal: false

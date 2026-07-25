@@ -1,0 +1,74 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.production-runtime"
+language: "zh-CN"
+status: "approved_internal"
+source_document: "docs/decisions/0027-生产基础设施就绪边界.md"
+production_enabled: false
+release_mode: "infrastructure_readiness"
+
+runtime_boundary:
+  environment: "production"
+  data_mode: "real_disabled"
+  business_routes_enabled: false
+  internal_sandbox_enabled: false
+  production_business_capabilities_enabled: false
+
+persistence:
+  mode: "postgres"
+  remote_database_required: true
+  local_database_forbidden: true
+  tls_required: true
+  accepted_sslmode:
+    - "require"
+    - "verify-full"
+  migration_before_readiness_required: true
+  database_url_environment_name: "POLLYCAR_PRODUCTION_DATABASE_URL"
+  database_ca_environment_name: "POLLYCAR_PRODUCTION_DATABASE_CA_PATH"
+  database_url_log_forbidden: true
+
+https_boundary:
+  tls_termination: "trusted_reverse_proxy"
+  public_base_url_environment_name: "POLLYCAR_PRODUCTION_PUBLIC_BASE_URL"
+  public_base_url_https_required: true
+  allowed_origins_environment_name: "POLLYCAR_PRODUCTION_ALLOWED_ORIGINS"
+  allowed_origins_https_required: true
+  forwarded_https_required: true
+  trusted_proxy_hops_default: 1
+
+secret_boundary:
+  provider: "managed"
+  reference_environment_name: "POLLYCAR_SECRET_PROVIDER_REFERENCE"
+  accepted_reference_schemes:
+    - "aws-secrets-manager"
+    - "azure-key-vault"
+    - "gcp-secret-manager"
+    - "vault"
+    - "secret"
+  raw_vendor_secret_environment_forbidden: true
+  client_public_secret_forbidden: true
+  secret_value_log_forbidden: true
+
+monitoring_boundary:
+  service_name_default: "pollycar-server"
+  otlp_endpoint_environment_name: "POLLYCAR_OTLP_ENDPOINT"
+  otlp_https_required: true
+  log_levels:
+    - "info"
+    - "warn"
+    - "error"
+  redacted_headers:
+    - "authorization"
+    - "cookie"
+    - "set-cookie"
+    - "x-api-key"
+  liveness_path: "/health/live"
+  readiness_path: "/health/ready"
+  readiness_database_probe_required: true
+
+invariants:
+  - "ProductionConfig 不得复用内部沙箱配置"
+  - "生产基础设施就绪模式不得挂载业务路由"
+  - "所有业务功能门禁必须解析为 false"
+  - "数据库、公开地址、允许来源和监控端点不得使用本机或 HTTP 地址"
+  - "生产服务只能通过受信 HTTPS 反向代理访问"
+  - "数据库连接串、密钥值和身份凭据不得写入日志"

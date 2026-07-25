@@ -149,6 +149,7 @@ export type AdminAuditEvent = Readonly<{
     | "audit_investigation_reopened"
     | "data_report_viewed"
     | "data_report_refreshed"
+    | "admin_global_search_performed"
     | "admin_membership_viewed"
     | "admin_membership_suspended"
     | "admin_membership_restored";

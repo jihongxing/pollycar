@@ -28,7 +28,11 @@
     ,
     "build:app:sandbox": "pnpm --filter @pollycar/app build:sandbox",
     "build:app:demo": "pnpm --filter @pollycar/app build:demo",
-    "build:app:production": "pnpm --filter @pollycar/app build:production"
+    "build:app:production": "pnpm --filter @pollycar/app build:production",
+    "build:app:android:production": "pnpm --filter @pollycar/app android:production",
+    "build:app:ios:production": "pnpm --filter @pollycar/app ios:production",
+    "build:app:eas:production": "pnpm --filter @pollycar/app eas:production",
+    "check:app:production-release": "pnpm --filter @pollycar/app ci:production:gate"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

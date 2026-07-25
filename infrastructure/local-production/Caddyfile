@@ -1,0 +1,9 @@
+:8443 {
+  tls /etc/caddy/tls/proxy.crt /etc/caddy/tls/proxy.key
+
+  @health path /health/live /health/ready
+  reverse_proxy @health server:4310
+
+  @business not path /health/live /health/ready
+  respond @business "业务能力尚未开放。" 503
+}

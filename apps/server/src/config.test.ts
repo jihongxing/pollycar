@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveFeatureGates } from "@pollycar/contracts";
-import { createInternalSandboxConfig } from "./config.js";
+import { createInternalSandboxConfig, createProductionConfig } from "./config.js";
 
 describe("内部生产级沙箱功能门禁", () => {
   it("默认关闭所有真实能力", () => {
@@ -41,7 +41,14 @@ describe("内部生产级沙箱功能门禁", () => {
         realAdminOrganizationAccounts: false,
         realAdminFinanceOperations: false,
         productionAdminEnabled: false,
+        syntheticFinancialLedger: false,
+        syntheticFinancialReconciliation: false,
+        syntheticOperatorFunds: false,
         realPayment: false,
+        realSettlement: false,
+        realWithdrawal: false,
+        driverEarlySettlementEnabled: false,
+        realOperatorOnboarding: false,
         paidFlexTrial: false,
         realUserInvitation: false,
         shanghaiPilot: false,
@@ -169,6 +176,9 @@ describe("内部生产级沙箱功能门禁", () => {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: true,
       internalSandbox: true,
     };
@@ -183,6 +193,9 @@ describe("内部生产级沙箱功能门禁", () => {
       "syntheticAdminTripOperations",
       "syntheticAdminCaseManagement",
       "syntheticAdminFinanceOperations",
+      "syntheticFinancialLedger",
+      "syntheticFinancialReconciliation",
+      "syntheticOperatorFunds",
       "internalSandbox",
     ] as const) {
       expect(
@@ -201,6 +214,9 @@ describe("内部生产级沙箱功能门禁", () => {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: true,
       syntheticAdminAuditSystem: true,
       internalSandbox: true,
@@ -227,6 +243,9 @@ describe("内部生产级沙箱功能门禁", () => {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: true,
       syntheticAdminAuditSystem: true,
       syntheticAdminDataReports: true,
@@ -246,5 +265,77 @@ describe("内部生产级沙箱功能门禁", () => {
         }).syntheticAdminDataReports,
       ).toBe(false);
     }
+  });
+});
+
+describe("生产基础设施配置", () => {
+  const validEnvironment = {
+    POLLYCAR_PRODUCTION_DATABASE_URL:
+      "postgresql://pollycar@db.pollycar.example:5432/pollycar?sslmode=verify-full",
+    POLLYCAR_PRODUCTION_DATABASE_CA_PATH: "/run/secrets/pollycar-postgres-ca.crt",
+    POLLYCAR_PRODUCTION_PUBLIC_BASE_URL: "https://api.pollycar.example",
+    POLLYCAR_PRODUCTION_ALLOWED_ORIGINS:
+      "https://app.pollycar.example,https://admin.pollycar.example",
+    POLLYCAR_SECRET_PROVIDER_REFERENCE: "vault://pollycar/production",
+    POLLYCAR_OTLP_ENDPOINT: "https://otel.pollycar.example",
+  };
+
+  it("创建独立生产基础设施配置并强制关闭全部业务能力", () => {
+    const config = createProductionConfig(validEnvironment);
+
+    expect(config).toMatchObject({
+      environment: "production",
+      releaseMode: "infrastructure-readiness",
+      dataMode: "real-disabled",
+      persistence: {
+        mode: "postgres",
+        requireTls: true,
+      },
+      http: {
+        publicBaseUrl: "https://api.pollycar.example",
+        requireForwardedHttps: true,
+      },
+      secrets: {
+        provider: "managed",
+        rawVendorSecretsAllowed: false,
+      },
+      monitoring: {
+        serviceName: "pollycar-server",
+        otlpEndpoint: "https://otel.pollycar.example",
+      },
+    });
+    expect(Object.values(config.featureGates).every((enabled) => !enabled)).toBe(true);
+  });
+
+  it("拒绝本机数据库、无 TLS 数据库和非 HTTPS 服务边界", () => {
+    expect(() => createProductionConfig({
+      ...validEnvironment,
+      POLLYCAR_PRODUCTION_DATABASE_URL:
+        "postgresql://pollycar@localhost:5432/pollycar?sslmode=require",
+    })).toThrow("PRODUCTION_DATABASE_MUST_BE_REMOTE");
+    expect(() => createProductionConfig({
+      ...validEnvironment,
+      POLLYCAR_PRODUCTION_DATABASE_URL:
+        "postgresql://pollycar@db.pollycar.example:5432/pollycar",
+    })).toThrow("PRODUCTION_DATABASE_TLS_REQUIRED");
+    expect(() => createProductionConfig({
+      ...validEnvironment,
+      POLLYCAR_PRODUCTION_PUBLIC_BASE_URL: "http://api.pollycar.example",
+    })).toThrow("PRODUCTION_PUBLIC_BASE_URL_HTTPS_REQUIRED");
+  });
+
+  it("拒绝缺少托管密钥引用、非 HTTPS 监控和原始供应商密钥", () => {
+    expect(() => createProductionConfig({
+      ...validEnvironment,
+      POLLYCAR_SECRET_PROVIDER_REFERENCE: "",
+    })).toThrow("PRODUCTION_CONFIGURATION_REQUIRED:POLLYCAR_SECRET_PROVIDER_REFERENCE");
+    expect(() => createProductionConfig({
+      ...validEnvironment,
+      POLLYCAR_OTLP_ENDPOINT: "http://otel.pollycar.example",
+    })).toThrow("PRODUCTION_OTLP_HTTPS_REQUIRED");
+    expect(() => createProductionConfig({
+      ...validEnvironment,
+      POLLYCAR_AMAP_API_KEY: "raw-secret",
+    })).toThrow("PRODUCTION_RAW_VENDOR_SECRET_FORBIDDEN:POLLYCAR_AMAP_API_KEY");
   });
 });

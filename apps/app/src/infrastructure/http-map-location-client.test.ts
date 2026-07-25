@@ -32,4 +32,21 @@ describe("HttpMapLocationClient", () => {
       }),
     );
   });
+
+  it("地点搜索会携带当前地点作为高德服务偏置", async () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify({ places: [], cache: {}, provider: "synthetic" }), { status: 200 }),
+    );
+    const client = new HttpMapLocationClient("http://internal", fetcher as typeof fetch);
+
+    await client.searchPlaces("虹桥", {
+      cityCode: "021",
+      biasLocation: { latitude: 31.2304, longitude: 121.4737, coordinateSystem: "gcj02" },
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://internal/v1/internal-sandbox/app/map/places/search?query=%E8%99%B9%E6%A1%A5&limit=10&city_code=021&bias_latitude=31.2304&bias_longitude=121.4737&bias_coordinate_system=gcj02",
+      expect.any(Object),
+    );
+  });
 });

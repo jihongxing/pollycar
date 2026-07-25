@@ -86,6 +86,9 @@ async function start(executive: boolean) {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: executive,
     },
   });

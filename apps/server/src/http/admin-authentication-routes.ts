@@ -93,6 +93,10 @@ export function createAdminAuthenticationHandler(
         const body = await readJson(request);
         return send(response, 200, dependencies.service.selectWorkIdentity(requireString(body.selectionToken), requireString(body.workIdentityId)), correlationId);
       }
+      if (url.pathname === `${basePath}/auth/work-identities/switch` && request.method === "POST") {
+        const body = await readJson(request);
+        return send(response, 200, dependencies.service.switchWorkIdentity(requireBearer(request), requireString(body.workIdentityId)), correlationId);
+      }
       if (url.pathname === `${basePath}/auth/session/refresh` && request.method === "POST") {
         const body = await readJson(request);
         return send(response, 200, dependencies.service.refreshSession(requireString(body.refreshToken)), correlationId);
@@ -103,6 +107,21 @@ export function createAdminAuthenticationHandler(
       }
       if (url.pathname === `${basePath}/navigation` && request.method === "GET") {
         return send(response, 200, dependencies.service.getNavigation(requireBearer(request)), correlationId);
+      }
+      if (url.pathname === `${basePath}/search` && request.method === "GET") {
+        return send(response, 200, await dependencies.service.searchAcrossDomains(
+          requireBearer(request),
+          parseGlobalSearchQuery(url),
+          {
+            operatorManagement: dependencies.operatorManagement,
+            adminReviews: dependencies.adminReviews,
+            tripCaseManagement: dependencies.tripCaseManagement,
+            financeOperations: dependencies.financeOperations,
+            executiveDashboard: dependencies.executiveDashboard,
+            adminAccess: dependencies.adminAccess,
+            requestContext: requestContext(request, correlationId),
+          },
+        ), correlationId);
       }
       if (url.pathname === `${basePath}/memberships` && request.method === "GET") {
         return send(response, 200, dependencies.service.listMemberships(
@@ -1493,6 +1512,23 @@ function parseMembershipQuery(url: URL): AdminMembershipDirectoryQuery {
       : {}),
     ...(sort
       ? { sort: sort as NonNullable<AdminMembershipDirectoryQuery["sort"]> }
+      : {}),
+  };
+}
+
+function parseGlobalSearchQuery(
+  url: URL,
+): import("@pollycar/contracts").AdminGlobalSearchQuery {
+  const query = url.searchParams.get("query");
+  const limit = url.searchParams.get("limit_per_domain");
+  if (!query) throw new Error("VALIDATION_FAILED");
+  if (limit && !["3", "5", "10"].includes(limit)) {
+    throw new Error("VALIDATION_FAILED");
+  }
+  return {
+    query,
+    ...(limit
+      ? { limitPerDomain: Number(limit) as 3 | 5 | 10 }
       : {}),
   };
 }

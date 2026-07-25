@@ -87,11 +87,18 @@ async function completeAdultEligibility(page: Page): Promise<void> {
     await enterHome.click();
     return;
   }
+  const startVerification = page.getByRole("button", { name: "开始实名确认" });
+  if (await startVerification.isVisible()) {
+    await startVerification.click();
+    await expect(page.getByRole("heading", { name: "实名资料" })).toBeVisible();
+    await page.getByRole("button", { name: "进入乘客首页" }).click();
+    return;
+  }
   const authorize = page.getByRole("button", { name: "了解并继续" });
   await authorize.waitFor();
   await authorize.click();
-  await page.getByRole("button", { name: "开始实名确认" }).click();
-  await expect(page.getByText("实名信息已确认")).toBeVisible();
+  await startVerification.click();
+  await expect(page.getByRole("heading", { name: "实名资料" })).toBeVisible();
   await page.getByRole("button", { name: "进入乘客首页" }).click();
 }
 

@@ -27,9 +27,10 @@ test("乘客可完成叫车、零金额前置、匹配并确认取消", async ({
   await openAuthenticatedPage(page, "/passenger-workbench");
   await actions.click(page.getByRole("button", { name: "你要去哪里？" }));
   await actions.click(page.getByRole("button", { name: "虹桥站 虹桥 · 合成终点", exact: true }));
-  await expect(page.getByText("乘车人数（必选）")).toBeVisible();
+  await expect(page.getByText("乘车人数", { exact: true })).toBeVisible();
+  await expect(page.getByText("必选 · 最多 3 人", { exact: true })).toBeVisible();
   await expect(page.getByText("本次费用 ¥0")).toBeVisible();
-  await expect(page.getByText(/真实支付保持关闭/)).toBeVisible();
+  await expect(page.getByText("确认后不会产生扣款。")).toBeVisible();
 
   await actions.click(page.getByRole("button", { name: "确认呼叫" }));
   await expect(page).toHaveURL(/\/ride-matching$/);
@@ -47,29 +48,29 @@ test("乘客可完成叫车、零金额前置、匹配并确认取消", async ({
 
 test("车主可切换身份并理解审核资格配额与接单边界", async ({ page }) => {
   await mockApprovedVehicle(page);
+  await mockIdentitySwitch(page);
   const actions = actionCounter(page);
 
   await openAuthenticatedPage(page, "/identity-settings");
-  await expect(page.getByText("一个账户 · 两种身份")).toBeVisible();
+  await expect(page.getByText("身份切换", { exact: true })).toBeVisible();
   await actions.click(page.getByRole("button", { name: "切换为车主身份" }));
-  await expect(page).toHaveURL(/\/identity-settings$/);
-  const identitySummary = page.getByLabel("当前摘要");
-  await expect(identitySummary.getByText("车主身份", { exact: true })).toBeVisible();
-  await expect(identitySummary.getByText("可切换", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/owner-workbench$/);
+  await expect(page.getByText("车主工作模式")).toBeVisible();
 
-  await actions.click(page.getByRole("button", { name: "返回我的账户" }));
+  await actions.click(page.getByRole("tab", { name: "我的" }));
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole("button", { name: /车辆/ })).toBeVisible();
-  await expect(
-    page.getByRole("button", {
-      name: "参与资格，当前待申请，查看申请、确认和恢复路径",
-    }),
-  ).toBeVisible();
+  const eligibilityEntry = page.getByRole("button", {
+    name: "参与资格，当前邀请可用，查看确认和恢复路径",
+  });
+  await expect(eligibilityEntry).toBeVisible();
   await expect(
     page.getByRole("button", {
       name: "参与额度，查看滚动窗口上限和当前限制",
     }),
   ).toBeVisible();
+  await actions.click(eligibilityEntry);
+  await expect(page).toHaveURL(/\/eligibility-settings$/);
   await expect(page.getByRole("button", { name: "申请参与资格" })).toBeVisible();
   expect(actions.count()).toBeLessThanOrEqual(4);
 });
@@ -91,7 +92,7 @@ test("异常情况下保持可读并提供安全恢复路径", async ({ page, co
 
   await openAuthenticatedPage(page, "/ride-home");
   await expect(page.getByRole("button", { name: "你要去哪里？" })).toBeVisible();
-  await expect(page.getByText(/内部合成数据/)).toBeVisible();
+  await expect(page.getByText("地图、位置与时间保持在同一场景中。")).toBeVisible();
 
   await context.setOffline(true);
   await expect(page.getByRole("alert", { name: /当前处于离线状态/ })).toContainText(
@@ -152,6 +153,53 @@ async function mockApprovedVehicle(page: Page) {
         timeline: [],
         synthetic: true,
       }),
+    });
+  });
+}
+
+async function mockIdentitySwitch(page: Page) {
+  let activeIdentity: "passenger" | "driver" = "passenger";
+  await page.route("**/v1/internal-sandbox/app/sessions/current/identity", async (route) => {
+    const body = route.request().postDataJSON() as {
+      activeIdentity: "passenger" | "driver";
+    };
+    activeIdentity = body.activeIdentity;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        sessionId: "session-usability-identity-e2e",
+        accountId: "synthetic-account-7",
+        activeIdentity,
+        availableIdentities: ["passenger", "driver"],
+        adultEligibilityState: "verified",
+        businessAccessAllowed: true,
+        issuedAt: "2026-07-19T08:00:00.000Z",
+        expiresAt: "2026-07-19T18:00:00.000Z",
+        state: "active",
+        productionEnabled: false,
+        synthetic: true,
+      }),
+    });
+  });
+  await page.route("**/v1/auth/session/refresh", async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      session: {
+        activeIdentity: "passenger" | "driver";
+        availableIdentities: readonly ("passenger" | "driver")[];
+      };
+    };
+    await route.fulfill({
+      response,
+      json: {
+        ...payload,
+        session: {
+          ...payload.session,
+          activeIdentity,
+          availableIdentities: ["passenger", "driver"],
+        },
+      },
     });
   });
 }

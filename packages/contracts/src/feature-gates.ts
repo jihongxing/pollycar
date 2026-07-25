@@ -15,7 +15,14 @@ export interface FeatureGates {
   readonly realAdminOrganizationAccounts: boolean;
   readonly realAdminFinanceOperations: boolean;
   readonly productionAdminEnabled: boolean;
+  readonly syntheticFinancialLedger: boolean;
+  readonly syntheticFinancialReconciliation: boolean;
+  readonly syntheticOperatorFunds: boolean;
   readonly realPayment: boolean;
+  readonly realSettlement: boolean;
+  readonly realWithdrawal: boolean;
+  readonly driverEarlySettlementEnabled: boolean;
+  readonly realOperatorOnboarding: boolean;
   readonly paidFlexTrial: boolean;
   readonly realUserInvitation: boolean;
   readonly shanghaiPilot: boolean;
@@ -36,6 +43,32 @@ export interface FeatureGates {
   readonly internalSandbox: boolean;
 }
 
+export type CapabilityApprovalRole =
+  | "production_decision_owner"
+  | "security_owner"
+  | "privacy_owner"
+  | "identity_compliance_owner"
+  | "map_vendor_owner"
+  | "operations_owner"
+  | "finance_owner"
+  | "legal_owner";
+
+export interface CapabilityLifecycleState {
+  readonly implemented: boolean;
+  readonly approved: boolean;
+  readonly configured: boolean;
+  readonly enabled: boolean;
+}
+
+export interface CapabilityApprovalEvidence {
+  readonly reference: string;
+  readonly approvedByRoles: readonly CapabilityApprovalRole[];
+  readonly approvedOn: string;
+  readonly environment: "production";
+  readonly artifactReference: string;
+  readonly expiresOn?: string;
+}
+
 export const defaultFeatureGates: FeatureGates = Object.freeze({
   productionEnabled: false,
   syntheticAdminMultiOrganization: false,
@@ -53,7 +86,14 @@ export const defaultFeatureGates: FeatureGates = Object.freeze({
   realAdminOrganizationAccounts: false,
   realAdminFinanceOperations: false,
   productionAdminEnabled: false,
+  syntheticFinancialLedger: false,
+  syntheticFinancialReconciliation: false,
+  syntheticOperatorFunds: false,
   realPayment: false,
+  realSettlement: false,
+  realWithdrawal: false,
+  driverEarlySettlementEnabled: false,
+  realOperatorOnboarding: false,
   paidFlexTrial: false,
   realUserInvitation: false,
   shanghaiPilot: false,
@@ -73,6 +113,53 @@ export const defaultFeatureGates: FeatureGates = Object.freeze({
   amapWebService: false,
   internalSandbox: true,
 });
+
+export const capabilityGateNames = Object.freeze(
+  Object.keys(defaultFeatureGates) as readonly (keyof FeatureGates)[],
+);
+
+const internallyImplementedCapabilities = new Set<keyof FeatureGates>([
+  "productionEnabled",
+  "syntheticAdminMultiOrganization",
+  "syntheticAdminAuthentication",
+  "syntheticAdminRoleAccessMatrix",
+  "syntheticAdminOperatorManagement",
+  "syntheticAdminDriverVehicle",
+  "syntheticAdminTripOperations",
+  "syntheticAdminCaseManagement",
+  "syntheticAdminFinanceOperations",
+  "syntheticAdminExecutiveDashboard",
+  "syntheticAdminAuditSystem",
+  "syntheticAdminDataReports",
+  "syntheticAdminOrganizationAccounts",
+  "syntheticFinancialLedger",
+  "syntheticFinancialReconciliation",
+  "syntheticOperatorFunds",
+  "externalMapProvider",
+  "realMap",
+  "realDeviceLocation",
+  "amapSdk",
+  "amapWebService",
+  "internalSandbox",
+]);
+
+export const defaultCapabilityLifecycleStates = Object.freeze(
+  Object.fromEntries(
+    capabilityGateNames.map((name) => [
+      name,
+      Object.freeze({
+        implemented: internallyImplementedCapabilities.has(name),
+        approved: name === "internalSandbox",
+        configured: name === "internalSandbox",
+        enabled: name === "internalSandbox",
+      }),
+    ]),
+  ),
+) as Readonly<Record<keyof FeatureGates, CapabilityLifecycleState>>;
+
+export function isCapabilityLifecycleReady(state: CapabilityLifecycleState): boolean {
+  return state.implemented && state.approved && state.configured && state.enabled;
+}
 
 export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): FeatureGates {
   const gates = { ...defaultFeatureGates, ...overrides };
@@ -104,9 +191,23 @@ export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): Feat
     gates.syntheticAdminCaseManagement &&
     syntheticAdminMultiOrganization &&
     gates.internalSandbox;
+  const syntheticFinancialLedger =
+    gates.syntheticFinancialLedger && gates.internalSandbox;
+  const syntheticFinancialReconciliation =
+    gates.syntheticFinancialReconciliation &&
+    syntheticFinancialLedger &&
+    gates.internalSandbox;
+  const syntheticOperatorFunds =
+    gates.syntheticOperatorFunds &&
+    syntheticFinancialLedger &&
+    syntheticFinancialReconciliation &&
+    gates.internalSandbox;
   const syntheticAdminFinanceOperations =
     gates.syntheticAdminFinanceOperations &&
     syntheticAdminMultiOrganization &&
+    syntheticFinancialLedger &&
+    syntheticFinancialReconciliation &&
+    syntheticOperatorFunds &&
     gates.internalSandbox;
   const externalIdentityProvider =
     gates.externalIdentityProvider &&
@@ -153,6 +254,9 @@ export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): Feat
     syntheticAdminTripOperations,
     syntheticAdminCaseManagement,
     syntheticAdminFinanceOperations,
+    syntheticFinancialLedger,
+    syntheticFinancialReconciliation,
+    syntheticOperatorFunds,
     syntheticAdminExecutiveDashboard,
     syntheticAdminAuditSystem,
     syntheticAdminDataReports:
@@ -181,12 +285,31 @@ export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): Feat
       gates.productionEnabled &&
       gates.productionAuthentication &&
       gates.realAdminOrganizationAccounts,
+    realOperatorOnboarding:
+      gates.realOperatorOnboarding &&
+      gates.productionEnabled &&
+      gates.productionAuthentication &&
+      gates.realDataIngestion,
     realPayment:
       gates.realPayment &&
       gates.productionEnabled &&
       gates.shanghaiPilot &&
       gates.realUserInvitation &&
       gates.realDataIngestion,
+    realSettlement:
+      gates.realSettlement &&
+      gates.productionEnabled &&
+      gates.realPayment &&
+      gates.realAdminFinanceOperations,
+    realWithdrawal:
+      gates.realWithdrawal &&
+      gates.productionEnabled &&
+      gates.realSettlement,
+    driverEarlySettlementEnabled:
+      gates.driverEarlySettlementEnabled &&
+      gates.productionEnabled &&
+      gates.realSettlement &&
+      gates.realWithdrawal,
     paidFlexTrial:
       gates.paidFlexTrial &&
       gates.productionEnabled &&

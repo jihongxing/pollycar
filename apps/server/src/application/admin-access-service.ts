@@ -681,6 +681,24 @@ export class AdminAccessService {
     this.recordOperatorManagementEvent(actor, event);
   }
 
+  public recordGlobalSearchEvent(
+    actor: AdminAccessActor,
+    event: Readonly<{
+      queryDigest: string;
+      searchedDomains: readonly string[];
+      resultCount: number;
+    }>,
+  ): void {
+    this.recordOperatorManagementEvent(actor, {
+      eventType: "admin_global_search_performed",
+      action: "search_across_domains",
+      resourceType: "admin_global_search",
+      resourceId: event.queryDigest,
+      reasonCode:
+        `domains=${event.searchedDomains.join(",")};results=${event.resultCount}`,
+    });
+  }
+
   public attachAuditEventStore(store: AdminAuditEventStore): void {
     if (this.auditEventStore.list().length > 0) {
       throw new Error("ADMIN_AUDIT_STORE_ALREADY_ACTIVE");

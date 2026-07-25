@@ -9,6 +9,7 @@ test("默认入口进入叫车首页并可选择三人行程", async ({ page }) 
   await page.getByRole("button", { name: "你要去哪里？" }).click();
   await page.getByRole("button", { name: "虹桥站 虹桥 · 合成终点", exact: true }).click();
   await expect(page.getByText("乘车人数", { exact: true })).toBeVisible();
+  await expect(page.getByText("必选 · 最多 3 人", { exact: true })).toBeVisible();
   await page.getByRole("radio", { name: "3 人" }).click();
   await expect(page.getByText("3 人乘车", { exact: true })).toBeVisible();
   await expect
@@ -69,11 +70,12 @@ test("我的页面提供乘客任务、车主准备和跨身份通用设置入�
   const entries = [
     ["账户资料，管理头像和行程中的账户展示", /\/account-profile$/, "林屿"],
     ["我的行程，查看进行中、预约和历史行程", /\/ride-history$/, "我的行程"],
-    ["我的实名，实名信息已确认", /\/adult-eligibility$/, "实名信息已确认"],
-    ["主题，选择明亮或暗色外观", /\/theme-settings$/, "选择舒适的显示方式"],
-    ["通知设置，管理非紧急服务通知的显示偏好", /\/notification-settings$/, "只保留对你有用的更新"],
-    ["隐私与安全，查看安全事项、位置使用和行程联系边界", /\/privacy-safety-settings$/, "当前没有待处理的安全事项"],
-    ["帮助与反馈，获取行程、实名和安全帮助，或分享产品建议", /\/help-feedback$/, "先找到正确的处理入口"],
+    ["我的实名，实名信息已确认", /\/adult-eligibility$/, "实名资料"],
+    ["主题，选择明亮或暗色外观", /\/theme-settings$/, "显示方式"],
+    ["通知设置，管理非紧急服务通知的显示偏好", /\/notification-settings$/, "服务通知"],
+    ["隐私与安全，查看安全事项、位置使用和行程联系边界", /\/privacy-safety-settings$/, "当前没有需要处理的安全事项。"],
+    ["帮助与反馈，获取行程、实名和安全帮助，或分享产品建议", /\/help-feedback$/, "常用帮助"],
+    ["账户与登录，查看当前登录状态或退出账户", /\/account-login$/, "登录状态"],
   ] as const;
 
   for (const [accessibleName, url, heading] of entries) {
@@ -90,8 +92,8 @@ test("我的页面提供乘客任务、车主准备和跨身份通用设置入�
   }
 
   await page.getByRole("button", { name: "主题，选择明亮或暗色外观" }).click();
-  await page.getByRole("button", { name: "暗色外观，切换" }).click();
-  await expect(page.getByRole("button", { name: "暗色外观，当前" })).toBeVisible();
+  await page.getByRole("radio", { name: "暗色" }).click();
+  await expect(page.getByRole("radio", { name: "暗色，当前" })).toBeVisible();
 });
 
 test("消息中心提供行程与车辆通知并保留沙箱边界", async ({ page }) => {

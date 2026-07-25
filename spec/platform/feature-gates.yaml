@@ -4,6 +4,75 @@ language: "zh-CN"
 status: "approved_internal"
 production_enabled: false
 source_document: "docs/decisions/0007-生产应用架构与默认关闭策略.md"
+governance_decision: "docs/decisions/0026-生产能力门禁统一模型.md"
+governance:
+  machine_source_of_truth: "spec/platform/feature-gates.yaml"
+  roadmap_role: "human_readable_status_summary"
+  runtime_contract: "packages/contracts/src/feature-gates.ts"
+  effective_boolean_semantics: "只有实现、批准、配置和启用全部满足且依赖门禁生效时，运行时布尔值才可为 true"
+  lifecycle_dimensions:
+    implemented: "生产级代码和自动化测试已经存在，不代表外部批准完成"
+    approved: "所需业务、法律、隐私、安全或财务责任人已经批准"
+    configured: "正式环境、供应商、密钥、标识、数据边界和监控已经配置"
+    enabled: "目标环境已按灰度和回滚计划显式启用"
+  lifecycle_defaults:
+    implemented: false
+    approved: false
+    configured: false
+    enabled: false
+  approval_evidence_required:
+    - "reference"
+    - "approved_by_roles"
+    - "approved_on"
+    - "environment"
+    - "artifact_reference"
+  approval_evidence_optional:
+    - "expires_on"
+  approval_policies:
+    production:
+      required_roles: ["production_decision_owner", "security_owner"]
+      gates: ["production_enabled"]
+    data_privacy:
+      required_roles: ["privacy_owner", "security_owner"]
+      gates: ["real_data_ingestion", "real_phone_data", "real_user_invitation"]
+    identity:
+      required_roles: ["identity_compliance_owner", "privacy_owner", "security_owner"]
+      gates: ["external_identity_provider", "real_identity_verification", "real_biometric_verification", "real_sms_delivery", "production_authentication"]
+    maps:
+      required_roles: ["map_vendor_owner", "privacy_owner", "security_owner"]
+      gates: ["external_map_provider", "real_map", "real_device_location", "background_location", "real_vehicle_location_stream", "amap_sdk", "amap_web_service"]
+    operations:
+      required_roles: ["operations_owner", "security_owner"]
+      gates: ["real_operator_onboarding", "real_admin_organization_accounts", "production_admin_enabled", "shanghai_pilot"]
+    finance:
+      required_roles: ["finance_owner", "legal_owner", "security_owner"]
+      gates: ["real_admin_finance_operations", "real_payment", "real_settlement", "real_withdrawal", "paid_flex_trial", "driver_early_settlement_enabled"]
+  implemented_internal:
+    - "production_enabled"
+    - "synthetic_admin_multi_organization"
+    - "synthetic_admin_authentication"
+    - "synthetic_admin_role_access_matrix"
+    - "synthetic_admin_operator_management"
+    - "synthetic_admin_driver_vehicle"
+    - "synthetic_admin_trip_operations"
+    - "synthetic_admin_case_management"
+    - "synthetic_admin_finance_operations"
+    - "synthetic_admin_executive_dashboard"
+    - "synthetic_admin_audit_system"
+    - "synthetic_admin_data_reports"
+    - "synthetic_admin_organization_accounts"
+    - "synthetic_financial_ledger"
+    - "synthetic_financial_reconciliation"
+    - "synthetic_operator_funds"
+    - "external_map_provider"
+    - "real_map"
+    - "real_device_location"
+    - "amap_sdk"
+    - "amap_web_service"
+    - "internal_sandbox"
+  initial_production_scope:
+    included: ["real_data_ingestion", "real_sms_delivery", "real_phone_data", "production_authentication", "real_admin_organization_accounts", "production_admin_enabled", "external_map_provider", "real_map", "amap_sdk", "amap_web_service", "real_device_location"]
+    explicitly_excluded: ["real_payment", "real_settlement", "real_withdrawal", "driver_early_settlement_enabled", "paid_flex_trial", "background_location", "real_vehicle_location_stream"]
 defaults:
   synthetic_admin_multi_organization: false
   synthetic_admin_authentication: false
@@ -24,13 +93,27 @@ defaults:
   synthetic_financial_reconciliation: false
   synthetic_operator_funds: false
   real_payment: false
+  real_settlement: false
+  real_withdrawal: false
+  driver_early_settlement_enabled: false
+  real_operator_onboarding: false
   paid_flex_trial: false
   real_user_invitation: false
   shanghai_pilot: false
   real_data_ingestion: false
+  external_identity_provider: false
+  real_identity_verification: false
+  real_biometric_verification: false
   real_sms_delivery: false
   real_phone_data: false
   production_authentication: false
+  real_map: false
+  external_map_provider: false
+  real_device_location: false
+  background_location: false
+  real_vehicle_location_stream: false
+  amap_sdk: false
+  amap_web_service: false
   internal_sandbox: true
 dependencies:
   synthetic_admin_multi_organization: ["internal_sandbox"]
@@ -52,22 +135,51 @@ dependencies:
   synthetic_financial_reconciliation: ["internal_sandbox", "synthetic_financial_ledger"]
   synthetic_operator_funds: ["internal_sandbox", "synthetic_financial_ledger", "synthetic_financial_reconciliation"]
   real_payment: ["production_enabled", "shanghai_pilot", "real_user_invitation", "real_data_ingestion"]
+  real_settlement: ["production_enabled", "real_payment", "real_admin_finance_operations"]
+  real_withdrawal: ["production_enabled", "real_settlement"]
+  driver_early_settlement_enabled: ["production_enabled", "real_settlement", "real_withdrawal"]
+  real_operator_onboarding: ["production_enabled", "production_authentication", "real_data_ingestion"]
   paid_flex_trial: ["production_enabled", "real_payment", "shanghai_pilot"]
   real_user_invitation: ["production_enabled", "shanghai_pilot", "real_data_ingestion"]
   shanghai_pilot: ["production_enabled"]
+  external_identity_provider: ["production_enabled", "real_data_ingestion"]
+  real_identity_verification: ["production_enabled", "real_data_ingestion", "external_identity_provider"]
+  real_biometric_verification: ["production_enabled", "real_data_ingestion", "real_identity_verification", "external_identity_provider"]
   real_sms_delivery: ["production_enabled", "real_data_ingestion"]
   real_phone_data: ["production_enabled", "real_data_ingestion"]
   production_authentication: ["production_enabled", "real_sms_delivery", "real_phone_data"]
+  external_map_provider: ["production_enabled", "real_data_ingestion"]
+  real_map: ["production_enabled", "real_data_ingestion", "external_map_provider"]
+  real_device_location: ["production_enabled", "real_data_ingestion"]
+  background_location: ["production_enabled", "real_device_location"]
+  real_vehicle_location_stream: ["production_enabled", "real_map", "real_device_location"]
+  amap_sdk: ["real_map", "external_map_provider"]
+  amap_web_service: ["real_map", "external_map_provider"]
 deny_on_missing: true
 dual_approval_required_for:
   - "production_enabled"
   - "real_admin_organization_accounts"
   - "real_admin_finance_operations"
   - "production_admin_enabled"
+  - "real_operator_onboarding"
   - "real_payment"
+  - "real_settlement"
+  - "real_withdrawal"
+  - "driver_early_settlement_enabled"
   - "paid_flex_trial"
   - "real_user_invitation"
   - "shanghai_pilot"
+  - "real_data_ingestion"
+  - "external_identity_provider"
+  - "real_identity_verification"
+  - "real_biometric_verification"
   - "real_sms_delivery"
   - "real_phone_data"
   - "production_authentication"
+  - "real_map"
+  - "external_map_provider"
+  - "real_device_location"
+  - "background_location"
+  - "real_vehicle_location_stream"
+  - "amap_sdk"
+  - "amap_web_service"

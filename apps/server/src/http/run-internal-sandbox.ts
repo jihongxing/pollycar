@@ -6,6 +6,11 @@ const configuredOrigins = process.env.POLLYCAR_SANDBOX_ALLOWED_ORIGINS
   ?.split(",")
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);
+const configuredNow = process.env.POLLYCAR_SANDBOX_NOW;
+const fixedNow = configuredNow ? new Date(configuredNow) : undefined;
+if (fixedNow && Number.isNaN(fixedNow.getTime())) {
+  throw new Error("POLLYCAR_SANDBOX_NOW 必须是有效的 ISO 8601 时间");
+}
 const multiOrganizationEnabled =
   process.env.POLLYCAR_SYNTHETIC_ADMIN_MULTI_ORGANIZATION === "true";
 const authenticationEnabled =
@@ -35,6 +40,7 @@ const executiveStateDir =
   join(process.cwd(), ".codex-runtime", "admin-executive-dashboard");
 const server = await startInternalSandboxHttpServer({
   ...(configuredPort ? { port: Number(configuredPort) } : {}),
+  ...(fixedNow ? { now: () => new Date(fixedNow) } : {}),
   ...(configuredOrigins && configuredOrigins.length > 0
     ? { allowedOrigins: configuredOrigins }
     : {}),

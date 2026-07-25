@@ -50,14 +50,50 @@ describe("运营后台产品化认证 HTTP API", () => {
       workIdentityId: "synthetic-operator-ops-001",
     });
     expect(sessionResponse.status).toBe(200);
-    const session = await json(sessionResponse);
-    expect(session.navigation.organizationContext.organizationId).toBe("operator-huhang");
+    const operatorSession = await json(sessionResponse);
+    expect(operatorSession.navigation.organizationContext.organizationId)
+      .toBe("operator-huhang");
     const page = await fetch(
       `${running.url}/v1/internal-sandbox/admin/operations/tasks?page_size=25`,
-      { headers: { Authorization: `Bearer ${session.accessToken}` } },
+      {
+        headers: {
+          Authorization: `Bearer ${operatorSession.accessToken}`,
+        },
+      },
     );
     expect(page.status).toBe(200);
-    expect((await page.json()).items.every((task: { operatorName: string }) => task.operatorName === "沪行出行服务")).toBe(true);
+    expect((await page.json()).items.every(
+      (task: { operatorName: string }) =>
+        task.operatorName === "沪行出行服务",
+    )).toBe(true);
+    const switchedResponse = await fetch(
+      `${running.url}/v1/internal-sandbox/admin/auth/work-identities/switch`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${operatorSession.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workIdentityId: "synthetic-platform-ops-001",
+        }),
+      },
+    );
+    expect(switchedResponse.status).toBe(200);
+    const platformSession = await json(switchedResponse);
+    expect(platformSession.workIdentity).toMatchObject({
+      type: "platform",
+      organizationId: "platform-pollycar",
+    });
+    const oldNavigation = await fetch(
+      `${running.url}/v1/internal-sandbox/admin/navigation`,
+      {
+        headers: {
+          Authorization: `Bearer ${operatorSession.accessToken}`,
+        },
+      },
+    );
+    expect(oldNavigation.status).toBe(401);
   });
 
   it("行程运营门禁开启后提供范围内列表和详情", async () => {
@@ -169,11 +205,10 @@ describe("运营后台产品化认证 HTTP API", () => {
     ).toHaveLength(1);
   });
 
-  it("客服、安全和审计身份在行程域保持只读", async () => {
+  it("客服和审计身份在行程域保持只读且安全负责人不可进入行程域", async () => {
     running = await tripServer();
     for (const [email, identityId] of [
       ["support@rego.example", "synthetic-support-001"],
-      ["safety@rego.example", "synthetic-safety-lead-001"],
       ["audit@rego.example", "synthetic-auditor-001"],
     ] as const) {
       const session = await login(running.url, email, identityId);
@@ -183,6 +218,16 @@ describe("运营后台产品化认证 HTTP API", () => {
       ));
       expect(detail.allowedActions).toEqual([]);
     }
+    const safetyLead = await login(
+      running.url,
+      "safety@rego.example",
+      "synthetic-safety-lead-001",
+    );
+    const forbidden = await fetch(
+      `${running.url}/v1/internal-sandbox/admin/trips/trip-synthetic-8466`,
+      { headers: { Authorization: `Bearer ${safetyLead.accessToken}` } },
+    );
+    expect(forbidden.status).toBe(403);
   });
 
   it("客服与安全 HTTP API 提供角色列表、详情和案件操作", async () => {
@@ -509,6 +554,78 @@ describe("运营后台产品化认证 HTTP API", () => {
       idempotentReplay: true,
     });
   });
+
+  it("跨域搜索按工作身份裁剪领域并只审计查询摘要", async () => {
+    const executiveStateDir = mkdtempSync(
+      join(tmpdir(), "pollycar-product-search-"),
+    );
+    stateDirectories.push(executiveStateDir);
+    running = await searchServer(executiveStateDir);
+    const platformOperations = await login(
+      running.url,
+      "lin.yun@rego.example",
+      "synthetic-platform-ops-001",
+    );
+    const result = await json(await fetch(
+      `${running.url}/v1/internal-sandbox/admin/search?query=${encodeURIComponent("浦东机场")}&limit_per_domain=5`,
+      {
+        headers: {
+          Authorization: `Bearer ${platformOperations.accessToken}`,
+        },
+      },
+    ));
+
+    const domains = result.groups.map((group: { domain: string }) =>
+      group.domain);
+    expect(domains).toContain("trip_operations");
+    expect(domains).not.toContain("support_safety");
+    expect(domains).not.toContain("finance_operations");
+    expect(result.groups.flatMap(
+      (group: { items: { route: string }[] }) => group.items,
+    )).toContainEqual(expect.objectContaining({
+      route: expect.stringMatching(/^\/admin\/trips\//),
+    }));
+    const productizedResult = await json(await fetch(
+      `${running.url}/v1/internal-sandbox/admin/search?query=${encodeURIComponent("沪行出行服务")}`,
+      {
+        headers: {
+          Authorization: `Bearer ${platformOperations.accessToken}`,
+        },
+      },
+    ));
+    expect(JSON.stringify(productizedResult)).not.toContain(
+      "restoration_review_pending",
+    );
+    expect(JSON.stringify(productizedResult)).toContain(
+      "安全恢复仍在等待独立复核",
+    );
+
+    const auditor = await login(
+      running.url,
+      "audit@rego.example",
+      "synthetic-auditor-001",
+    );
+    await json(await fetch(
+      `${running.url}/v1/internal-sandbox/admin/search?query=${encodeURIComponent("沪行出行服务")}`,
+      { headers: { Authorization: `Bearer ${auditor.accessToken}` } },
+    ));
+    const audit = await json(await fetch(
+      `${running.url}/v1/internal-sandbox/admin/audit?search=${encodeURIComponent("跨域搜索已执行")}`,
+      { headers: { Authorization: `Bearer ${auditor.accessToken}` } },
+    ));
+    const serializedAudit = JSON.stringify(audit.items);
+    expect(serializedAudit).toContain("跨域搜索已执行");
+    expect(serializedAudit).not.toContain("沪行出行服务");
+    const searchAudit = audit.items.find(
+      (item: { title: string }) => item.title === "跨域搜索已执行",
+    );
+    const auditDetail = await json(await fetch(
+      `${running.url}/v1/internal-sandbox/admin/audit/event/${searchAudit.resourceId}`,
+      { headers: { Authorization: `Bearer ${auditor.accessToken}` } },
+    ));
+    expect(auditDetail.record.event.resourceId).toMatch(/^[a-f0-9]{64}$/);
+    expect(auditDetail.record.event.reasonCode).not.toContain("沪行出行服务");
+  });
 });
 
 function post(url: string, path: string, body: unknown) {
@@ -556,6 +673,9 @@ function financeServer() {
       syntheticAdminAuthentication: true,
       syntheticAdminRoleAccessMatrix: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
     },
   });
 }
@@ -573,6 +693,9 @@ function executiveServer(executiveStateDir: string) {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: true,
     },
   });
@@ -591,6 +714,9 @@ function auditServer(executiveStateDir: string) {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: true,
       syntheticAdminAuditSystem: true,
     },
@@ -610,9 +736,36 @@ function dataReportServer(executiveStateDir: string) {
       syntheticAdminTripOperations: true,
       syntheticAdminCaseManagement: true,
       syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
       syntheticAdminExecutiveDashboard: true,
       syntheticAdminAuditSystem: true,
       syntheticAdminDataReports: true,
+    },
+  });
+}
+
+function searchServer(executiveStateDir: string) {
+  return startInternalSandboxHttpServer({
+    port: 0,
+    executiveStateDir,
+    featureGates: {
+      syntheticAdminMultiOrganization: true,
+      syntheticAdminAuthentication: true,
+      syntheticAdminRoleAccessMatrix: true,
+      syntheticAdminOperatorManagement: true,
+      syntheticAdminDriverVehicle: true,
+      syntheticAdminTripOperations: true,
+      syntheticAdminCaseManagement: true,
+      syntheticAdminFinanceOperations: true,
+      syntheticFinancialLedger: true,
+      syntheticFinancialReconciliation: true,
+      syntheticOperatorFunds: true,
+      syntheticAdminExecutiveDashboard: true,
+      syntheticAdminAuditSystem: true,
+      syntheticAdminDataReports: true,
+      syntheticAdminOrganizationAccounts: true,
     },
   });
 }

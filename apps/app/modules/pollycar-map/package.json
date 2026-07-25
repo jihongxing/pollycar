@@ -1,0 +1,6 @@
+{
+  "name": "pollycar-map",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PollyCar 高德地图原生视图"
+}

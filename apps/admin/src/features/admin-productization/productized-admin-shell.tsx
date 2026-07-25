@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AdminAuditAction,
   AdminAuditDetail,
@@ -51,8 +51,18 @@ import type {
 } from "@pollycar/contracts";
 import { resolveAdminApiBaseUrl } from "../../infrastructure/api-base-url";
 import { HttpAdminProductizationClient } from "../../infrastructure/http-admin-productization-client";
-import { useTheme } from "../../theme/theme-provider";
-import { GlobalSearch } from "../../components/global-search";
+import {
+  AdminRiskConfirmationDialog,
+  AdminWorkScopeCard,
+} from "./admin-governance-actions";
+import { AdminMasterDetailWorkspace } from "./admin-master-detail-workspace";
+import {
+  AdminEntryHeader,
+  AdminEntryShell,
+  AdminPageState,
+} from "./admin-supporting-experience";
+import { ProductizedAdminLayout } from "./productized-admin-layout";
+import { VehicleReviewWorkspace } from "./vehicle-review-workspace";
 import "./productized-admin-shell.css";
 
 const refreshStorageKey = "pollycar.admin.refresh-token";
@@ -148,6 +158,17 @@ export function ProductizedAdminShell({
     } catch (reason) {
       setError(messageFor(reason));
     }
+  }
+
+  async function switchIdentity(workIdentityId: string) {
+    if (!session || !verification) throw new Error("SELECTION_EXPIRED");
+    const next = await client.switchWorkIdentity(
+      session.accessToken,
+      workIdentityId,
+    );
+    persistSession(next);
+    setSession(next);
+    applyInitialRoute(next);
   }
 
   async function logout() {
@@ -273,6 +294,25 @@ export function ProductizedAdminShell({
     );
   }
 
+  function navigateRoute(pathname: string) {
+    if (!session) return;
+    const route = resolveRoute(pathname, session.navigation);
+    if (!route) return;
+    navigate(
+      route.domain,
+      route.taskId ??
+        route.operatorId ??
+        route.tripId ??
+        route.reportId ??
+        route.membershipId,
+      route.fleet,
+      route.case,
+      route.finance,
+      route.executive,
+      route.audit,
+    );
+  }
+
   useEffect(() => {
     if (!session) return undefined;
     const handlePopState = () => {
@@ -331,7 +371,26 @@ export function ProductizedAdminShell({
     }
   }
 
-  if (restoring) return <EntryFrame><p className="entry-status">正在恢复登录状态…</p></EntryFrame>;
+  if (restoring) {
+    return (
+      <AdminEntryShell label="正在恢复登录状态">
+        <section className="entry-card">
+          <AdminEntryHeader
+            eyebrow="安全登录"
+            title="正在恢复工作状态"
+            description="正在确认你的登录状态和可用工作身份。"
+            showBrandMark
+          />
+          <AdminPageState
+            compact
+            tone="loading"
+            title="请稍候"
+            description="确认完成后将继续进入运营后台。"
+          />
+        </section>
+      </AdminEntryShell>
+    );
+  }
   if (!session) {
     if (recoveryCodes) {
       return (
@@ -390,7 +449,11 @@ export function ProductizedAdminShell({
       {...(reportId ? { reportId } : {})}
       {...(membershipId ? { membershipId } : {})}
       {...(fleetRoute ? { fleetRoute } : {})}
+      workIdentities={verification?.workIdentities ?? [session.workIdentity]}
+      identitySwitchAvailable={Boolean(verification)}
+      onSwitchIdentity={switchIdentity}
       onNavigate={navigate}
+      onNavigateRoute={navigateRoute}
       onLogout={logout}
     />
   );
@@ -408,17 +471,19 @@ function ActivationEntry({
   const [password, setPassword] = useState("Rego-Internal-2026!");
   const [totpCode, setTotpCode] = useState("826419");
   return (
-    <EntryFrame>
+    <AdminEntryShell label="激活后台账号">
       <form className="entry-card" onSubmit={(event) => { event.preventDefault(); void onSubmit(password, totpCode); }}>
-        <span className="eyebrow">账号激活</span>
-        <h1>设置后台登录方式</h1>
-        <p>{invitation ? `${invitation.organizationName} · ${invitation.productRoleName}` : "正在核对邀请…"}</p>
+        <AdminEntryHeader
+          eyebrow="账号激活"
+          title="设置后台登录方式"
+          description={invitation ? `${invitation.organizationName} · ${invitation.productRoleName}` : "正在核对邀请…"}
+        />
         <label>设置密码<input aria-label="设置密码" type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         <label>动态验证码<input aria-label="激活动态验证码" inputMode="numeric" maxLength={6} value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, ""))} /></label>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button className="primary-action" disabled={!invitation}>完成激活</button>
       </form>
-    </EntryFrame>
+    </AdminEntryShell>
   );
 }
 
@@ -427,15 +492,17 @@ function RecoveryCodesEntry({
   onContinue,
 }: Readonly<{ codes: readonly string[]; onContinue(): void }>) {
   return (
-    <EntryFrame>
+    <AdminEntryShell label="保存后台账号恢复码">
       <section className="entry-card">
-        <span className="eyebrow">账号已激活</span>
-        <h1>保存恢复码</h1>
-        <p>每个恢复码只能使用一次，请保存在安全位置。</p>
+        <AdminEntryHeader
+          eyebrow="账号已激活"
+          title="保存恢复码"
+          description="每个恢复码只能使用一次，请保存在安全位置。"
+        />
         <div>{codes.map((code) => <code key={code}>{code}</code>)}</div>
         <button className="primary-action" onClick={onContinue}>前往登录</button>
       </section>
-    </EntryFrame>
+    </AdminEntryShell>
   );
 }
 
@@ -456,19 +523,21 @@ function LoginEntry({
     setSubmitting(false);
   }
   return (
-    <EntryFrame>
+    <AdminEntryShell label="登录 PollyCar 运营后台">
       <form className="entry-card" onSubmit={submit}>
-        <div className="brand-mark">P</div>
-        <span className="eyebrow">运营管理后台</span>
-        <h1>登录工作账号</h1>
-        <p>使用受邀的工作邮箱进入。当前为内部演示环境。</p>
+        <AdminEntryHeader
+          eyebrow="运营管理后台"
+          title="登录工作账号"
+          description="使用受邀的工作邮箱进入。当前为内部演示环境。"
+          showBrandMark
+        />
         <label>工作邮箱<input aria-label="工作邮箱" value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="username" /></label>
         <label>密码<input aria-label="密码" value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" /></label>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button className="primary-action" disabled={submitting}>{submitting ? "正在验证…" : "继续"}</button>
         <p className="entry-help">后台账号由组织管理员邀请开通，不提供公开注册。</p>
       </form>
-    </EntryFrame>
+    </AdminEntryShell>
   );
 }
 
@@ -483,17 +552,19 @@ function MfaEntry({
 }>) {
   const [code, setCode] = useState("826419");
   return (
-    <EntryFrame>
+    <AdminEntryShell label="验证后台登录">
       <form className="entry-card" onSubmit={(event) => { event.preventDefault(); void onSubmit(code); }}>
-        <span className="eyebrow">第二步</span>
-        <h1>输入动态验证码</h1>
-        <p>请输入身份验证器中显示的 6 位验证码。</p>
+        <AdminEntryHeader
+          eyebrow="第二步"
+          title="输入动态验证码"
+          description="请输入身份验证器中显示的 6 位验证码。"
+        />
         <label>动态验证码<input aria-label="动态验证码" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button className="primary-action">验证并继续</button>
         <button className="text-action" type="button" onClick={onBack}>返回登录</button>
       </form>
-    </EntryFrame>
+    </AdminEntryShell>
   );
 }
 
@@ -509,11 +580,13 @@ function IdentityEntry({
   onBack(): void;
 }>) {
   return (
-    <EntryFrame>
+    <AdminEntryShell label="选择后台工作身份">
       <section className="entry-card identity-card">
-        <span className="eyebrow">选择工作身份</span>
-        <h1>本次要为哪个组织工作？</h1>
-        <p>每次登录只使用一个组织身份，权限和数据范围不会合并。</p>
+        <AdminEntryHeader
+          eyebrow="选择工作身份"
+          title="本次要为哪个组织工作？"
+          description="每次登录只使用一个组织身份，权限和数据范围不会合并。"
+        />
         <div className="identity-list">
           {verification.workIdentities.map((identity) => (
             <button key={identity.workIdentityId} className="identity-option" onClick={() => void onSelect(identity.workIdentityId)}>
@@ -526,7 +599,7 @@ function IdentityEntry({
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button className="text-action" onClick={onBack}>返回登录</button>
       </section>
-    </EntryFrame>
+    </AdminEntryShell>
   );
 }
 
@@ -544,7 +617,11 @@ function AuthenticatedShell({
   reportId,
   membershipId,
   fleetRoute,
+  workIdentities,
+  identitySwitchAvailable,
+  onSwitchIdentity,
   onNavigate,
+  onNavigateRoute,
   onLogout,
 }: Readonly<{
   session: AdminProductSession;
@@ -560,6 +637,9 @@ function AuthenticatedShell({
   reportId?: string;
   membershipId?: string;
   fleetRoute?: AdminRoute["fleet"];
+  workIdentities: AdminMfaVerification["workIdentities"];
+  identitySwitchAvailable: boolean;
+  onSwitchIdentity(workIdentityId: string): Promise<void>;
   onNavigate(
     page: AdminNavigationDomain,
     resourceId?: string,
@@ -569,93 +649,107 @@ function AuthenticatedShell({
     executiveRoute?: AdminRoute["executive"],
     auditRoute?: AdminRoute["audit"],
   ): void;
+  onNavigateRoute(route: string): void;
   onLogout(): Promise<void>;
 }>) {
-  const { theme, toggle } = useTheme();
   const item = session.navigation.items.find((candidate) => candidate.id === page);
   if (!item || !session.navigation.routePermissions.includes(`${page}:read`)) {
+    const fallbackPage = session.navigation.items.find(
+      (candidate) => candidate.availability === "available",
+    )?.id ?? "workbench";
     return (
-      <main className="unauthorized-page">
-        <h1>当前账号无权访问此页面</h1>
-        <button onClick={() => onNavigate(session.navigation.items[0]?.id ?? "workbench")}>返回工作台</button>
-      </main>
+      <ProductizedAdminLayout
+        session={session}
+        client={client}
+        page={fallbackPage}
+        workIdentities={workIdentities}
+        identitySwitchAvailable={identitySwitchAvailable}
+        onNavigate={(nextPage) => onNavigate(nextPage)}
+        onNavigateRoute={onNavigateRoute}
+        onSwitchIdentity={onSwitchIdentity}
+        onLogout={onLogout}
+        navigationIcon={iconFor}
+      >
+        <AdminPageState
+          tone="restricted"
+          title={item ? "当前工作身份无法打开此页面" : "页面链接已失效"}
+          description={item
+            ? "此页面不在当前工作身份的职责范围内。你可以返回工作台，或从顶部切换到其他已获准身份。"
+            : "该链接对应的页面已经不存在，或当前环境未提供此入口。请返回工作台继续处理任务。"}
+          primaryAction={{
+            label: "返回工作台",
+            onAction: () => onNavigate(fallbackPage),
+          }}
+          focusOnMount
+        />
+      </ProductizedAdminLayout>
     );
   }
   return (
-    <div className="product-shell">
-      <aside className="product-sidebar">
-        <div className="sidebar-brand"><span>P</span><strong>PollyCar</strong></div>
-        <div className="environment-chip">内部演示环境</div>
-        <nav aria-label="主菜单">
-          {session.navigation.items
-            .filter((navigationItem) =>
-              session.navigation.routePermissions.includes(`${navigationItem.id}:read`),
-            )
-            .map((navigationItem) => (
-            <button
-              key={navigationItem.id}
-              className={page === navigationItem.id ? "active" : ""}
-              disabled={navigationItem.availability !== "available"}
-              aria-label={navigationItem.availability === "available"
-                ? navigationItem.label
-                : `${navigationItem.label}，功能暂未开放`}
-              onClick={() => onNavigate(navigationItem.id)}
-            >
-              <span className="nav-icon">{iconFor(navigationItem.id)}</span>
-              {navigationItem.label}
-              {navigationItem.availability !== "available"
-                ? <small>功能暂未开放</small>
-                : null}
-            </button>
-            ))}
-        </nav>
-        <div className="sidebar-account">
-          <strong>{session.workIdentity.organizationName}</strong>
-          <span>{session.workIdentity.productRoleName}</span>
-          <button onClick={() => void onLogout()}>退出登录</button>
-        </div>
-      </aside>
-      <div className="product-main">
-        <header className="product-topbar">
-          <div>
-            <span>{session.workIdentity.type === "platform" ? "平台工作身份" : "运营公司工作身份"}</span>
-            <strong>{session.workIdentity.organizationName}</strong>
-          </div>
-          <div className="product-topbar-actions">
-            <GlobalSearch
-              items={session.navigation.items}
-              onNavigate={(nextPage) => onNavigate(nextPage)}
-            />
-            <button onClick={toggle}>{theme === "light" ? "切换深色外观" : "切换浅色外观"}</button>
-          </div>
-        </header>
-        <main className="product-content">
-          {page === "workbench" && taskId ? (
-            <OperationsTaskDetail
-              session={session}
-              client={client}
-              taskId={taskId}
-              onBack={() => onNavigate("workbench")}
-            />
-          ) : page === "workbench" ? (
-            <Workbench
-              session={session}
-              client={client}
-              onOpenTask={(nextTaskId) => onNavigate("workbench", nextTaskId)}
-            />
-          ) : page === "operator_management" && operatorId ? (
-            <OperatorDetail
-              session={session}
-              client={client}
-              operatorId={operatorId}
-              onBack={() => onNavigate("operator_management")}
+    <ProductizedAdminLayout
+      session={session}
+      client={client}
+      page={page}
+      workIdentities={workIdentities}
+      identitySwitchAvailable={identitySwitchAvailable}
+      onNavigate={(nextPage) => onNavigate(nextPage)}
+      onNavigateRoute={onNavigateRoute}
+      onSwitchIdentity={onSwitchIdentity}
+      onLogout={onLogout}
+      navigationIcon={iconFor}
+    >
+          {page === "workbench" ? (
+            <AdminMasterDetailWorkspace
+              label="角色任务工作区"
+              emptyTitle="选择一项任务开始处理"
+              emptyDescription="列表会保留当前筛选和位置，完成后可以继续处理下一项任务。"
+              master={(
+                <Workbench
+                  session={session}
+                  client={client}
+                  {...(taskId ? { selectedTaskId: taskId } : {})}
+                  onOpenTask={(nextTaskId) => onNavigate("workbench", nextTaskId)}
+                />
+              )}
+              {...(taskId
+                ? {
+                    detail: (
+                      <OperationsTaskDetail
+                        session={session}
+                        client={client}
+                        taskId={taskId}
+                        onBack={() => onNavigate("workbench")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "operator_management" ? (
-            <OperatorDirectory
-              session={session}
-              client={client}
-              onOpenOperator={(nextOperatorId) =>
-                onNavigate("operator_management", nextOperatorId)}
+            <AdminMasterDetailWorkspace
+              label="运营公司工作区"
+              emptyTitle="选择一家运营公司查看详情"
+              emptyDescription="在左侧筛选运营公司，查看当前状态、待办和可执行操作。"
+              master={(
+                <OperatorDirectory
+                  session={session}
+                  client={client}
+                  {...(operatorId ? { selectedOperatorId: operatorId } : {})}
+                  onOpenOperator={(nextOperatorId) =>
+                    onNavigate("operator_management", nextOperatorId)}
+                />
+              )}
+              {...(operatorId
+                ? {
+                    detail: (
+                      <OperatorDetail
+                        session={session}
+                        client={client}
+                        operatorId={operatorId}
+                        onBack={() => onNavigate("operator_management")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "driver_vehicle" ? (
             <FleetWorkspace
@@ -665,156 +759,253 @@ function AuthenticatedShell({
               onNavigate={(fleet) =>
                 onNavigate("driver_vehicle", fleet.resourceId, fleet)}
             />
-          ) : page === "trip_operations" && tripId ? (
-            <TripDetail
-              session={session}
-              client={client}
-              tripId={tripId}
-              onBack={() => onNavigate("trip_operations")}
-            />
           ) : page === "trip_operations" ? (
-            <TripDirectory
-              session={session}
-              client={client}
-              onOpenTrip={(nextTripId) =>
-                onNavigate("trip_operations", nextTripId)}
-            />
-          ) : page === "support_safety" && caseRoute ? (
-            <CaseDetail
-              session={session}
-              client={client}
-              caseRoute={caseRoute}
-              onBack={() => onNavigate("support_safety")}
+            <AdminMasterDetailWorkspace
+              label="行程运营工作区"
+              emptyTitle="选择一段行程开始检查"
+              emptyDescription="路线、履约状态和当前风险会在详情中集中展示。"
+              master={(
+                <TripDirectory
+                  session={session}
+                  client={client}
+                  {...(tripId ? { selectedTripId: tripId } : {})}
+                  onOpenTrip={(nextTripId) =>
+                    onNavigate("trip_operations", nextTripId)}
+                />
+              )}
+              {...(tripId
+                ? {
+                    detail: (
+                      <TripDetail
+                        session={session}
+                        client={client}
+                        tripId={tripId}
+                        onBack={() => onNavigate("trip_operations")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "support_safety" ? (
-            <CaseDirectory
-              session={session}
-              client={client}
-              onOpenCase={(nextCase) =>
-                onNavigate(
-                  "support_safety",
-                  nextCase.caseId,
-                  undefined,
-                  nextCase,
-                )}
-            />
-          ) : page === "finance_operations" && financeRoute ? (
-            <FinanceDetail
-              session={session}
-              client={client}
-              financeRoute={financeRoute}
-              onBack={() => onNavigate("finance_operations")}
+            <AdminMasterDetailWorkspace
+              label="客服与安全工作区"
+              emptyTitle="选择一个案件开始处理"
+              emptyDescription="案件事实、风险影响和当前行动会在详情中保持连续。"
+              master={(
+                <CaseDirectory
+                  session={session}
+                  client={client}
+                  selectedCase={caseRoute}
+                  onOpenCase={(nextCase) =>
+                    onNavigate(
+                      "support_safety",
+                      nextCase.caseId,
+                      undefined,
+                      nextCase,
+                    )}
+                />
+              )}
+              {...(caseRoute
+                ? {
+                    detail: (
+                      <CaseDetail
+                        session={session}
+                        client={client}
+                        caseRoute={caseRoute}
+                        onBack={() => onNavigate("support_safety")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "finance_operations" ? (
-            <FinanceDirectory
-              session={session}
-              client={client}
-              onOpenFinance={(nextFinance) =>
-                onNavigate(
-                  "finance_operations",
-                  nextFinance.resourceId,
-                  undefined,
-                  undefined,
-                  nextFinance,
-                )}
-            />
-          ) : page === "organization_accounts" && membershipId ? (
-            <MembershipDetail
-              session={session}
-              client={client}
-              membershipId={membershipId}
-              onBack={() => onNavigate("organization_accounts")}
+            <AdminMasterDetailWorkspace
+              label="财务与对账工作区"
+              emptyTitle="选择一项财务记录开始核对"
+              emptyDescription="金额事实、责任范围和可执行操作会在详情中保持连续。"
+              master={(
+                <FinanceDirectory
+                  session={session}
+                  client={client}
+                  selectedFinance={financeRoute}
+                  onOpenFinance={(nextFinance) =>
+                    onNavigate(
+                      "finance_operations",
+                      nextFinance.resourceId,
+                      undefined,
+                      undefined,
+                      nextFinance,
+                    )}
+                />
+              )}
+              {...(financeRoute
+                ? {
+                    detail: (
+                      <FinanceDetail
+                        session={session}
+                        client={client}
+                        financeRoute={financeRoute}
+                        onBack={() => onNavigate("finance_operations")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "organization_accounts" ? (
-            <MembershipDirectory
-              session={session}
-              client={client}
-              onOpenMembership={(nextMembershipId) =>
-                onNavigate("organization_accounts", nextMembershipId)}
-            />
-          ) : page === "data_reports" && reportId ? (
-            <DataReportDetail
-              session={session}
-              client={client}
-              reportId={reportId}
-              onBack={() => onNavigate("data_reports")}
+            <AdminMasterDetailWorkspace
+              label="成员与权限工作区"
+              emptyTitle="选择一位成员查看工作权限"
+              emptyDescription="成员身份、工作范围和访问状态会在详情中集中展示。"
+              master={(
+                <MembershipDirectory
+                  session={session}
+                  client={client}
+                  {...(membershipId ? { selectedMembershipId: membershipId } : {})}
+                  onOpenMembership={(nextMembershipId) =>
+                    onNavigate("organization_accounts", nextMembershipId)}
+                />
+              )}
+              {...(membershipId
+                ? {
+                    detail: (
+                      <MembershipDetail
+                        session={session}
+                        client={client}
+                        membershipId={membershipId}
+                        onBack={() => onNavigate("organization_accounts")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "data_reports" ? (
-            <DataReportDirectory
-              session={session}
-              client={client}
-              onOpenReport={(nextReportId) =>
-                onNavigate("data_reports", nextReportId)}
-            />
-          ) : page === "executive_dashboard" && executiveRoute ? (
-            <ExecutiveDetail
-              session={session}
-              client={client}
-              executiveRoute={executiveRoute}
-              onBack={() => onNavigate("executive_dashboard")}
+            <AdminMasterDetailWorkspace
+              label="数据与报表工作区"
+              emptyTitle="选择一张报表"
+              emptyDescription="从左侧选择报表，查看指标口径、刷新状态和治理记录。"
+              master={(
+                <DataReportDirectory
+                  session={session}
+                  client={client}
+                  {...(reportId ? { selectedReportId: reportId } : {})}
+                  onOpenReport={(nextReportId) =>
+                    onNavigate("data_reports", nextReportId)}
+                />
+              )}
+              {...(reportId
+                ? {
+                    detail: (
+                      <DataReportDetail
+                        session={session}
+                        client={client}
+                        reportId={reportId}
+                        onBack={() => onNavigate("data_reports")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "executive_dashboard" ? (
-            <ExecutiveDirectory
-              session={session}
-              client={client}
-              onOpenExecutive={(nextExecutive) =>
-                onNavigate(
-                  "executive_dashboard",
-                  nextExecutive.resourceId,
-                  undefined,
-                  undefined,
-                  undefined,
-                  nextExecutive,
-                )}
-            />
-          ) : page === "audit_system" && auditRoute ? (
-            <AuditDetail
-              session={session}
-              client={client}
-              auditRoute={auditRoute}
-              onBack={() => onNavigate("audit_system")}
-              onOpenInvestigation={(resourceId) =>
-                onNavigate(
-                  "audit_system",
-                  resourceId,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  { kind: "investigation", resourceId },
-                )}
+            <AdminMasterDetailWorkspace
+              label="高层驾驶舱工作区"
+              emptyTitle="选择一项经营事项"
+              emptyDescription="从左侧选择待决事项、运营主体、指标口径或导出申请。"
+              master={(
+                <ExecutiveDirectory
+                  session={session}
+                  client={client}
+                  {...(executiveRoute
+                    ? { selectedExecutive: executiveRoute }
+                    : {})}
+                  onOpenExecutive={(nextExecutive) =>
+                    onNavigate(
+                      "executive_dashboard",
+                      nextExecutive.resourceId,
+                      undefined,
+                      undefined,
+                      undefined,
+                      nextExecutive,
+                    )}
+                />
+              )}
+              {...(executiveRoute
+                ? {
+                    detail: (
+                      <ExecutiveDetail
+                        session={session}
+                        client={client}
+                        executiveRoute={executiveRoute}
+                        onBack={() => onNavigate("executive_dashboard")}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : page === "audit_system" ? (
-            <AuditDirectory
-              session={session}
-              client={client}
-              onOpenAudit={(nextAudit) =>
-                onNavigate(
-                  "audit_system",
-                  nextAudit.resourceId,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  nextAudit,
-                )}
+            <AdminMasterDetailWorkspace
+              label="审计与系统工作区"
+              emptyTitle="选择一条审计记录"
+              emptyDescription="从左侧选择事件或调查，查看证据、处理进展和完整记录。"
+              master={(
+                <AuditDirectory
+                  session={session}
+                  client={client}
+                  {...(auditRoute ? { selectedAudit: auditRoute } : {})}
+                  onOpenAudit={(nextAudit) =>
+                    onNavigate(
+                      "audit_system",
+                      nextAudit.resourceId,
+                      undefined,
+                      undefined,
+                      undefined,
+                      undefined,
+                      nextAudit,
+                    )}
+                />
+              )}
+              {...(auditRoute
+                ? {
+                    detail: (
+                      <AuditDetail
+                        session={session}
+                        client={client}
+                        auditRoute={auditRoute}
+                        onBack={() => onNavigate("audit_system")}
+                        onOpenInvestigation={(resourceId) =>
+                          onNavigate(
+                            "audit_system",
+                            resourceId,
+                            undefined,
+                            undefined,
+                            undefined,
+                            undefined,
+                            { kind: "investigation", resourceId },
+                          )}
+                      />
+                    ),
+                  }
+                : {})}
             />
           ) : (
-            <FeatureUnavailablePage title={item.label} roleName={session.workIdentity.productRoleName} />
+            <FeatureUnavailablePage
+              title={item.label}
+              roleName={session.workIdentity.productRoleName}
+              onBack={() => onNavigate("workbench")}
+            />
           )}
-        </main>
-      </div>
-    </div>
+    </ProductizedAdminLayout>
   );
 }
 
 function Workbench({
   session,
   client,
+  selectedTaskId,
   onOpenTask,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedTaskId?: string;
   onOpenTask(taskId: string): void;
 }>) {
   const storageKey = `${listStateStoragePrefix}.${session.workIdentity.workIdentityId}.workbench`;
@@ -825,6 +1016,8 @@ function Workbench({
   const [taskPage, setTaskPage] = useState<AdminOperationsTaskPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const taskRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedTaskId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -846,6 +1039,14 @@ function Workbench({
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
 
+  useEffect(() => {
+    const previousTaskId = previousSelectedTaskId.current;
+    previousSelectedTaskId.current = selectedTaskId;
+    if (previousTaskId && !selectedTaskId) {
+      requestAnimationFrame(() => taskRowRefs.current.get(previousTaskId)?.focus());
+    }
+  }, [selectedTaskId]);
+
   function updateQuery(next: AdminOperationsTaskQuery) {
     const normalized = clearCursor(next);
     setQuery(normalized);
@@ -860,7 +1061,7 @@ function Workbench({
   return (
     <>
       <section className="page-heading">
-        <div><span className="eyebrow">今日工作</span><h1>{session.workIdentity.productRoleName}工作台</h1><p>仅展示当前工作身份获准查看的任务和数据。</p></div>
+        <div><span className="eyebrow">今日工作</span><h1>{session.workIdentity.productRoleName}工作台</h1><p>这里汇总你当前可以处理和需要判断的任务。</p></div>
         <div className="summary-card"><strong>{taskPage?.pageInfo.approximateTotal ?? "—"}</strong><span>当前范围任务</span></div>
       </section>
       <section className="task-panel">
@@ -871,13 +1072,43 @@ function Workbench({
           <label>每页显示<select aria-label="每页显示" value={query.pageSize} onChange={(event) => updateQuery({ ...query, pageSize: Number(event.target.value) as 25 | 50 | 100 })}><option>25</option><option>50</option><option>100</option></select></label>
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
-        {loading ? <p className="list-state">正在加载任务…</p> : taskPage?.items.length === 0 ? (
-          <div className="list-state"><strong>没有符合条件的任务</strong><p>请调整搜索或筛选条件后重试。</p></div>
+        {loading ? <AdminPageState compact tone="loading" title="正在加载任务" description="正在获取当前工作范围内的任务。" /> : taskPage?.items.length === 0 ? (
+          <AdminPageState compact tone="empty" title="没有符合条件的任务" description="请调整搜索或筛选条件后重试。" />
         ) : (
           <div className="table-scroll">
             <table>
               <thead><tr><th>任务</th><th>运营公司</th><th>负责人</th><th>截止时间</th><th>状态</th></tr></thead>
-              <tbody>{taskPage?.items.map((task) => <tr key={task.taskId}><td><button className="task-link" onClick={() => openTask(task.taskId)}><strong>{task.title}</strong><small>{task.taskId}</small></button></td><td>{task.operatorName}</td><td>{task.assigneeName}</td><td>{formatDate(task.dueAt)}</td><td><span className={`status status-${task.status}`}>{statusLabel(task.status)}</span></td></tr>)}</tbody>
+              <tbody>
+                {taskPage?.items.map((task) => (
+                  <tr
+                    key={task.taskId}
+                    className={task.taskId === selectedTaskId ? "selected" : ""}
+                  >
+                    <td>
+                      <button
+                        ref={(element) => {
+                          if (element) taskRowRefs.current.set(task.taskId, element);
+                          else taskRowRefs.current.delete(task.taskId);
+                        }}
+                        className="task-link"
+                        aria-pressed={task.taskId === selectedTaskId}
+                        onClick={() => openTask(task.taskId)}
+                      >
+                        <strong>{task.title}</strong>
+                        <small>{task.taskId}</small>
+                      </button>
+                    </td>
+                    <td data-label="运营公司">{task.operatorName}</td>
+                    <td data-label="负责人">{task.assigneeName}</td>
+                    <td data-label="截止时间">{formatDate(task.dueAt)}</td>
+                    <td data-label="状态">
+                      <span className={`status status-${task.status}`}>
+                        {statusLabel(task.status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         )}
@@ -894,10 +1125,12 @@ function Workbench({
 function OperatorDirectory({
   session,
   client,
+  selectedOperatorId,
   onOpenOperator,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedOperatorId?: string;
   onOpenOperator(operatorId: string): void;
 }>) {
   const storageKey =
@@ -913,6 +1146,8 @@ function OperatorDirectory({
     useState<AdminOperatorDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const operatorRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedOperatorId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -935,6 +1170,16 @@ function OperatorDirectory({
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
+
+  useEffect(() => {
+    const previousOperatorId = previousSelectedOperatorId.current;
+    previousSelectedOperatorId.current = selectedOperatorId;
+    if (previousOperatorId && !selectedOperatorId) {
+      requestAnimationFrame(() =>
+        operatorRowRefs.current.get(previousOperatorId)?.focus(),
+      );
+    }
+  }, [selectedOperatorId]);
 
   function updateQuery(next: AdminOperatorDirectoryQuery) {
     const normalized = clearOperatorCursor(next);
@@ -1029,12 +1274,9 @@ function OperatorDirectory({
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {loading ? (
-          <p className="list-state">正在加载运营公司…</p>
+          <AdminPageState compact tone="loading" title="正在加载运营公司" description="正在获取当前工作范围内的运营公司。" />
         ) : operatorPage?.items.length === 0 ? (
-          <div className="list-state">
-            <strong>没有符合条件的运营公司</strong>
-            <p>请调整搜索或筛选条件后重试。</p>
-          </div>
+          <AdminPageState compact tone="empty" title="没有符合条件的运营公司" description="请调整搜索或筛选条件后重试。" />
         ) : (
           <div className="table-scroll">
             <table>
@@ -1051,10 +1293,23 @@ function OperatorDirectory({
               </thead>
               <tbody>
                 {operatorPage?.items.map((operator) => (
-                  <tr key={operator.operatorId}>
-                    <td>
+                  <tr
+                    key={operator.operatorId}
+                    className={
+                      operator.operatorId === selectedOperatorId ? "selected" : ""
+                    }
+                  >
+                    <td data-label="状态">
                       <button
+                        ref={(element) => {
+                          if (element) {
+                            operatorRowRefs.current.set(operator.operatorId, element);
+                          } else {
+                            operatorRowRefs.current.delete(operator.operatorId);
+                          }
+                        }}
                         className="task-link"
+                        aria-pressed={operator.operatorId === selectedOperatorId}
                         onClick={() => openOperator(operator.operatorId)}
                       >
                         <strong>{operator.operatorName}</strong>
@@ -1068,11 +1323,13 @@ function OperatorDirectory({
                         {operatorLifecycleLabel(operator.lifecycleState)}
                       </span>
                     </td>
-                    <td>{operator.cityNames.join("、") || "待配置"}</td>
-                    <td>{operator.activeDrivers}</td>
-                    <td>{operator.activeVehicles}</td>
-                    <td>{operator.pendingTasks}</td>
-                    <td>{formatDate(operator.updatedAt)}</td>
+                    <td data-label="城市">
+                      {operator.cityNames.join("、") || "待配置"}
+                    </td>
+                    <td data-label="活跃车主">{operator.activeDrivers}</td>
+                    <td data-label="活跃车辆">{operator.activeVehicles}</td>
+                    <td data-label="待办">{operator.pendingTasks}</td>
+                    <td data-label="最近更新">{formatDate(operator.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1182,14 +1439,16 @@ function OperatorDetail({
     }
   }
 
-  if (loading) return <p className="list-state">正在加载运营公司详情…</p>;
+  if (loading) return <AdminPageState compact tone="loading" title="正在加载运营公司详情" description="正在获取主体状态和当前可执行事项。" />;
   if (error || !detail) {
     return (
-      <section className="detail-state">
-        <h1>运营公司详情暂时不可用</h1>
-        <p>{error ?? "请返回列表后重试。"}</p>
-        <button onClick={onBack}>返回运营公司名录</button>
-      </section>
+      <AdminPageState
+        tone="error"
+        title="运营公司详情暂时不可用"
+        description={error ?? "记录不存在，或当前工作身份无法查看。"}
+        primaryAction={{ label: "返回运营公司名录", onAction: onBack }}
+        focusOnMount
+      />
     );
   }
 
@@ -1201,7 +1460,7 @@ function OperatorDetail({
             运营公司 · {detail.operator.syntheticReference}
           </span>
           <h1>{detail.operator.operatorName}</h1>
-          <p>仅展示当前 Bearer 会话与组织范围允许读取的信息。</p>
+          <p>查看主体状态、运营影响和当前可执行操作。</p>
         </div>
         <button onClick={onBack}>返回运营公司名录</button>
       </section>
@@ -1401,14 +1660,16 @@ function OperationsTaskDetail({
     }
   }
 
-  if (loading) return <p className="list-state">正在加载任务详情…</p>;
+  if (loading) return <AdminPageState compact tone="loading" title="正在加载任务详情" description="正在获取任务进展和当前可执行事项。" />;
   if (error || !detail) {
     return (
-      <section className="detail-state">
-        <h1>{error === "未找到该工作任务" ? "未找到该工作任务" : "任务详情暂时不可用"}</h1>
-        <p>{error ?? "请返回列表后重试。"}</p>
-        <button onClick={onBack}>返回任务列表</button>
-      </section>
+      <AdminPageState
+        tone="error"
+        title={error === "未找到该工作任务" ? "未找到该工作任务" : "任务详情暂时不可用"}
+        description={error ?? "记录不存在，或当前工作身份无法查看。"}
+        primaryAction={{ label: "返回任务列表", onAction: onBack }}
+        focusOnMount
+      />
     );
   }
   return (
@@ -1417,7 +1678,7 @@ function OperationsTaskDetail({
         <div>
           <span className="eyebrow">工作任务 · {detail.task.taskId}</span>
           <h1>{detail.task.title}</h1>
-          <p>仅展示当前 Bearer 会话与组织范围允许读取的信息。</p>
+          <p>查看任务影响、处理进展和当前可执行操作。</p>
         </div>
         <button onClick={onBack}>返回任务列表</button>
       </section>
@@ -1501,7 +1762,7 @@ function FleetWorkspace({
   onNavigate(route: NonNullable<AdminRoute["fleet"]>): void;
 }>) {
   return (
-    <>
+    <section className="fleet-workspace">
       <section className="page-heading">
         <div>
           <span className="eyebrow">运力名录</span>
@@ -1527,50 +1788,64 @@ function FleetWorkspace({
           </button>
         </div>
       </section>
-      {route.view === "drivers" && route.resourceId ? (
-        <DriverDetailView
-          session={session}
-          client={client}
-          driverAccountId={route.resourceId}
-          onBack={() => onNavigate({ view: "drivers" })}
-          onOpenVehicle={(vehicleId) =>
-            onNavigate({ view: "vehicles", resourceId: vehicleId })}
+      {route.view === "drivers" ? (
+        <AdminMasterDetailWorkspace
+          label="车主名录工作区"
+          emptyTitle="选择一位车主查看服务档案"
+          emptyDescription="资格状态、关联车辆和当前工作范围会在详情中集中展示。"
+          master={(
+            <DriverDirectoryView
+              session={session}
+              client={client}
+              {...(route.resourceId
+                ? { selectedDriverAccountId: route.resourceId }
+                : {})}
+              onOpen={(driverAccountId) =>
+                onNavigate({ view: "drivers", resourceId: driverAccountId })}
+            />
+          )}
+          {...(route.resourceId
+            ? {
+                detail: (
+                  <DriverDetailView
+                    session={session}
+                    client={client}
+                    driverAccountId={route.resourceId}
+                    onBack={() => onNavigate({ view: "drivers" })}
+                    onOpenVehicle={(vehicleId) =>
+                      onNavigate({ view: "vehicles", resourceId: vehicleId })}
+                  />
+                ),
+              }
+            : {})}
         />
-      ) : route.view === "drivers" ? (
-        <DriverDirectoryView
+      ) : (
+        <VehicleReviewWorkspace
           session={session}
           client={client}
-          onOpen={(driverAccountId) =>
-            onNavigate({ view: "drivers", resourceId: driverAccountId })}
-        />
-      ) : route.resourceId ? (
-        <VehicleDetailView
-          session={session}
-          client={client}
-          vehicleId={route.resourceId}
-          onBack={() => onNavigate({ view: "vehicles" })}
+          {...(route.resourceId ? { selectedVehicleId: route.resourceId } : {})}
+          onSelectVehicle={(vehicleId) =>
+            onNavigate({
+              view: "vehicles",
+              ...(vehicleId ? { resourceId: vehicleId } : {}),
+            })}
           onOpenDriver={(driverAccountId) =>
             onNavigate({ view: "drivers", resourceId: driverAccountId })}
         />
-      ) : (
-        <VehicleDirectoryView
-          session={session}
-          client={client}
-          onOpen={(vehicleId) =>
-            onNavigate({ view: "vehicles", resourceId: vehicleId })}
-        />
       )}
-    </>
+    </section>
   );
 }
 
 function DriverDirectoryView({
   session,
   client,
+  selectedDriverAccountId,
   onOpen,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedDriverAccountId?: string;
   onOpen(driverAccountId: string): void;
 }>) {
   const storageKey =
@@ -1585,6 +1860,8 @@ function DriverDirectoryView({
   const [page, setPage] = useState<AdminDriverDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const driverRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedDriverAccountId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -1612,6 +1889,15 @@ function DriverDirectoryView({
         window.scrollTo({ top: restored.scrollY }));
     }
   }, [loading, restored]);
+
+  useEffect(() => {
+    const previousDriverAccountId = previousSelectedDriverAccountId.current;
+    previousSelectedDriverAccountId.current = selectedDriverAccountId;
+    if (previousDriverAccountId && !selectedDriverAccountId) {
+      requestAnimationFrame(() =>
+        driverRowRefs.current.get(previousDriverAccountId)?.focus());
+    }
+  }, [selectedDriverAccountId]);
 
   function update(next: AdminDriverDirectoryQuery) {
     setQuery(next);
@@ -1669,8 +1955,15 @@ function DriverDirectoryView({
             </select>
           </label>
         </div>
-        {loading ? <p className="state-line">正在加载车主名录…</p> : null}
-        {error ? <EmptyState title="车主名录加载失败" description={error} /> : null}
+        {loading ? (
+          <AdminPageState
+            compact
+            tone="loading"
+            title="正在加载车主名录"
+            description="正在获取当前工作范围内的车主。"
+          />
+        ) : null}
+        {error ? <EmptyState tone="error" title="无法加载车主名录" description={error} /> : null}
         {!loading && !error && page?.items.length === 0 ? (
           <EmptyState title="没有符合条件的车主" description="请调整搜索或筛选条件。" />
         ) : null}
@@ -1679,19 +1972,43 @@ function DriverDirectoryView({
             <table>
               <thead><tr><th>车主</th><th>运营公司</th><th>资格</th><th>车辆</th><th>审核关注</th><th /></tr></thead>
               <tbody>{page.items.map((driver) => (
-                <tr key={driver.driverAccountId}>
-                  <td><strong>{driver.displayNameMasked}</strong><small>{driver.phoneMasked} · {driver.driverAccountId}</small></td>
-                  <td>{driver.operatorName}</td>
-                  <td><span className={`status-pill ${driver.eligibilityState === "serviceable" ? "completed" : "blocked"}`}>{driverEligibilityLabel(driver.eligibilityState)}</span></td>
-                  <td>{driver.vehicleCount}</td>
-                  <td>{driver.reviewAttentionCount}</td>
-                  <td><button className="text-action" onClick={() => onOpen(driver.driverAccountId)}>查看详情</button></td>
+                <tr
+                  key={driver.driverAccountId}
+                  className={
+                    driver.driverAccountId === selectedDriverAccountId
+                      ? "selected"
+                      : ""
+                  }
+                >
+                  <td>
+                    <button
+                      ref={(element) => {
+                        if (element) {
+                          driverRowRefs.current.set(driver.driverAccountId, element);
+                        } else {
+                          driverRowRefs.current.delete(driver.driverAccountId);
+                        }
+                      }}
+                      className="task-link"
+                      aria-pressed={
+                        driver.driverAccountId === selectedDriverAccountId
+                      }
+                      onClick={() => onOpen(driver.driverAccountId)}
+                    >
+                      <strong>{driver.displayNameMasked}</strong>
+                      <small>{driver.phoneMasked} · {displayReference(driver.driverAccountId, "车主编号")}</small>
+                    </button>
+                  </td>
+                  <td data-label="运营公司">{driver.operatorName}</td>
+                  <td data-label="资格"><span className={`status-pill ${driver.eligibilityState === "serviceable" ? "completed" : "blocked"}`}>{driverEligibilityLabel(driver.eligibilityState)}</span></td>
+                  <td data-label="车辆">{driver.vehicleCount}</td>
+                  <td data-label="审核关注">{driver.reviewAttentionCount}</td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
         ) : null}
-        {page ? (
+        {page?.items.length ? (
           <PaginationControls
             pageInfo={page.pageInfo}
             onPrevious={() =>
@@ -1814,8 +2131,15 @@ function VehicleDirectoryView({
             </select>
           </label>
         </div>
-        {loading ? <p className="state-line">正在加载车辆名录…</p> : null}
-        {error ? <EmptyState title="车辆名录加载失败" description={error} /> : null}
+        {loading ? (
+          <AdminPageState
+            compact
+            tone="loading"
+            title="正在加载车辆名录"
+            description="正在获取当前工作范围内的车辆。"
+          />
+        ) : null}
+        {error ? <EmptyState tone="error" title="无法加载车辆名录" description={error} /> : null}
         {!loading && !error && page?.items.length === 0 ? (
           <EmptyState title="没有符合条件的车辆" description="请调整搜索或筛选条件。" />
         ) : null}
@@ -1825,7 +2149,7 @@ function VehicleDirectoryView({
               <thead><tr><th>车辆</th><th>车主</th><th>运营公司</th><th>审核状态</th><th>任务状态</th><th /></tr></thead>
               <tbody>{page.items.map((vehicle) => (
                 <tr key={vehicle.vehicleId}>
-                  <td><strong>{vehicle.plateMasked}</strong><small>{vehicle.vehicleSummary} · {vehicle.vehicleId}</small></td>
+                  <td><strong>{vehicle.plateMasked}</strong><small>{vehicle.vehicleSummary} · {displayReference(vehicle.vehicleId, "车辆编号")}</small></td>
                   <td>{vehicle.driverNameMasked}</td>
                   <td>{vehicle.operatorName}</td>
                   <td><span className={`status-pill ${vehicleStatusTone(vehicle.reviewState)}`}>{vehicleReviewLabel(vehicle.reviewState)}</span></td>
@@ -1836,7 +2160,7 @@ function VehicleDirectoryView({
             </table>
           </div>
         ) : null}
-        {page ? (
+        {page?.items.length ? (
           <PaginationControls
             pageInfo={page.pageInfo}
             onPrevious={() =>
@@ -1878,25 +2202,42 @@ function DriverDetailView({
       active = false;
     };
   }, [client, driverAccountId, session.accessToken]);
-  if (error) return <EmptyState title="车主详情加载失败" description={error} actionLabel="返回名录" onAction={onBack} />;
-  if (!detail) return <p className="state-line">正在加载车主详情…</p>;
+  if (error) return <EmptyState tone="error" title="无法加载车主详情" description={error} actionLabel="返回车主名录" onAction={onBack} />;
+  if (!detail) {
+    return (
+      <AdminPageState
+        compact
+        tone="loading"
+        title="正在加载车主详情"
+        description="正在获取车主档案和参与资格。"
+      />
+    );
+  }
   return (
     <>
-      <button className="back-action" onClick={onBack}>← 返回车主名录</button>
-      <section className="detail-hero">
-        <div><span className="eyebrow">车主 360°</span><h1>{detail.driver.displayNameMasked}</h1><p>{detail.driver.phoneMasked} · {detail.driver.driverAccountId}</p></div>
+      <section className="page-heading detail-heading">
+        <div>
+          <button className="text-action" onClick={onBack}>← 返回车主名录</button>
+          <span className="eyebrow">车主服务档案</span>
+          <h1>{detail.driver.displayNameMasked}</h1>
+          <p>{detail.driver.phoneMasked} · {detail.profile.primaryOperatorRelationship.operatorName}</p>
+        </div>
         <span className={`status-pill ${detail.driver.eligibilityState === "serviceable" ? "completed" : "blocked"}`}>{driverEligibilityLabel(detail.driver.eligibilityState)}</span>
       </section>
       <section className="detail-grid">
         <article className="detail-card">
-          <h2>运营与资格摘要</h2>
+          <h2>服务与资格</h2>
           <dl className="detail-list">
             <div><dt>主运营公司</dt><dd>{detail.profile.primaryOperatorRelationship.operatorName}</dd></div>
-            <div><dt>城市范围</dt><dd>{detail.organizationScope.cityScopes.join("、")}</dd></div>
-            <div><dt>配额摘要</dt><dd>{detail.profile.quotaSummary}</dd></div>
-            <div><dt>敏感字段</dt><dd>已脱敏</dd></div>
+            <div><dt>资格状态</dt><dd>{driverEligibilityLabel(detail.driver.eligibilityState)}</dd></div>
+            <div><dt>服务额度</dt><dd>{detail.profile.quotaSummary}</dd></div>
           </dl>
         </article>
+        <AdminWorkScopeCard
+          organizationName={detail.organizationScope.organizationName}
+          cityScopes={detail.organizationScope.cityScopes}
+          actions={["查看车主资格与关联车辆"]}
+        />
         <article className="detail-card">
           <h2>关联车辆</h2>
           <div className="linked-records">{detail.linkedVehicles.map((vehicle) => (
@@ -1907,9 +2248,9 @@ function DriverDetailView({
           ))}</div>
         </article>
         <article className="detail-card detail-audit">
-          <h2>访问审计</h2>
+          <h2>查看记录</h2>
           <ol>{detail.auditTrail.map((event) => (
-            <li key={event.eventId}><div><strong>查看车主 360°</strong></div><span>{event.actorLabel} · {event.actorRole} · {formatDate(event.occurredAt)}</span></li>
+            <li key={event.eventId}><div><strong>查看车主服务档案</strong></div><span>{event.actorLabel} · {event.actorRole} · {formatDate(event.occurredAt)}</span></li>
           ))}</ol>
         </article>
       </section>
@@ -1997,13 +2338,22 @@ function VehicleDetailView({
     }
   }
 
-  if (error) return <EmptyState title="车辆详情加载失败" description={error} actionLabel="返回名录" onAction={onBack} />;
-  if (!detail) return <p className="state-line">正在加载车辆详情…</p>;
+  if (error) return <EmptyState tone="error" title="无法加载车辆详情" description={error} actionLabel="返回车辆名录" onAction={onBack} />;
+  if (!detail) {
+    return (
+      <AdminPageState
+        compact
+        tone="loading"
+        title="正在加载车辆详情"
+        description="正在获取车辆资料和审核进展。"
+      />
+    );
+  }
   return (
     <>
       <button className="back-action" onClick={onBack}>← 返回车辆名录</button>
       <section className="detail-hero">
-        <div><span className="eyebrow">车辆 360°</span><h1>{detail.vehicle.plateMasked}</h1><p>{detail.vehicle.vehicleSummary} · {detail.vehicle.vehicleId}</p></div>
+        <div><span className="eyebrow">车辆 360°</span><h1>{detail.vehicle.plateMasked}</h1><p>{detail.vehicle.vehicleSummary} · {displayReference(detail.vehicle.vehicleId, "车辆编号")}</p></div>
         <span className={`status-pill ${vehicleStatusTone(detail.vehicle.reviewState)}`}>{vehicleReviewLabel(detail.vehicle.reviewState)}</span>
       </section>
       <section className="detail-grid">
@@ -2041,7 +2391,7 @@ function VehicleDetailView({
                 <label>补充材料原因<select value={materialReason} onChange={(event) => setMaterialReason(event.target.value)}>
                   <option value="insurance_expiry_incomplete">保险有效期不完整</option>
                   <option value="authorization_evidence_incomplete">授权材料不完整</option>
-                  <option value="synthetic_attachment_invalid">合成附件无效</option>
+                  <option value="synthetic_attachment_invalid">附件无法验证</option>
                 </select><button disabled={operationState === "pending"} onClick={() => void execute("request_material")}>要求补充材料</button></label>
               ) : null}
               {detail.allowedActions.includes("approve") ? (
@@ -2080,10 +2430,12 @@ function VehicleDetailView({
 function FinanceDirectory({
   session,
   client,
+  selectedFinance,
   onOpenFinance,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedFinance?: AdminRoute["finance"];
   onOpenFinance(finance: NonNullable<AdminRoute["finance"]>): void;
 }>) {
   const storageKey =
@@ -2098,6 +2450,11 @@ function FinanceDirectory({
   const [page, setPage] = useState<AdminFinanceDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const financeRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedFinanceKey = useRef<string | undefined>(undefined);
+  const selectedFinanceKey = selectedFinance
+    ? `${selectedFinance.kind}:${selectedFinance.resourceId}`
+    : undefined;
 
   useEffect(() => {
     let active = true;
@@ -2120,6 +2477,15 @@ function FinanceDirectory({
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
 
+  useEffect(() => {
+    const previousFinanceKey = previousSelectedFinanceKey.current;
+    previousSelectedFinanceKey.current = selectedFinanceKey;
+    if (previousFinanceKey && !selectedFinanceKey) {
+      requestAnimationFrame(() =>
+        financeRowRefs.current.get(previousFinanceKey)?.focus());
+    }
+  }, [selectedFinanceKey]);
+
   function update(next: AdminFinanceDirectoryQuery) {
     const normalized = clearFleetCursor(next);
     setQuery(normalized);
@@ -2138,7 +2504,7 @@ function FinanceDirectory({
     <>
       <section className="page-heading">
         <div>
-          <span className="eyebrow">合成账务任务与职责分离</span>
+          <span className="eyebrow">账务任务与职责分离</span>
           <h1>财务与对账</h1>
           <p>处理结算、车主付款、退款、对账和营业日关账；金额只读，真实资金操作保持关闭。</p>
         </div>
@@ -2257,12 +2623,9 @@ function FinanceDirectory({
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {loading ? (
-          <p className="list-state">正在加载财务记录…</p>
+          <AdminPageState compact tone="loading" title="正在加载财务记录" description="正在获取当前工作范围内的对账与资金记录。" />
         ) : page?.items.length === 0 ? (
-          <div className="list-state">
-            <strong>没有符合条件的财务记录</strong>
-            <p>请调整搜索或筛选条件后重试。</p>
-          </div>
+          <AdminPageState compact tone="empty" title="没有符合条件的财务记录" description="请调整搜索或筛选条件后重试。" />
         ) : (
           <div className="table-scroll">
             <table>
@@ -2278,30 +2641,40 @@ function FinanceDirectory({
                 </tr>
               </thead>
               <tbody>
-                {page?.items.map((item) => (
-                  <tr key={`${item.kind}-${item.resourceId}`}>
+                {page?.items.map((item) => {
+                  const financeKey = `${item.kind}:${item.resourceId}`;
+                  return (
+                  <tr
+                    key={financeKey}
+                    className={financeKey === selectedFinanceKey ? "selected" : ""}
+                  >
                     <td>
                       <button
+                        ref={(element) => {
+                          if (element) financeRowRefs.current.set(financeKey, element);
+                          else financeRowRefs.current.delete(financeKey);
+                        }}
                         className="task-link"
+                        aria-pressed={financeKey === selectedFinanceKey}
                         onClick={() => openFinance(item.kind, item.resourceId)}
                       >
                         <strong>{item.summary}</strong>
-                        <small>{item.resourceId}</small>
+                        <small>{displayReference(item.resourceId, financeKindLabel(item.kind))}</small>
                       </button>
                     </td>
-                    <td>{financeKindLabel(item.kind)}</td>
-                    <td><span className={`status-pill ${financeStatusTone(item.state)}`}>{financeStateLabel(item.state)}</span></td>
-                    <td>{item.operatorName ?? "平台范围"}</td>
-                    <td>{item.businessDate ?? "—"}</td>
-                    <td>{item.blocking ? "存在阻断" : "无阻断"}</td>
-                    <td>{formatDate(item.updatedAt)}</td>
+                    <td data-label="类型">{financeKindLabel(item.kind)}</td>
+                    <td data-label="状态"><span className={`status-pill ${financeStatusTone(item.state)}`}>{financeStateLabel(item.state)}</span></td>
+                    <td data-label="运营公司">{item.operatorName ?? "平台范围"}</td>
+                    <td data-label="营业日">{item.businessDate ?? "—"}</td>
+                    <td data-label="处理条件">{item.blocking ? "存在阻断" : "无阻断"}</td>
+                    <td data-label="最近更新">{formatDate(item.updatedAt)}</td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
         )}
-        {page ? (
+        {page?.items.length ? (
           <PaginationControls
             pageInfo={page.pageInfo}
             onPrevious={() =>
@@ -2337,14 +2710,17 @@ function FinanceDetail({
   const [detail, setDetail] = useState<AdminFinanceDetail>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
-  const [reasonCode, setReasonCode] = useState("sandbox_finance_operation");
+  const [reasonCode, setReasonCode] = useState("日常财务核对");
   const [evidenceReference, setEvidenceReference] = useState(
-    "EVIDENCE-SYNTHETIC-2026-0716",
+    "对账工作底稿 2026-07-16",
   );
+  const [pendingAction, setPendingAction] = useState<AdminFinanceAction>();
   const [operationState, setOperationState] = useState<
     "idle" | "confirming" | "confirmed" | "error"
   >("idle");
   const [operationMessage, setOperationMessage] = useState<string>();
+  const operationLockRef = useRef(false);
+  const financeBackButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -2368,10 +2744,10 @@ function FinanceDetail({
   ]);
 
   async function execute(action: AdminFinanceAction) {
-    if (!detail || operationState === "confirming") return;
+    if (!detail || operationLockRef.current) return;
     if (!reasonCode.trim()) {
       setOperationState("error");
-      setOperationMessage("请填写操作原因编码。");
+      setOperationMessage("请填写本次处理原因。");
       return;
     }
     if (
@@ -2379,9 +2755,10 @@ function FinanceDetail({
       !evidenceReference.trim()
     ) {
       setOperationState("error");
-      setOperationMessage("提交对账差异解决前必须填写证据引用。");
+      setOperationMessage("提交差异解决前，请填写核对依据。");
       return;
     }
+    operationLockRef.current = true;
     setOperationState("confirming");
     setOperationMessage("结果确认中，请勿重复提交。");
     try {
@@ -2404,23 +2781,27 @@ function FinanceDetail({
       );
       setDetail(result.detail);
       setOperationState("confirmed");
-      setOperationMessage(
-        `${financeActionLabel(action)}已确认，操作编号 ${result.operationId}`,
-      );
+      setOperationMessage(`${financeActionLabel(action)}已确认。`);
+      setPendingAction(undefined);
+      requestAnimationFrame(() => financeBackButtonRef.current?.focus());
     } catch (reason) {
       setOperationState("error");
       setOperationMessage(messageFor(reason));
+    } finally {
+      operationLockRef.current = false;
     }
   }
 
-  if (loading) return <p className="list-state">正在加载财务记录详情…</p>;
+  if (loading) return <AdminPageState compact tone="loading" title="正在加载财务记录详情" description="正在获取财务事实、工作范围和处理记录。" />;
   if (error || !detail) {
     return (
-      <section className="list-state">
-        <strong>无法加载财务记录详情</strong>
-        <p role="alert">{error ?? "记录不存在或当前账号无权查看。"}</p>
-        <button onClick={onBack}>返回财务列表</button>
-      </section>
+      <AdminPageState
+        tone="error"
+        title="无法加载财务记录详情"
+        description={error ?? "记录不存在，或当前工作身份无法查看。"}
+        primaryAction={{ label: "返回财务列表", onAction: onBack }}
+        focusOnMount
+      />
     );
   }
 
@@ -2428,10 +2809,16 @@ function FinanceDetail({
     <>
       <section className="page-heading detail-heading">
         <div>
-          <button className="text-action" onClick={onBack}>← 返回财务列表</button>
+          <button
+            ref={financeBackButtonRef}
+            className="text-action"
+            onClick={onBack}
+          >
+            ← 返回财务列表
+          </button>
           <span className="eyebrow">{financeKindLabel(detail.kind)}</span>
           <h1>{detail.item.summary}</h1>
-          <p>{detail.item.resourceId} · {detail.item.operatorName ?? "平台范围"}</p>
+          <p>{displayReference(detail.item.resourceId, financeKindLabel(detail.item.kind))} · {detail.item.operatorName ?? "平台范围"}</p>
         </div>
         <span className={`status-pill ${financeStatusTone(detail.item.state)}`}>
           {financeStateLabel(detail.item.state)}
@@ -2442,55 +2829,35 @@ function FinanceDetail({
           <h2>财务事实</h2>
           <FinanceRecordFacts detail={detail} />
         </article>
-        <article className="detail-card">
-          <h2>控制边界</h2>
-          <dl className="detail-list">
-            <div><dt>组织范围</dt><dd>{detail.organizationScope.organizationName}</dd></div>
-            <div><dt>金额编辑</dt><dd>禁止</dd></div>
-            <div><dt>直接修改余额</dt><dd>{detail.directBalanceMutationAllowed ? "允许" : "禁止"}</dd></div>
-            <div><dt>真实资金移动</dt><dd>{detail.realMoneyMovementAllowed ? "允许" : "关闭"}</dd></div>
-            <div><dt>资源版本</dt><dd>{detail.item.resourceVersion}</dd></div>
-          </dl>
-        </article>
+        <AdminWorkScopeCard
+          organizationName={detail.organizationScope.organizationName}
+          cityScopes={detail.organizationScope.cityScopes}
+          roleName={session.workIdentity.productRoleName}
+          actions={["核对财务事实并提交处理"]}
+        />
         <article className="detail-card detail-actions">
-          <h2>当前角色允许操作</h2>
+          <h2>本次可处理事项</h2>
           {detail.allowedActions.length ? (
-            <>
-              <label>
-                操作原因编码
-                <input
-                  aria-label="财务操作原因编码"
-                  value={reasonCode}
-                  onChange={(event) => setReasonCode(event.target.value)}
-                />
-              </label>
-              {detail.allowedActions.includes(
-                "submit_reconciliation_resolution",
-              ) ? (
-                <label>
-                  证据引用
-                  <input
-                    aria-label="对账证据引用"
-                    value={evidenceReference}
-                    onChange={(event) =>
-                      setEvidenceReference(event.target.value)}
-                  />
-                </label>
-              ) : null}
-              <div className="action-row">
-                {detail.allowedActions.map((action) => (
-                  <button
-                    key={action}
-                    disabled={operationState === "confirming"}
-                    onClick={() => void execute(action)}
-                  >
-                    {financeActionLabel(action)}
-                  </button>
-                ))}
-              </div>
-            </>
+            <div className="action-row">
+              {detail.allowedActions.map((action) => (
+                <button
+                  key={action}
+                  disabled={operationState === "confirming"}
+                  onClick={() => {
+                    setOperationMessage(undefined);
+                    if (action === "query_finance_command_recovery") {
+                      void execute(action);
+                    } else {
+                      setPendingAction(action);
+                    }
+                  }}
+                >
+                  {financeActionLabel(action)}
+                </button>
+              ))}
+            </div>
           ) : (
-            <p>当前角色仅可查看此记录，或记录尚未到达可操作状态。</p>
+            <p>当前可以查看这项记录，暂时无需继续处理。</p>
           )}
           {operationMessage ? (
             <p
@@ -2506,7 +2873,7 @@ function FinanceDetail({
           ) : null}
         </article>
         <article className="detail-card detail-audit">
-          <h2>追加式审计</h2>
+          <h2>处理记录</h2>
           {detail.auditTrail.length ? (
             <ol>
               {detail.auditTrail.map((event) => (
@@ -2519,9 +2886,53 @@ function FinanceDetail({
                 </li>
               ))}
             </ol>
-          ) : <p>尚无财务访问或操作记录。</p>}
+          ) : <p>尚无处理记录。</p>}
         </article>
       </section>
+      {pendingAction ? (
+        <AdminRiskConfirmationDialog
+          titleId="finance-risk-confirmation-title"
+          title={financeActionLabel(pendingAction)}
+          objectLabel={detail.item.summary}
+          scope={`${detail.organizationScope.organizationName} · ${financeKindLabel(detail.kind)}`}
+          reversible={
+            pendingAction === "query_finance_command_recovery"
+              ? "本次只查询原请求结果，不改变记录"
+              : "提交后不能在本页撤回，需要按后续复核流程继续处理"
+          }
+          consequence={`${financeActionLabel(pendingAction)}会写入处理记录，原始金额事实不会在此处修改。`}
+          confirmLabel={`确认${financeActionLabel(pendingAction)}`}
+          tone="primary"
+          busy={operationState === "confirming"}
+          fields={(
+            <>
+              <label>
+                处理原因
+                <input
+                  aria-label="财务处理原因"
+                  value={reasonCode}
+                  onChange={(event) => setReasonCode(event.target.value)}
+                />
+              </label>
+              {pendingAction === "submit_reconciliation_resolution" ? (
+                <label>
+                  核对依据
+                  <input
+                    aria-label="对账核对依据"
+                    value={evidenceReference}
+                    onChange={(event) =>
+                      setEvidenceReference(event.target.value)}
+                  />
+                </label>
+              ) : null}
+            </>
+          )}
+          onCancel={() => {
+            if (operationState !== "confirming") setPendingAction(undefined);
+          }}
+          onConfirm={() => void execute(pendingAction)}
+        />
+      ) : null}
     </>
   );
 }
@@ -2610,8 +3021,8 @@ function FinanceRecordFacts({
     <>
       <dl className="detail-list">
         <div><dt>全局序列</dt><dd>{detail.record.globalSequence}</dd></div>
-        <div><dt>来源</dt><dd>{detail.record.sourceNamespace}</dd></div>
-        <div><dt>来源事件</dt><dd>{detail.record.sourceEventId}</dd></div>
+        <div><dt>来源</dt><dd>{financeSourceLabel(detail.record.sourceNamespace)}</dd></div>
+        <div><dt>来源记录</dt><dd>{displayReference(detail.record.sourceEventId, "来源记录")}</dd></div>
         <div><dt>借方合计</dt><dd>{formatMinorCurrency(detail.record.debitTotalMinor)}</dd></div>
         <div><dt>贷方合计</dt><dd>{formatMinorCurrency(detail.record.creditTotalMinor)}</dd></div>
       </dl>
@@ -2621,10 +3032,10 @@ function FinanceRecordFacts({
           <tbody>
             {detail.record.entries.map((entry) => (
               <tr key={entry.entryId}>
-                <td>{entry.entryId}</td>
+                <td>{displayReference(entry.entryId, "分录")}</td>
                 <td>{entry.side === "debit" ? "借" : "贷"}</td>
-                <td>{entry.accountCode}</td>
-                <td>{entry.dimensionKey}</td>
+                <td>{financeAccountLabel(entry.accountCode)}</td>
+                <td>{financeDimensionLabel(entry.dimensionKey)}</td>
                 <td>{formatMinorCurrency(entry.amountMinor)}</td>
               </tr>
             ))}
@@ -2638,10 +3049,12 @@ function FinanceRecordFacts({
 function AuditDirectory({
   session,
   client,
+  selectedAudit,
   onOpenAudit,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedAudit?: AdminRoute["audit"];
   onOpenAudit(
     route: Readonly<{ kind: "event" | "investigation"; resourceId: string }>,
   ): void;
@@ -2658,6 +3071,11 @@ function AuditDirectory({
   const [page, setPage] = useState<AdminAuditDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const auditRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedAuditKey = useRef<string | undefined>(undefined);
+  const selectedAuditKey = selectedAudit
+    ? `${selectedAudit.kind}:${selectedAudit.resourceId}`
+    : undefined;
 
   useEffect(() => {
     let active = true;
@@ -2681,6 +3099,19 @@ function AuditDirectory({
       active = false;
     };
   }, [client, query, session.accessToken, storageKey]);
+  useEffect(() => {
+    if (selectedAuditKey) {
+      if (auditRowRefs.current.has(selectedAuditKey)) {
+        previousSelectedAuditKey.current = selectedAuditKey;
+      }
+      return;
+    }
+    const previousAuditKey = previousSelectedAuditKey.current;
+    if (previousAuditKey) {
+      requestAnimationFrame(() =>
+        auditRowRefs.current.get(previousAuditKey)?.focus());
+    }
+  }, [selectedAuditKey]);
 
   function update(next: AdminAuditDirectoryQuery) {
     const normalized = clearFleetCursor(next);
@@ -2697,7 +3128,7 @@ function AuditDirectory({
     <>
       <section className="page-heading">
         <div>
-          <span className="eyebrow">跨域治理与技术调查</span>
+          <span className="eyebrow">审计证据与调查处理</span>
           <h1>审计与系统</h1>
           <p>统一查看访问决策和业务状态变化；原始事件不可修改，调查操作不会改变领域业务状态。</p>
         </div>
@@ -2718,21 +3149,24 @@ function AuditDirectory({
           <label>排序<select aria-label="审计资源排序" value={query.sort ?? "occurred_at_desc"} onChange={(event) => update({ ...query, sort: event.target.value as NonNullable<AdminAuditDirectoryQuery["sort"]> })}><option value="occurred_at_desc">最近发生</option><option value="resource_id_asc">资源编号</option></select></label>
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
-        {loading ? <p className="list-state">正在加载审计资源…</p> : page?.items.length === 0 ? (
-          <div className="list-state"><strong>没有符合条件的审计资源</strong><p>请调整搜索或筛选条件。</p></div>
+        {loading ? <AdminPageState compact tone="loading" title="正在加载审计记录" description="正在获取当前工作范围内的事件与调查。" /> : page?.items.length === 0 ? (
+          <AdminPageState compact tone="empty" title="没有符合条件的审计记录" description="请调整搜索或筛选条件。" />
         ) : (
           <div className="table-scroll">
             <table>
               <thead><tr><th>资源</th><th>类型</th><th>业务域</th><th>组织</th><th>结果</th><th>发生时间</th></tr></thead>
               <tbody>
                 {page?.items.map((item) => (
-                  <tr key={`${item.kind}:${item.resourceId}`}>
-                    <td><button className="table-link" onClick={() => open(item)}><strong>{item.title}</strong><span>{item.summary}</span></button></td>
-                    <td>{item.kind === "event" ? "原始事件" : "调查案件"}</td>
-                    <td>{auditDomainLabel(item.domain)}</td>
-                    <td>{item.organizationName}</td>
-                    <td><span className={`status-badge ${auditStatusTone(item.result)}`}>{auditStateLabel(item.result)}</span></td>
-                    <td>{formatDate(item.occurredAt)}</td>
+                  <tr
+                    key={`${item.kind}:${item.resourceId}`}
+                    className={selectedAuditKey === `${item.kind}:${item.resourceId}` ? "selected" : undefined}
+                  >
+                    <td><button ref={(node) => { const key = `${item.kind}:${item.resourceId}`; if (node) auditRowRefs.current.set(key, node); else auditRowRefs.current.delete(key); }} className="table-link" aria-pressed={selectedAuditKey === `${item.kind}:${item.resourceId}`} onClick={() => open(item)}><strong>{auditDirectoryTitle(item)}</strong><span>{auditDirectorySummary(item)}</span></button></td>
+                    <td data-label="类型">{item.kind === "event" ? "原始事件" : "调查案件"}</td>
+                    <td data-label="业务域">{auditDomainLabel(item.domain)}</td>
+                    <td data-label="组织">{item.organizationName}</td>
+                    <td data-label="结果"><span className={`status-badge ${auditStatusTone(item.result)}`}>{auditStateLabel(item.result)}</span></td>
+                    <td data-label="发生时间">{formatDate(item.occurredAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2752,10 +3186,12 @@ function AuditDirectory({
 function DataReportDirectory({
   session,
   client,
+  selectedReportId,
   onOpenReport,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedReportId?: string;
   onOpenReport(reportId: string): void;
 }>) {
   const storageKey =
@@ -2770,6 +3206,8 @@ function DataReportDirectory({
   const [page, setPage] = useState<AdminDataReportDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const reportRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedReportId = useRef<string | undefined>(undefined);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -2789,6 +3227,14 @@ function DataReportDirectory({
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
+  useEffect(() => {
+    const previousReportId = previousSelectedReportId.current;
+    previousSelectedReportId.current = selectedReportId;
+    if (previousReportId && !selectedReportId) {
+      requestAnimationFrame(() =>
+        reportRowRefs.current.get(previousReportId)?.focus());
+    }
+  }, [selectedReportId]);
   function update(next: AdminDataReportDirectoryQuery) {
     const { after: _after, before: _before, ...base } = next;
     setQuery(base);
@@ -2817,10 +3263,25 @@ function DataReportDirectory({
           <label>状态<select aria-label="报表状态" value={query.state ?? ""} onChange={(event) => update(withDataReportState(query, event.target.value))}><option value="">全部</option><option value="ready">就绪</option><option value="partial">部分可用</option><option value="stale">陈旧</option></select></label>
           <label>排序<select aria-label="报表排序" value={query.sort ?? "refreshed_at_desc"} onChange={(event) => update({ ...query, sort: event.target.value as NonNullable<AdminDataReportDirectoryQuery["sort"]> })}><option value="refreshed_at_desc">最近刷新</option><option value="report_id_asc">报表编号</option></select></label>
         </div>
-        {loading ? <p role="status">正在加载数据报表…</p> : error ? <p role="alert" className="form-error">{error}</p> : page?.items.length ? (
-          <div className="task-table-wrap"><table className="task-table"><thead><tr><th>报表</th><th>业务域</th><th>状态</th><th>指标</th><th>刷新时间</th></tr></thead><tbody>{page.items.map((item) => <tr key={item.reportId} onClick={() => open(item.reportId)}><td><button className="table-link" onClick={(event) => { event.stopPropagation(); open(item.reportId); }}>{item.title}<small>{item.summary}</small></button></td><td>{dataReportDomainLabel(item.domain)}</td><td><span className={`status-badge ${item.state === "ready" ? "success" : "warning"}`}>{item.state === "ready" ? "就绪" : item.state === "partial" ? "部分可用" : "陈旧"}</span></td><td>{item.metricCount}</td><td>{formatDate(item.refreshedAt)}</td></tr>)}</tbody></table></div>
+        {loading ? (
+          <AdminPageState
+            compact
+            tone="loading"
+            title="正在加载数据报表"
+            description="正在获取当前工作范围内的报表。"
+          />
+        ) : error ? (
+          <AdminPageState
+            compact
+            tone="error"
+            title="无法加载数据报表"
+            description={error}
+            focusOnMount
+          />
+        ) : page?.items.length ? (
+          <div className="task-table-wrap"><table className="task-table"><thead><tr><th>报表</th><th>业务域</th><th>状态</th><th>指标</th><th>刷新时间</th></tr></thead><tbody>{page.items.map((item) => <tr key={item.reportId} className={selectedReportId === item.reportId ? "selected" : undefined}><td><button ref={(node) => { if (node) reportRowRefs.current.set(item.reportId, node); else reportRowRefs.current.delete(item.reportId); }} className="table-link" aria-pressed={selectedReportId === item.reportId} onClick={() => open(item.reportId)}>{item.title}<small>{item.summary}</small></button></td><td data-label="业务域">{dataReportDomainLabel(item.domain)}</td><td data-label="状态"><span className={`status-badge ${item.state === "ready" ? "success" : "warning"}`}>{item.state === "ready" ? "就绪" : item.state === "partial" ? "部分可用" : "陈旧"}</span></td><td data-label="指标">{item.metricCount}</td><td data-label="刷新时间">{formatDate(item.refreshedAt)}</td></tr>)}</tbody></table></div>
         ) : <EmptyState title="没有符合条件的数据报表" description="调整搜索或筛选条件后重试。" />}
-        {page ? <PaginationControls pageInfo={page.pageInfo} onPrevious={() => setQuery(dataReportCursor(query, "before", page.pageInfo.startCursor))} onNext={() => setQuery(dataReportCursor(query, "after", page.pageInfo.endCursor))} /> : null}
+        {page?.items.length ? <PaginationControls pageInfo={page.pageInfo} onPrevious={() => setQuery(dataReportCursor(query, "before", page.pageInfo.startCursor))} onNext={() => setQuery(dataReportCursor(query, "after", page.pageInfo.endCursor))} /> : null}
       </section>
     </>
   );
@@ -2829,10 +3290,12 @@ function DataReportDirectory({
 function MembershipDirectory({
   session,
   client,
+  selectedMembershipId,
   onOpenMembership,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedMembershipId?: string;
   onOpenMembership(membershipId: string): void;
 }>) {
   const storageKey =
@@ -2847,6 +3310,8 @@ function MembershipDirectory({
   const [page, setPage] = useState<AdminMembershipDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const membershipRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedMembershipId = useRef<string | undefined>(undefined);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -2869,6 +3334,16 @@ function MembershipDirectory({
       active = false;
     };
   }, [client, query, session.accessToken, storageKey]);
+
+  useEffect(() => {
+    const previousMembershipId = previousSelectedMembershipId.current;
+    previousSelectedMembershipId.current = selectedMembershipId;
+    if (previousMembershipId && !selectedMembershipId) {
+      requestAnimationFrame(() =>
+        membershipRowRefs.current.get(previousMembershipId)?.focus());
+    }
+  }, [selectedMembershipId]);
+
   return (
     <>
       <header className="page-heading">
@@ -2936,10 +3411,30 @@ function MembershipDirectory({
             <option value="display_name_asc">姓名排序</option>
           </select>
         </div>
-        {loading ? <div className="empty-state"><h2>正在加载成员</h2></div> : null}
-        {error ? <div className="empty-state"><h2>成员加载失败</h2><p>{error}</p></div> : null}
+        {loading ? (
+          <AdminPageState
+            compact
+            tone="loading"
+            title="正在加载成员"
+            description="正在获取当前工作范围内的成员。"
+          />
+        ) : null}
+        {error ? (
+          <AdminPageState
+            compact
+            tone="error"
+            title="无法加载成员"
+            description={error}
+            focusOnMount
+          />
+        ) : null}
         {!loading && !error && page?.items.length === 0 ? (
-          <div className="empty-state"><h2>没有符合条件的成员</h2></div>
+          <AdminPageState
+            compact
+            tone="empty"
+            title="没有符合条件的成员"
+            description="请调整搜索或筛选条件后重试。"
+          />
         ) : null}
         {page?.items.length ? (
           <div className="table-wrap">
@@ -2947,26 +3442,48 @@ function MembershipDirectory({
               <thead><tr><th>成员</th><th>组织</th><th>角色</th><th>状态</th><th>活跃登录</th><th></th></tr></thead>
               <tbody>
                 {page.items.map((item) => (
-                  <tr key={item.membershipId}>
-                    <td><strong>{item.displayName}</strong><small>{item.workEmailMasked}</small></td>
-                    <td>{item.organizationName}</td>
-                    <td>{item.productRoleName}</td>
-                    <td>{membershipStateLabel(item.state)}</td>
-                    <td>{item.activeSessionCount}</td>
-                    <td><button onClick={() => {
-                      writeFleetListState(storageKey, query, window.scrollY);
-                      onOpenMembership(item.membershipId);
-                    }}>查看详情</button></td>
+                  <tr
+                    key={item.membershipId}
+                    className={
+                      item.membershipId === selectedMembershipId ? "selected" : ""
+                    }
+                  >
+                    <td>
+                      <button
+                        ref={(element) => {
+                          if (element) {
+                            membershipRowRefs.current.set(item.membershipId, element);
+                          } else {
+                            membershipRowRefs.current.delete(item.membershipId);
+                          }
+                        }}
+                        className="task-link"
+                        aria-pressed={item.membershipId === selectedMembershipId}
+                        onClick={() => {
+                          writeFleetListState(storageKey, query, window.scrollY);
+                          onOpenMembership(item.membershipId);
+                        }}
+                      >
+                        <strong>{item.displayName}</strong>
+                        <small>{item.workEmailMasked}</small>
+                      </button>
+                    </td>
+                    <td data-label="组织">{item.organizationName}</td>
+                    <td data-label="角色">{item.productRoleName}</td>
+                    <td data-label="状态">{membershipStateLabel(item.state)}</td>
+                    <td data-label="活跃登录">{item.activeSessionCount}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : null}
-        <div className="pagination">
-          <button disabled={!page?.pageInfo.hasPreviousPage} onClick={() => setQuery(membershipCursor(query, "before", page?.pageInfo.startCursor))}>上一页</button>
-          <button disabled={!page?.pageInfo.hasNextPage} onClick={() => setQuery(membershipCursor(query, "after", page?.pageInfo.endCursor))}>下一页</button>
-        </div>
+        {page?.items.length ? (
+          <div className="pagination">
+            <button disabled={!page.pageInfo.hasPreviousPage} onClick={() => setQuery(membershipCursor(query, "before", page.pageInfo.startCursor))}>上一页</button>
+            <button disabled={!page.pageInfo.hasNextPage} onClick={() => setQuery(membershipCursor(query, "after", page.pageInfo.endCursor))}>下一页</button>
+          </div>
+        ) : null}
       </section>
     </>
   );
@@ -2987,6 +3504,9 @@ function MembershipDetail({
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [pendingAction, setPendingAction] = useState<AdminMembershipAction>();
+  const operationLockRef = useRef(false);
+  const membershipActionButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     setDetail(undefined);
     setError(undefined);
@@ -2996,7 +3516,8 @@ function MembershipDetail({
       .catch((reason) => setError(messageFor(reason)));
   }, [client, membershipId, session.accessToken]);
   async function perform(action: AdminMembershipAction) {
-    if (!detail) return;
+    if (!detail || operationLockRef.current) return;
+    operationLockRef.current = true;
     setSubmitting(true);
     setError(undefined);
     try {
@@ -3018,48 +3539,94 @@ function MembershipDetail({
           ? "成员已暂停，现有登录状态已失效。"
           : "成员已恢复，可重新登录。",
       );
+      setPendingAction(undefined);
+      requestAnimationFrame(() => membershipActionButtonRef.current?.focus());
     } catch (reason) {
       setError(messageFor(reason));
     } finally {
+      operationLockRef.current = false;
       setSubmitting(false);
     }
   }
-  if (error && !detail) return <div className="empty-state"><h2>成员详情加载失败</h2><p>{error}</p></div>;
-  if (!detail) return <div className="empty-state"><h2>正在加载成员详情</h2></div>;
+  if (error && !detail) {
+    return (
+      <AdminPageState
+        tone="error"
+        title="无法加载成员详情"
+        description={error}
+        primaryAction={{ label: "返回成员列表", onAction: onBack }}
+        focusOnMount
+      />
+    );
+  }
+  if (!detail) {
+    return (
+      <AdminPageState
+        tone="loading"
+        title="正在加载成员详情"
+        description="正在获取成员工作范围和账户状态。"
+      />
+    );
+  }
   return (
     <>
-      <button className="back-link" onClick={onBack}>返回成员列表</button>
-      <header className="page-heading"><span className="eyebrow">成员详情</span><h1>{detail.item.displayName}</h1><p>{detail.item.organizationName} · {detail.item.productRoleName}</p></header>
-      {result ? <div className="result-banner">{result}</div> : null}
+      <header className="page-heading detail-heading">
+        <div>
+          <button className="text-action" onClick={onBack}>← 返回成员列表</button>
+          <span className="eyebrow">成员工作档案</span>
+          <h1>{detail.item.displayName}</h1>
+          <p>{detail.item.organizationName} · {detail.item.productRoleName}</p>
+        </div>
+        <span className={`status-pill ${detail.item.state === "active" ? "completed" : "blocked"}`}>
+          {membershipStateLabel(detail.item.state)}
+        </span>
+      </header>
+      {result ? <div className="result-banner" role="status">{result}</div> : null}
       {error ? <div className="form-error"><strong>操作未完成</strong><p>{error}</p></div> : null}
       <section className="detail-grid">
-        <article className="panel">
-          <h2>成员身份</h2>
+        <article className="detail-card">
+          <h2>成员信息</h2>
           <dl className="detail-list">
             <div><dt>工作邮箱</dt><dd>{detail.item.workEmailMasked}</dd></div>
             <div><dt>当前状态</dt><dd>{membershipStateLabel(detail.item.state)}</dd></div>
             <div><dt>所属组织</dt><dd>{detail.item.organizationName}</dd></div>
-            <div><dt>城市范围</dt><dd>{detail.scopeBindings.cityScopes.join("、")}</dd></div>
             <div><dt>活跃登录</dt><dd>{detail.item.activeSessionCount}</dd></div>
           </dl>
         </article>
-        <article className="panel">
-          <h2>角色与操作</h2>
-          <p>{detail.roleBinding.roleName}</p>
+        <AdminWorkScopeCard
+          organizationName={detail.scopeBindings.organizationName}
+          cityScopes={detail.scopeBindings.cityScopes}
+          roleName={detail.roleBinding.roleName}
+          actions={detail.allowedActions.map(membershipActionLabel)}
+        />
+        <article className="detail-card detail-actions">
+          <h2>访问状态</h2>
           {detail.allowedActions.includes("suspend_membership") ? (
-            <button disabled={submitting} onClick={() => perform("suspend_membership")}>暂停成员</button>
+            <button
+              ref={membershipActionButtonRef}
+              disabled={submitting}
+              onClick={() => setPendingAction("suspend_membership")}
+            >
+              暂停成员
+            </button>
           ) : null}
           {detail.allowedActions.includes("restore_membership") ? (
-            <button disabled={submitting} onClick={() => perform("restore_membership")}>恢复成员</button>
+            <button
+              ref={membershipActionButtonRef}
+              disabled={submitting}
+              onClick={() => setPendingAction("restore_membership")}
+            >
+              恢复成员
+            </button>
           ) : null}
-          {detail.allowedActions.length === 0 ? <p>当前角色仅可查看。</p> : null}
+          {detail.allowedActions.length === 0 ? <p>当前可以查看成员信息，暂无需要执行的操作。</p> : null}
           {detail.allowedActions.includes("suspend_membership") ? (
             <p>暂停后，该成员现有登录状态会立即失效；恢复后需要重新登录。</p>
           ) : null}
         </article>
       </section>
-      <section className="panel">
-        <h2>操作记录</h2>
+      <section className="detail-card membership-audit-card">
+        <h2>访问处理记录</h2>
         {detail.auditTrail.length === 0 ? <p>暂无操作记录。</p> : (
           <ol className="timeline">
             {detail.auditTrail.map((event) => (
@@ -3071,6 +3638,33 @@ function MembershipDetail({
           </ol>
         )}
       </section>
+      {pendingAction ? (
+        <AdminRiskConfirmationDialog
+          titleId="membership-risk-confirmation-title"
+          title={membershipActionLabel(pendingAction)}
+          objectLabel={`${detail.item.displayName} · ${detail.item.productRoleName}`}
+          scope={`${detail.scopeBindings.organizationName}${detail.scopeBindings.cityScopes.length ? ` · ${detail.scopeBindings.cityScopes.join("、")}` : ""}`}
+          reversible={
+            pendingAction === "suspend_membership"
+              ? "可以恢复，但成员需要重新登录"
+              : "可以再次暂停"
+          }
+          consequence={
+            pendingAction === "suspend_membership"
+              ? `该成员的 ${detail.item.activeSessionCount} 个活跃登录将立即失效。`
+              : "该成员将恢复登录资格，原有登录不会自动恢复。"
+          }
+          confirmLabel={`确认${membershipActionLabel(pendingAction)}`}
+          tone={
+            pendingAction === "suspend_membership" ? "danger" : "primary"
+          }
+          busy={submitting}
+          onCancel={() => {
+            if (!submitting) setPendingAction(undefined);
+          }}
+          onConfirm={() => void perform(pendingAction)}
+        />
+      ) : null}
     </>
   );
 }
@@ -3090,7 +3684,9 @@ function DataReportDetail({
   const [error, setError] = useState<string>();
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<string>();
-  const [reasonCode, setReasonCode] = useState("scheduled_aggregate_refresh");
+  const [reasonCode, setReasonCode] = useState("例行经营数据刷新");
+  const [pendingAction, setPendingAction] = useState<AdminDataReportAction>();
+  const operationLockRef = useRef(false);
   useEffect(() => {
     let active = true;
     client.getDataReport(session.accessToken, reportId)
@@ -3099,7 +3695,8 @@ function DataReportDetail({
     return () => { active = false; };
   }, [client, reportId, session.accessToken]);
   async function perform(action: AdminDataReportAction) {
-    if (!detail) return;
+    if (!detail || operationLockRef.current) return;
+    operationLockRef.current = true;
     setConfirming(true);
     setError(undefined);
     setResult("正在确认报表刷新结果…");
@@ -3115,24 +3712,76 @@ function DataReportDetail({
         },
       );
       setDetail(next.detail);
-      setResult(`报表刷新已确认：${next.operationId}`);
+      setResult("报表指标已更新，可以按最新口径继续查看。");
+      setPendingAction(undefined);
     } catch (reason) {
       setError(messageFor(reason));
       setResult(undefined);
     } finally {
+      operationLockRef.current = false;
       setConfirming(false);
     }
   }
-  if (!detail && !error) return <p role="status">正在加载报表详情…</p>;
-  if (!detail) return <EmptyState title="无法加载报表详情" description={error ?? "未知错误"} actionLabel="返回报表列表" onAction={onBack} />;
+  if (!detail && !error) {
+    return (
+      <AdminPageState
+        tone="loading"
+        title="正在加载报表详情"
+        description="正在获取报表指标和刷新记录。"
+      />
+    );
+  }
+  if (!detail) return <EmptyState tone="error" title="无法加载报表详情" description={error ?? "报表不存在或当前工作身份无法查看。"} actionLabel="返回报表列表" onAction={onBack} />;
   return (
     <>
       <button className="back-link" onClick={onBack}>← 返回报表列表</button>
       <section className="page-heading"><div><span className="eyebrow">{dataReportDomainLabel(detail.item.domain)}</span><h1>{detail.item.title}</h1><p>{detail.item.summary}</p></div><span className={`status-badge ${detail.item.state === "ready" ? "success" : "warning"}`}>{detail.item.state === "ready" ? "就绪" : detail.item.state === "partial" ? "部分可用" : "陈旧"}</span></section>
       <section className="operator-summary-grid" aria-label="报表指标">{detail.metrics.map((metric) => <SummaryMetric key={metric.metricId} label={metric.label} value={metric.displayValue} />)}</section>
-      <section className="detail-card"><h2>数据边界</h2><p>仅去标识聚合；不提供人员级数据、真实数据或导出能力。</p></section>
-      <section className="detail-card"><h2>当前角色允许操作</h2>{detail.allowedActions.length === 0 ? <p>当前角色仅可查看。</p> : <div className="action-form"><label>刷新原因<input aria-label="报表刷新原因" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} /></label><div className="action-row">{detail.allowedActions.map((action) => <button key={action} className="primary-action" disabled={confirming} onClick={() => void perform(action)}>刷新报表快照</button>)}</div></div>}{result ? <p role="status" className="success-message">{result}</p> : null}{error ? <p role="alert" className="form-error">{error}</p> : null}</section>
-      <section className="detail-card"><h2>追加式审计</h2><ol className="audit-list">{detail.auditTrail.map((event) => <li key={event.eventId}><strong>{event.action === "data_report_refreshed" ? "报表已刷新" : "报表已查看"}</strong><span>{event.actorLabel} · {event.actorRole} · {formatDate(event.occurredAt)}</span>{event.reasonCode ? <p>{event.reasonCode}</p> : null}</li>)}</ol></section>
+      <section className="detail-grid">
+        <article className="detail-card">
+          <h2>指标说明</h2>
+          <p>本页提供统一口径的汇总指标，适合经营判断与趋势核对，不包含人员级明细。</p>
+        </article>
+        <AdminWorkScopeCard
+          organizationName={detail.item.organizationName}
+          cityScopes={[]}
+          roleName={session.workIdentity.productRoleName}
+          actions={detail.allowedActions.length ? ["刷新聚合指标"] : []}
+        />
+        <article className="detail-card detail-actions">
+          <h2>更新报表</h2>
+          {detail.allowedActions.length === 0 ? <p>当前报表可以查看，暂无需要执行的操作。</p> : <div className="action-row">{detail.allowedActions.map((action) => <button key={action} className="primary-action" disabled={confirming} onClick={() => setPendingAction(action)}>刷新报表指标</button>)}</div>}
+          {result ? <p role="status" className="success-message">{result}</p> : null}
+          {error ? <p role="alert" className="form-error">{error}</p> : null}
+        </article>
+        <article className="detail-card detail-audit"><h2>处理记录</h2><ol className="audit-list">{detail.auditTrail.map((event) => <li key={event.eventId}><strong>{event.action === "data_report_refreshed" ? "报表指标已刷新" : "报表已查看"}</strong><span>{event.actorLabel} · {event.actorRole} · {formatDate(event.occurredAt)}</span></li>)}</ol></article>
+      </section>
+      {pendingAction ? (
+        <AdminRiskConfirmationDialog
+          titleId="data-report-refresh-confirmation-title"
+          title="刷新这张报表的指标？"
+          objectLabel={detail.item.title}
+          scope={`${detail.metrics.length} 项汇总指标 · ${detail.item.organizationName}`}
+          reversible="历史处理记录会保留；刷新后可继续查看此前的操作轨迹。"
+          consequence="系统将重新计算聚合快照，并在完成后更新本页指标和刷新时间。"
+          confirmLabel="确认刷新"
+          tone="primary"
+          busy={confirming}
+          fields={(
+            <label>
+              刷新说明
+              <input
+                aria-label="报表刷新原因"
+                value={reasonCode}
+                disabled={confirming}
+                onChange={(event) => setReasonCode(event.target.value)}
+              />
+            </label>
+          )}
+          onCancel={() => setPendingAction(undefined)}
+          onConfirm={() => void perform(pendingAction)}
+        />
+      ) : null}
     </>
   );
 }
@@ -3155,9 +3804,11 @@ function AuditDetail({
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<string>();
   const [confirming, setConfirming] = useState(false);
-  const [reasonCode, setReasonCode] = useState("controlled_audit_review");
-  const [note, setNote] = useState("已核对合成审计证据和关联编号");
+  const [reasonCode, setReasonCode] = useState("例行审计复核");
+  const [note, setNote] = useState("已核对审计证据和关联记录");
   const [assignee, setAssignee] = useState("synthetic-technical-ops-001");
+  const [pendingAction, setPendingAction] = useState<AdminAuditAction>();
+  const operationLockRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -3178,7 +3829,8 @@ function AuditDetail({
   }, [auditRoute.kind, auditRoute.resourceId, client, session.accessToken]);
 
   async function perform(action: AdminAuditAction) {
-    if (!detail || confirming) return;
+    if (!detail || confirming || operationLockRef.current) return;
+    operationLockRef.current = true;
     setConfirming(true);
     setError(undefined);
     setResult("结果确认中");
@@ -3199,7 +3851,8 @@ function AuditDetail({
         },
       );
       setDetail(next.detail);
-      setResult(`操作已确认：${auditSystemActionLabel(action)}`);
+      setResult(auditActionResultMessage(action));
+      setPendingAction(undefined);
       if (action === "open_investigation") {
         onOpenInvestigation(next.detail.item.resourceId);
       }
@@ -3207,31 +3860,49 @@ function AuditDetail({
       setError(messageFor(reason));
       setResult(undefined);
     } finally {
+      operationLockRef.current = false;
       setConfirming(false);
     }
   }
 
-  if (loading) return <p className="list-state">正在加载审计详情…</p>;
-  if (error && !detail) return <div className="list-state"><strong>无法加载审计详情</strong><p>{error}</p><button onClick={onBack}>返回审计名录</button></div>;
+  if (loading) {
+    return (
+      <AdminPageState
+        tone="loading"
+        title="正在加载审计详情"
+        description="正在获取事件记录和调查进展。"
+      />
+    );
+  }
+  if (error && !detail) {
+    return (
+      <AdminPageState
+        tone="error"
+        title="无法加载审计详情"
+        description={error}
+        primaryAction={{ label: "返回审计名录", onAction: onBack }}
+        focusOnMount
+      />
+    );
+  }
   if (!detail) return null;
   return (
     <>
       <button className="back-action" onClick={onBack}>← 返回审计名录</button>
       <section className="page-heading">
-        <div><span className="eyebrow">{detail.kind === "event" ? "不可修改的原始事件" : "受控技术调查"}</span><h1>{detail.item.title}</h1><p>{detail.item.summary}</p></div>
+        <div><span className="eyebrow">{detail.kind === "event" ? "审计事件" : "调查处理"}</span><h1>{auditDirectoryTitle(detail.item)}</h1><p>{auditDirectorySummary(detail.item)}</p></div>
         <span className={`status-badge ${auditStatusTone(detail.item.result)}`}>{auditStateLabel(detail.item.result)}</span>
       </section>
-      <p className="boundary-notice">只显示脱敏审计元数据；原始事件不可覆盖、不可删除，调查操作不能改变领域业务状态。</p>
       <section className="detail-grid">
         <article className="detail-card">
-          <h2>资源详情</h2>
+          <h2>{detail.kind === "event" ? "事件信息" : "调查进展"}</h2>
           {detail.kind === "event" ? (
             <dl className="detail-list">
-              <div><dt>事件类型</dt><dd>{detail.record.event.eventType}</dd></div>
+              <div><dt>事件类型</dt><dd>{auditEventTypeLabel(detail.record.event.eventType)}</dd></div>
               <div><dt>结果</dt><dd>{auditStateLabel(detail.record.event.result)}</dd></div>
               <div><dt>组织</dt><dd>{detail.item.organizationName}</dd></div>
-              <div><dt>操作者</dt><dd>{detail.record.event.actorInternalUserId}</dd></div>
-              <div><dt>资源</dt><dd>{detail.record.event.resourceType ?? "—"} / {detail.record.event.resourceId ?? "—"}</dd></div>
+              <div><dt>操作者</dt><dd>{auditActorLabel(detail.record.event.actorInternalUserId)}</dd></div>
+              <div><dt>涉及对象</dt><dd>{auditResourceLabel(detail.record.event.resourceType, detail.record.event.resourceId)}</dd></div>
               <div><dt>请求关联编号</dt><dd>{detail.record.event.correlationId}</dd></div>
               <div><dt>访问决策编号</dt><dd>{detail.record.event.accessDecisionId ?? "—"}</dd></div>
               <div><dt>关联调查</dt><dd>{detail.record.linkedInvestigationId ?? "未创建"}</dd></div>
@@ -3240,43 +3911,67 @@ function AuditDetail({
             <dl className="detail-list">
               <div><dt>来源事件</dt><dd>{detail.record.sourceEventId}</dd></div>
               <div><dt>调查状态</dt><dd>{auditStateLabel(detail.record.state)}</dd></div>
-              <div><dt>原因代码</dt><dd>{detail.record.reasonCode}</dd></div>
+              <div><dt>调查缘由</dt><dd>{auditReasonLabel(detail.record.reasonCode)}</dd></div>
               <div><dt>负责人</dt><dd>{detail.record.assigneeWorkIdentityId ?? "待分派"}</dd></div>
-              <div><dt>资源版本</dt><dd>{detail.record.resourceVersion}</dd></div>
               <div><dt>调查记录</dt><dd>{detail.record.notes.length} 条</dd></div>
             </dl>
           )}
         </article>
         <article className="detail-card">
-          <h2>完整性证明</h2>
+          <h2>证据状态</h2>
           <dl className="detail-list">
-            <div><dt>规范载荷摘要</dt><dd><code>{detail.integrity.canonicalPayloadDigest}</code></dd></div>
-            <div><dt>前序事件摘要</dt><dd><code>{detail.integrity.previousEventDigest ?? "首条或不适用"}</code></dd></div>
-            <div><dt>追加式存储</dt><dd>是</dd></div>
-            <div><dt>原始敏感载荷</dt><dd>不可用</dd></div>
+            <div><dt>记录完整性</dt><dd>{detail.integrity.canonicalPayloadDigest ? "校验通过" : "需要复核"}</dd></div>
+            <div><dt>前后关联</dt><dd>{detail.integrity.previousEventDigest ? "已建立" : "首条记录"}</dd></div>
+            <div><dt>记录保护</dt><dd>原始事件不可覆盖或删除</dd></div>
+            <div><dt>敏感信息</dt><dd>仅展示履职所需的脱敏内容</dd></div>
           </dl>
         </article>
-      </section>
-      <section className="detail-card">
-        <h2>当前角色允许操作</h2>
+        <AdminWorkScopeCard
+          organizationName={detail.item.organizationName}
+          cityScopes={[]}
+          roleName={session.workIdentity.productRoleName}
+          actions={detail.allowedActions.map(auditSystemActionLabel)}
+        />
+        <article className="detail-card detail-actions">
+        <h2>处理调查</h2>
         {detail.allowedActions.length === 0 ? <p>当前角色在此状态下仅可查看。</p> : (
           <div className="action-form">
-            <label>操作原因<input aria-label="审计操作原因" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} /></label>
-            {detail.allowedActions.includes("assign_investigation") ? <label>技术负责人<input aria-label="审计调查负责人" value={assignee} onChange={(event) => setAssignee(event.target.value)} /></label> : null}
             {detail.allowedActions.includes("add_investigation_note") ? <label>调查记录<textarea aria-label="审计调查记录" value={note} onChange={(event) => setNote(event.target.value)} /></label> : null}
-            <div className="action-row">{detail.allowedActions.map((action) => <button key={action} className="primary-action" disabled={confirming} onClick={() => void perform(action)}>{auditSystemActionLabel(action)}</button>)}</div>
+            <div className="action-row">{detail.allowedActions.map((action) => <button key={action} className="primary-action" disabled={confirming} onClick={() => { if (action === "add_investigation_note") void perform(action); else setPendingAction(action); }}>{auditSystemActionLabel(action)}</button>)}</div>
           </div>
         )}
         {result ? <p role="status" className="success-message">{result}</p> : null}
         {error ? <p role="alert" className="form-error">{error}</p> : null}
-      </section>
+        </article>
       {detail.kind === "investigation" && detail.record.notes.length > 0 ? (
-        <section className="detail-card"><h2>调查记录</h2><ol className="audit-list">{detail.record.notes.map((entry) => <li key={entry.noteId}><strong>{entry.authorWorkIdentityId}</strong><span>{formatDate(entry.occurredAt)}</span><p>{entry.content}</p></li>)}</ol></section>
+        <article className="detail-card"><h2>调查记录</h2><ol className="audit-list">{detail.record.notes.map((entry) => <li key={entry.noteId}><strong>{entry.authorWorkIdentityId}</strong><span>{formatDate(entry.occurredAt)}</span><p>{entry.content}</p></li>)}</ol></article>
       ) : null}
-      <section className="detail-card">
-        <h2>追加式审计</h2>
+      <article className="detail-card detail-audit">
+        <h2>处理记录</h2>
         <ol className="audit-list">{detail.auditTrail.map((event) => <li key={event.eventId}><strong>{auditTrailActionLabel(event.action)}</strong><span>{event.actorLabel} · {event.actorRole} · {formatDate(event.occurredAt)}</span>{event.note ? <p>{event.note}</p> : null}</li>)}</ol>
+      </article>
       </section>
+      {pendingAction ? (
+        <AdminRiskConfirmationDialog
+          titleId="audit-action-confirmation-title"
+          title={auditConfirmationTitle(pendingAction)}
+          objectLabel={detail.item.title}
+          scope={auditConfirmationScope(pendingAction, detail)}
+          reversible={pendingAction === "resolve_investigation" ? "结案后仍保留完整记录；如有新事实，需要重新发起调查。" : "操作记录会保留，可继续补充说明或调整负责人。"}
+          consequence={auditConfirmationConsequence(pendingAction)}
+          confirmLabel={auditSystemActionLabel(pendingAction)}
+          tone={pendingAction === "resolve_investigation" ? "danger" : "primary"}
+          busy={confirming}
+          fields={(
+            <>
+              <label>处理说明<input aria-label="审计操作原因" value={reasonCode} disabled={confirming} onChange={(event) => setReasonCode(event.target.value)} /></label>
+              {pendingAction === "assign_investigation" ? <label>调查负责人<input aria-label="审计调查负责人" value={assignee} disabled={confirming} onChange={(event) => setAssignee(event.target.value)} /></label> : null}
+            </>
+          )}
+          onCancel={() => setPendingAction(undefined)}
+          onConfirm={() => void perform(pendingAction)}
+        />
+      ) : null}
     </>
   );
 }
@@ -3284,10 +3979,12 @@ function AuditDetail({
 function ExecutiveDirectory({
   session,
   client,
+  selectedExecutive,
   onOpenExecutive,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedExecutive?: AdminRoute["executive"];
   onOpenExecutive(executive: NonNullable<AdminRoute["executive"]>): void;
 }>) {
   const storageKey =
@@ -3302,12 +3999,18 @@ function ExecutiveDirectory({
   const [page, setPage] = useState<AdminExecutiveDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
-  const [showExportForm, setShowExportForm] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportPurpose, setExportPurpose] = useState("内部经营复盘");
   const [exportDomain, setExportDomain] =
     useState<"operations" | "finance" | "safety_compliance">("operations");
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string>();
+  const executiveRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedExecutiveKey = useRef<string | undefined>(undefined);
+  const exportOperationLockRef = useRef(false);
+  const selectedExecutiveKey = selectedExecutive
+    ? `${selectedExecutive.kind}:${selectedExecutive.resourceId}`
+    : undefined;
 
   useEffect(() => {
     let active = true;
@@ -3329,6 +4032,19 @@ function ExecutiveDirectory({
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
+  useEffect(() => {
+    if (selectedExecutiveKey) {
+      if (executiveRowRefs.current.has(selectedExecutiveKey)) {
+        previousSelectedExecutiveKey.current = selectedExecutiveKey;
+      }
+      return;
+    }
+    const previousExecutiveKey = previousSelectedExecutiveKey.current;
+    if (previousExecutiveKey) {
+      requestAnimationFrame(() =>
+        executiveRowRefs.current.get(previousExecutiveKey)?.focus());
+    }
+  }, [selectedExecutiveKey]);
 
   function update(next: AdminExecutiveDirectoryQuery) {
     const normalized = clearFleetCursor(next);
@@ -3345,6 +4061,8 @@ function ExecutiveDirectory({
   }
 
   async function createExport() {
+    if (exportOperationLockRef.current) return;
+    exportOperationLockRef.current = true;
     setCreating(true);
     setError(undefined);
     setNotice("正在确认导出申请结果…");
@@ -3365,13 +4083,14 @@ function ExecutiveDirectory({
           windowEnd: end.toISOString(),
         },
       );
-      setNotice(`导出申请已确认：${result.detail.item.resourceId}`);
-      setShowExportForm(false);
+      setNotice("导出申请已提交，等待独立复核。");
+      setShowExportDialog(false);
       openExecutive("export_request", result.detail.item.resourceId);
     } catch (reason) {
       setError(messageFor(reason));
       setNotice(undefined);
     } finally {
+      exportOperationLockRef.current = false;
       setCreating(false);
     }
   }
@@ -3380,13 +4099,13 @@ function ExecutiveDirectory({
     <>
       <section className="page-heading">
         <div>
-          <span className="eyebrow">合成经营聚合与治理协作</span>
+          <span className="eyebrow">经营判断与跨域协作</span>
           <h1>高层驾驶舱</h1>
-          <p>查看经营健康、指标口径和待决事项；仅记录治理意见与受控导出，不直接批准领域业务。</p>
+          <p>查看经营健康、统一指标口径，并将待决事项交给明确的责任角色继续处理。</p>
         </div>
         <button
           className="primary-action"
-          onClick={() => setShowExportForm((value) => !value)}
+          onClick={() => setShowExportDialog(true)}
         >
           申请受控导出
         </button>
@@ -3413,40 +4132,49 @@ function ExecutiveDirectory({
       {page?.notices.map((item) => (
         <p className="detail-warning" key={item}>{item}</p>
       ))}
-      {showExportForm ? (
-        <section className="task-panel">
-          <h2>新建受控导出申请</h2>
-          <div className="list-toolbar">
-            <label>
-              职责域
-              <select
-                aria-label="导出职责域"
-                value={exportDomain}
-                onChange={(event) =>
-                  setExportDomain(event.target.value as typeof exportDomain)}
-              >
-                <option value="operations">运营</option>
-                <option value="finance">财务</option>
-                <option value="safety_compliance">安全合规</option>
-              </select>
-            </label>
-            <label>
-              导出目的
-              <input
-                aria-label="导出目的"
-                value={exportPurpose}
-                onChange={(event) => setExportPurpose(event.target.value)}
-              />
-            </label>
-          </div>
-          <button
-            className="primary-action"
-            disabled={creating || !exportPurpose.trim()}
-            onClick={() => void createExport()}
-          >
-            {creating ? "结果确认中…" : "提交导出申请"}
-          </button>
-        </section>
+      {showExportDialog ? (
+        <AdminRiskConfirmationDialog
+          titleId="executive-export-confirmation-title"
+          title="提交受控导出申请？"
+          objectLabel={`${executiveDomainName(exportDomain)} · 最近 7 天经营数据`}
+          scope={`用于“${exportPurpose.trim() || "尚未填写用途"}”的聚合数据申请，不包含人员级明细。`}
+          reversible="提交后进入独立复核；批准前不会生成下载文件。"
+          consequence="复核人员将检查用途、字段范围和时间窗口，再决定是否允许导出。"
+          confirmLabel="提交导出申请"
+          tone="primary"
+          busy={creating}
+          fields={(
+            <>
+              <label>
+                数据范围
+                <select
+                  aria-label="导出数据范围"
+                  value={exportDomain}
+                  disabled={creating}
+                  onChange={(event) =>
+                    setExportDomain(event.target.value as typeof exportDomain)}
+                >
+                  <option value="operations">运营</option>
+                  <option value="finance">财务</option>
+                  <option value="safety_compliance">安全合规</option>
+                </select>
+              </label>
+              <label>
+                导出用途
+                <input
+                  aria-label="导出目的"
+                  value={exportPurpose}
+                  disabled={creating}
+                  onChange={(event) => setExportPurpose(event.target.value)}
+                />
+              </label>
+            </>
+          )}
+          onCancel={() => setShowExportDialog(false)}
+          onConfirm={() => {
+            if (exportPurpose.trim()) void createExport();
+          }}
+        />
       ) : null}
       {notice ? <p className="success-banner" role="status">{notice}</p> : null}
       <section className="task-panel">
@@ -3486,9 +4214,9 @@ function ExecutiveDirectory({
             </select>
           </label>
           <label>
-            职责域
+            业务范围
             <select
-              aria-label="驾驶舱职责域"
+              aria-label="驾驶舱业务范围"
               value={query.domain ?? ""}
               onChange={(event) => {
                 const { domain: _domain, ...rest } = query;
@@ -3509,9 +4237,9 @@ function ExecutiveDirectory({
             </select>
           </label>
           <label>
-            控制状态
+            处理状态
             <select
-              aria-label="驾驶舱阻断状态"
+              aria-label="驾驶舱处理状态"
               value={query.blocking === undefined ? "" : String(query.blocking)}
               onChange={(event) => {
                 const { blocking: _blocking, ...rest } = query;
@@ -3545,12 +4273,9 @@ function ExecutiveDirectory({
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {loading ? (
-          <p className="list-state">正在加载驾驶舱资源…</p>
+          <AdminPageState compact tone="loading" title="正在加载驾驶舱事项" description="正在获取当前工作范围内的经营事项和指标。" />
         ) : page?.items.length === 0 ? (
-          <div className="list-state">
-            <strong>没有符合条件的驾驶舱资源</strong>
-            <p>请调整搜索或筛选条件后重试。</p>
-          </div>
+          <AdminPageState compact tone="empty" title="没有符合条件的驾驶舱事项" description="请调整搜索或筛选条件后重试。" />
         ) : (
           <div className="table-scroll">
             <table>
@@ -3559,36 +4284,41 @@ function ExecutiveDirectory({
                   <th>资源</th>
                   <th>类型</th>
                   <th>状态</th>
-                  <th>职责域</th>
-                  <th>控制状态</th>
+                  <th>业务范围</th>
+                  <th>处理状态</th>
                   <th>最近更新</th>
                 </tr>
               </thead>
               <tbody>
                 {page?.items.map((item) => (
-                  <tr key={`${item.kind}-${item.resourceId}`}>
+                  <tr
+                    key={`${item.kind}-${item.resourceId}`}
+                    className={selectedExecutiveKey === `${item.kind}:${item.resourceId}` ? "selected" : undefined}
+                  >
                     <td>
                       <button
+                        ref={(node) => { const key = `${item.kind}:${item.resourceId}`; if (node) executiveRowRefs.current.set(key, node); else executiveRowRefs.current.delete(key); }}
                         className="task-link"
+                        aria-pressed={selectedExecutiveKey === `${item.kind}:${item.resourceId}`}
                         onClick={() =>
                           openExecutive(item.kind, item.resourceId)}
                       >
-                        <strong>{item.title}</strong>
-                        <small>{item.summary}</small>
+                        <strong>{productDisplayText(item.title)}</strong>
+                        <small>{productDisplayText(executiveDirectorySummary(item))}</small>
                       </button>
                     </td>
-                    <td>{executiveKindLabel(item.kind)}</td>
-                    <td><span className={`status-pill ${executiveStatusTone(item.state)}`}>{executiveStateLabel(item.state)}</span></td>
-                    <td>{item.domain ? executiveDomainName(item.domain) : "跨域"}</td>
-                    <td>{item.blocking ? "存在阻断" : "无阻断"}</td>
-                    <td>{formatDate(item.updatedAt)}</td>
+                    <td data-label="类型">{executiveKindLabel(item.kind)}</td>
+                    <td data-label="状态"><span className={`status-pill ${executiveStatusTone(item.state)}`}>{executiveStateLabel(item.state)}</span></td>
+                    <td data-label="业务范围">{item.domain ? executiveDomainName(item.domain) : "跨域"}</td>
+                    <td data-label="处理状态">{item.blocking ? "需要协调" : "进展正常"}</td>
+                    <td data-label="最近更新">{formatDate(item.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {page ? (
+        {page?.items.length ? (
           <PaginationControls
             pageInfo={page.pageInfo}
             onPrevious={() =>
@@ -3626,10 +4356,12 @@ function ExecutiveDetail({
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [busyAction, setBusyAction] = useState<AdminExecutiveAction>();
-  const [reasonCode, setReasonCode] = useState("executive_governance_review");
+  const [reasonCode, setReasonCode] = useState("经营治理复核");
   const [decisionCode, setDecisionCode] =
-    useState("continue_controlled_review");
-  const [responsibleRole, setResponsibleRole] = useState("operations_lead");
+    useState("继续跟进");
+  const [responsibleRole, setResponsibleRole] = useState("运营负责人");
+  const [pendingAction, setPendingAction] = useState<AdminExecutiveAction>();
+  const operationLockRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -3653,7 +4385,8 @@ function ExecutiveDetail({
   ]);
 
   async function perform(action: AdminExecutiveAction) {
-    if (!detail) return;
+    if (!detail || operationLockRef.current) return;
+    operationLockRef.current = true;
     setBusyAction(action);
     setError(undefined);
     setNotice("正在确认操作结果…");
@@ -3680,26 +4413,30 @@ function ExecutiveDetail({
       );
       setDetail(result.detail);
       setNotice(`操作已确认：${executiveActionLabel(action)}`);
+      setPendingAction(undefined);
       if (result.download) downloadExecutiveFile(result.download);
     } catch (reason) {
       setError(messageFor(reason));
       setNotice(undefined);
     } finally {
+      operationLockRef.current = false;
       setBusyAction(undefined);
     }
   }
 
-  if (loading) return <p className="list-state">正在加载驾驶舱详情…</p>;
+  if (loading) return <AdminPageState compact tone="loading" title="正在加载驾驶舱详情" description="正在获取事项信息、工作范围和处理记录。" />;
   if (error && !detail) {
     return (
-      <section className="list-state">
-        <strong>驾驶舱详情加载失败</strong>
-        <p role="alert">{error}</p>
-        <button onClick={onBack}>返回驾驶舱名录</button>
-      </section>
+      <AdminPageState
+        tone="error"
+        title="无法加载驾驶舱详情"
+        description={error}
+        primaryAction={{ label: "返回驾驶舱名录", onAction: onBack }}
+        focusOnMount
+      />
     );
   }
-  if (!detail) return <p className="list-state">未找到驾驶舱资源。</p>;
+  if (!detail) return <AdminPageState tone="error" title="未找到驾驶舱事项" description="该事项不存在，或当前工作身份无法查看。" primaryAction={{ label: "返回驾驶舱名录", onAction: onBack }} focusOnMount />;
 
   return (
     <>
@@ -3714,16 +4451,19 @@ function ExecutiveDetail({
           {executiveStateLabel(detail.item.state)}
         </span>
       </section>
-      <p className="detail-warning">
-        当前页面仅使用合成聚合数据；禁止人员级钻取，也不能直接改变领域业务状态。
-      </p>
       <section className="detail-grid">
         <article className="detail-card">
-          <h2>资源详情</h2>
+          <h2>事项信息</h2>
           <ExecutiveRecord detail={detail} />
         </article>
-        <article className="detail-card">
-          <h2>当前角色允许操作</h2>
+        <AdminWorkScopeCard
+          organizationName={detail.organizationScope.organizationName}
+          cityScopes={detail.organizationScope.cityScopes}
+          roleName={session.workIdentity.productRoleName}
+          actions={detail.allowedActions.map(executiveActionLabel)}
+        />
+        <article className="detail-card detail-actions">
+          <h2>推进事项</h2>
           {detail.allowedActions.length === 0 ? (
             <p>当前角色在此状态下仅可查看。</p>
           ) : (
@@ -3731,7 +4471,7 @@ function ExecutiveDetail({
               {detail.allowedActions.includes("record_decision_opinion") ? (
                 <div className="list-toolbar">
                   <label>
-                    判断代码
+                    处理意见
                     <input
                       aria-label="高层判断代码"
                       value={decisionCode}
@@ -3739,7 +4479,7 @@ function ExecutiveDetail({
                     />
                   </label>
                   <label>
-                    后续责任角色
+                    后续负责人
                     <input
                       aria-label="高层意见责任角色"
                       value={responsibleRole}
@@ -3750,7 +4490,7 @@ function ExecutiveDetail({
                 </div>
               ) : null}
               <label>
-                操作原因
+                处理说明
                 <input
                   aria-label="驾驶舱操作原因"
                   value={reasonCode}
@@ -3762,7 +4502,13 @@ function ExecutiveDetail({
                   <button
                     key={action}
                     disabled={Boolean(busyAction)}
-                    onClick={() => void perform(action)}
+                    onClick={() => {
+                      if (action === "record_decision_opinion") {
+                        void perform(action);
+                      } else {
+                        setPendingAction(action);
+                      }
+                    }}
                   >
                     {busyAction === action
                       ? "结果确认中…"
@@ -3776,20 +4522,46 @@ function ExecutiveDetail({
           {notice ? <p className="success-banner" role="status">{notice}</p> : null}
         </article>
         <article className="detail-card">
-          <h2>追加式审计</h2>
+          <h2>处理记录</h2>
           {detail.auditTrail.length ? (
             <ol className="audit-list">
               {detail.auditTrail.map((event) => (
                 <li key={event.eventId}>
                   <strong>{executiveAuditLabel(event.action)}</strong>
                   <span>{event.actorLabel} · {event.actorRole}</span>
-                  <small>{formatDate(event.occurredAt)}{event.reasonCode ? ` · ${event.reasonCode}` : ""}</small>
+                  <small>{formatDate(event.occurredAt)}</small>
                 </li>
               ))}
             </ol>
           ) : <p>尚无驾驶舱审计记录。</p>}
         </article>
       </section>
+      {pendingAction ? (
+        <AdminRiskConfirmationDialog
+          titleId="executive-action-confirmation-title"
+          title={executiveConfirmationTitle(pendingAction)}
+          objectLabel={detail.item.title}
+          scope={executiveConfirmationScope(pendingAction, detail)}
+          reversible={executiveConfirmationReversibility(pendingAction)}
+          consequence={executiveConfirmationConsequence(pendingAction)}
+          confirmLabel={executiveActionLabel(pendingAction)}
+          tone={pendingAction === "privacy_reject_export" || pendingAction === "domain_reject_export" || pendingAction === "revoke_export" || pendingAction === "download_export" ? "danger" : "primary"}
+          busy={Boolean(busyAction)}
+          fields={(
+            <label>
+              处理说明
+              <input
+                aria-label="驾驶舱操作原因"
+                value={reasonCode}
+                disabled={Boolean(busyAction)}
+                onChange={(event) => setReasonCode(event.target.value)}
+              />
+            </label>
+          )}
+          onCancel={() => setPendingAction(undefined)}
+          onConfirm={() => void perform(pendingAction)}
+        />
+      ) : null}
     </>
   );
 }
@@ -3801,19 +4573,19 @@ function ExecutiveRecord({
     return (
       <>
         <dl className="detail-list">
-          <div><dt>职责域</dt><dd>{executiveDomainName(detail.record.domain)}</dd></div>
-          <div><dt>责任角色</dt><dd>{detail.record.responsibleRole}</dd></div>
-          <div><dt>要求完成时间</dt><dd>{formatDate(detail.record.dueAt)}</dd></div>
-          <div><dt>来源工作台</dt><dd>{detail.record.sourceWorkspace}</dd></div>
-          <div><dt>直接批准</dt><dd>{detail.record.directApprovalAllowed ? "允许" : "禁止"}</dd></div>
+          <div><dt>业务范围</dt><dd>{executiveDomainName(detail.record.domain)}</dd></div>
+          <div><dt>后续负责人</dt><dd>{executiveRoleLabel(detail.record.responsibleRole)}</dd></div>
+          <div><dt>计划完成</dt><dd>{formatDate(detail.record.dueAt)}</dd></div>
+          <div><dt>事项来源</dt><dd>{executiveWorkspaceLabel(detail.record.sourceWorkspace)}</dd></div>
+          <div><dt>处理方式</dt><dd>{detail.record.directApprovalAllowed ? "可在本页完成" : "交由对应业务团队处理"}</dd></div>
         </dl>
         <h3>已记录意见</h3>
         {detail.record.opinions.length ? (
           <ol className="audit-list">
             {detail.record.opinions.map((opinion) => (
               <li key={opinion.opinionId}>
-                <strong>{opinion.decisionCode}</strong>
-                <span>{opinion.reasonCode} · {opinion.responsibleRole}</span>
+                <strong>{executiveDecisionLabel(opinion.decisionCode)}</strong>
+                <span>{executiveReasonLabel(opinion.reasonCode)} · {executiveRoleLabel(opinion.responsibleRole)}</span>
                 <small>{formatDate(opinion.recordedAt)}</small>
               </li>
             ))}
@@ -3825,10 +4597,10 @@ function ExecutiveRecord({
   if (detail.kind === "export_request") {
     return (
       <dl className="detail-list">
-        <div><dt>职责域</dt><dd>{executiveDomainName(detail.record.domain)}</dd></div>
+        <div><dt>业务范围</dt><dd>{executiveDomainName(detail.record.domain)}</dd></div>
         <div><dt>申请组织</dt><dd>{detail.record.organizationName}</dd></div>
         <div><dt>用途</dt><dd>{detail.record.purpose}</dd></div>
-        <div><dt>字段集合</dt><dd>{detail.record.fieldSet.join("、")}</dd></div>
+        <div><dt>数据内容</dt><dd>{detail.record.fieldSet.map(executiveFieldLabel).join("、")}</dd></div>
         <div><dt>时间窗口</dt><dd>{formatDate(detail.record.windowStart)} — {formatDate(detail.record.windowEnd)}</dd></div>
         <div><dt>加密存储</dt><dd>{detail.record.encryptedAtRest ? "是" : "否"}</dd></div>
         <div><dt>单次下载</dt><dd>{detail.record.singleUse ? "是" : "否"}</dd></div>
@@ -3845,18 +4617,18 @@ function ExecutiveRecord({
         <div><dt>财务</dt><dd>{executiveStateLabel(detail.record.dimensions.finance)}</dd></div>
         <div><dt>安全</dt><dd>{executiveStateLabel(detail.record.dimensions.safety)}</dd></div>
         <div><dt>合规</dt><dd>{executiveStateLabel(detail.record.dimensions.compliance)}</dd></div>
-        <div><dt>触发原因</dt><dd>{detail.record.triggerReasons.join("、") || "无"}</dd></div>
+        <div><dt>需要关注</dt><dd>{detail.record.triggerReasons.map(executiveReasonLabel).join("、") || "当前无需额外关注"}</dd></div>
       </dl>
     );
   }
   return (
     <dl className="detail-list">
-      <div><dt>指标版本</dt><dd>{detail.record.definition.metricVersion}</dd></div>
-      <div><dt>定义</dt><dd>{detail.record.definition.definition}</dd></div>
-      <div><dt>权威来源</dt><dd>{detail.record.definition.source}</dd></div>
-      <div><dt>新鲜度目标</dt><dd>{detail.record.definition.freshnessTarget}</dd></div>
-      <div><dt>要求关账</dt><dd>{detail.record.definition.closeRequired ? "是" : "否"}</dd></div>
-      <div><dt>允许维度</dt><dd>{detail.record.definition.allowedDimensions.join("、")}</dd></div>
+      <div><dt>口径版本</dt><dd>{detail.record.definition.metricVersion}</dd></div>
+      <div><dt>指标定义</dt><dd>{detail.record.definition.definition}</dd></div>
+      <div><dt>数据来源</dt><dd>{executiveMetricSourceLabel(detail.record.definition.source)}</dd></div>
+      <div><dt>更新目标</dt><dd>{detail.record.definition.freshnessTarget}</dd></div>
+      <div><dt>关账要求</dt><dd>{detail.record.definition.closeRequired ? "关账后确认" : "无需等待关账"}</dd></div>
+      <div><dt>可查看维度</dt><dd>{detail.record.definition.allowedDimensions.map(executiveDimensionLabel).join("、")}</dd></div>
       <div><dt>当前快照</dt><dd>{detail.record.snapshot?.displayValue ?? "当前角色仅可查看指标口径"}</dd></div>
     </dl>
   );
@@ -3865,10 +4637,12 @@ function ExecutiveRecord({
 function CaseDirectory({
   session,
   client,
+  selectedCase,
   onOpenCase,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedCase?: AdminRoute["case"];
   onOpenCase(caseRoute: NonNullable<AdminRoute["case"]>): void;
 }>) {
   const storageKey =
@@ -3883,6 +4657,11 @@ function CaseDirectory({
   const [page, setPage] = useState<AdminCaseDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const caseRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedCaseKey = useRef<string | undefined>(undefined);
+  const selectedCaseKey = selectedCase
+    ? `${selectedCase.kind}:${selectedCase.caseId}`
+    : undefined;
 
   useEffect(() => {
     let active = true;
@@ -3904,6 +4683,14 @@ function CaseDirectory({
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
+
+  useEffect(() => {
+    const previousCaseKey = previousSelectedCaseKey.current;
+    previousSelectedCaseKey.current = selectedCaseKey;
+    if (previousCaseKey && !selectedCaseKey) {
+      requestAnimationFrame(() => caseRowRefs.current.get(previousCaseKey)?.focus());
+    }
+  }, [selectedCaseKey]);
 
   function update(next: AdminCaseDirectoryQuery) {
     const normalized = clearFleetCursor(next);
@@ -4037,12 +4824,9 @@ function CaseDirectory({
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {loading ? (
-          <p className="list-state">正在加载案件…</p>
+          <AdminPageState compact tone="loading" title="正在加载案件" description="正在获取当前工作范围内的客服与安全案件。" />
         ) : page?.items.length === 0 ? (
-          <div className="list-state">
-            <strong>没有符合条件的案件</strong>
-            <p>请调整搜索或筛选条件后重试。</p>
-          </div>
+          <AdminPageState compact tone="empty" title="没有符合条件的案件" description="请调整搜索或筛选条件后重试。" />
         ) : (
           <div className="table-scroll">
             <table>
@@ -4058,28 +4842,45 @@ function CaseDirectory({
               </thead>
               <tbody>
                 {page?.items.map((item) => (
-                  <tr key={`${item.kind}-${item.caseId}`}>
+                  <tr
+                    key={`${item.kind}-${item.caseId}`}
+                    className={
+                      `${item.kind}:${item.caseId}` === selectedCaseKey
+                        ? "selected"
+                        : ""
+                    }
+                  >
                     <td>
                       <button
+                        ref={(element) => {
+                          const caseKey = `${item.kind}:${item.caseId}`;
+                          if (element) caseRowRefs.current.set(caseKey, element);
+                          else caseRowRefs.current.delete(caseKey);
+                        }}
                         className="task-link"
+                        aria-pressed={
+                          `${item.kind}:${item.caseId}` === selectedCaseKey
+                        }
                         onClick={() => openCase(item.kind, item.caseId)}
                       >
-                        <strong>{item.summary}</strong>
-                        <small>{item.caseId}</small>
+                        <strong>{productDisplayText(item.summary)}</strong>
+                        <small>{displayReference(item.caseId, item.kind === "safety" ? "安全案件" : "客服案件")}</small>
                       </button>
                     </td>
-                    <td>{item.kind === "support" ? "客服案件" : "安全案件"}</td>
-                    <td>{caseStateLabel(item.state)}</td>
-                    <td>{item.tripId}</td>
-                    <td>{item.operatorName}</td>
-                    <td>{formatDate(item.updatedAt)}</td>
+                    <td data-label="类型">
+                      {item.kind === "support" ? "客服案件" : "安全案件"}
+                    </td>
+                    <td data-label="状态">{caseStateLabel(item.state)}</td>
+                    <td data-label="关联行程">{displayReference(item.tripId, "行程")}</td>
+                    <td data-label="运营公司">{item.operatorName}</td>
+                    <td data-label="最近更新">{formatDate(item.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {page ? (
+        {page?.items.length ? (
           <PaginationControls
             pageInfo={page.pageInfo}
             onPrevious={() =>
@@ -4177,14 +4978,16 @@ function CaseDetail({
     }
   }
 
-  if (loading) return <p className="list-state">正在加载案件详情…</p>;
+  if (loading) return <AdminPageState compact tone="loading" title="正在加载案件详情" description="正在获取案件进展、关联事实和当前可执行事项。" />;
   if (error || !detail) {
     return (
-      <section className="list-state">
-        <strong>无法加载案件详情</strong>
-        <p role="alert">{error ?? "案件不存在或当前账号无权查看。"}</p>
-        <button onClick={onBack}>返回案件列表</button>
-      </section>
+      <AdminPageState
+        tone="error"
+        title="无法加载案件详情"
+        description={error ?? "案件不存在，或当前工作身份无法查看。"}
+        primaryAction={{ label: "返回案件列表", onAction: onBack }}
+        focusOnMount
+      />
     );
   }
   const allowedActions =
@@ -4199,7 +5002,7 @@ function CaseDetail({
             {detail.kind === "support" ? "客服案件" : "安全调查"}
           </span>
           <h1>{caseDisplayText(detail.case.summary)}</h1>
-          <p>{detail.case.caseId} · {detail.case.operatorName}</p>
+          <p>{displayReference(detail.case.caseId, detail.case.kind === "safety" ? "安全案件" : "客服案件")} · {detail.case.operatorName}</p>
         </div>
       </section>
       <section className="detail-grid">
@@ -4354,10 +5157,12 @@ function CaseDetail({
 function TripDirectory({
   session,
   client,
+  selectedTripId,
   onOpenTrip,
 }: Readonly<{
   session: AdminProductSession;
   client: AdminProductizationClient;
+  selectedTripId?: string;
   onOpenTrip(tripId: string): void;
 }>) {
   const storageKey =
@@ -4372,6 +5177,8 @@ function TripDirectory({
   const [page, setPage] = useState<AdminTripDirectoryPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const tripRowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelectedTripId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -4394,6 +5201,14 @@ function TripDirectory({
     return () => { active = false; };
   }, [client, query, session.accessToken, storageKey]);
 
+  useEffect(() => {
+    const previousTripId = previousSelectedTripId.current;
+    previousSelectedTripId.current = selectedTripId;
+    if (previousTripId && !selectedTripId) {
+      requestAnimationFrame(() => tripRowRefs.current.get(previousTripId)?.focus());
+    }
+  }, [selectedTripId]);
+
   function update(next: AdminTripDirectoryQuery) {
     const normalized = clearTripCursor(next);
     setQuery(normalized);
@@ -4411,7 +5226,7 @@ function TripDirectory({
         <div>
           <span className="eyebrow">行程履约运营</span>
           <h1>行程运营名录</h1>
-          <p>统一查看权威行程状态与运营任务，后台不直接改写行程状态。</p>
+          <p>统一查看行程状态、运营任务和需要协调的下一步。</p>
         </div>
       </section>
       <section className="operator-summary-grid" aria-label="行程运营数据摘要">
@@ -4516,12 +5331,9 @@ function TripDirectory({
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {loading ? (
-          <p className="list-state">正在加载行程运营数据…</p>
+          <AdminPageState compact tone="loading" title="正在加载行程" description="正在获取当前工作范围内的行程运营记录。" />
         ) : page?.items.length === 0 ? (
-          <div className="list-state">
-            <strong>没有符合条件的行程</strong>
-            <p>请调整搜索或筛选条件后重试。</p>
-          </div>
+          <AdminPageState compact tone="empty" title="没有符合条件的行程" description="请调整搜索或筛选条件后重试。" />
         ) : (
           <div className="table-scroll">
             <table>
@@ -4537,32 +5349,42 @@ function TripDirectory({
               </thead>
               <tbody>
                 {page?.items.map((trip) => (
-                  <tr key={trip.tripId}>
+                  <tr
+                    key={trip.tripId}
+                    className={trip.tripId === selectedTripId ? "selected" : ""}
+                  >
                     <td>
                       <button
+                        ref={(element) => {
+                          if (element) tripRowRefs.current.set(trip.tripId, element);
+                          else tripRowRefs.current.delete(trip.tripId);
+                        }}
                         className="task-link"
+                        aria-pressed={trip.tripId === selectedTripId}
                         onClick={() => openTrip(trip.tripId)}
                       >
-                        <strong>{trip.routeSummary}</strong>
-                        <small>{trip.tripId}</small>
+                        <strong>{productDisplayText(trip.routeSummary)}</strong>
+                        <small>{displayReference(trip.tripId, "行程")}</small>
                       </button>
                     </td>
-                    <td>{tripStateLabel(trip.authoritativeState)}</td>
-                    <td>
+                    <td data-label="行程状态">
+                      {tripStateLabel(trip.authoritativeState)}
+                    </td>
+                    <td data-label="运营任务">
                       {trip.operationState
                         ? tripOperationStateLabel(trip.operationState)
                         : "无开放任务"}
                     </td>
-                    <td>{tripPriorityLabel(trip.priority)}</td>
-                    <td>{trip.operatorName}</td>
-                    <td>{formatDate(trip.updatedAt)}</td>
+                    <td data-label="优先级">{tripPriorityLabel(trip.priority)}</td>
+                    <td data-label="运营公司">{trip.operatorName}</td>
+                    <td data-label="最近更新">{formatDate(trip.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {page ? (
+        {page?.items.length ? (
           <PaginationControls
             pageInfo={page.pageInfo}
             onPrevious={() =>
@@ -4645,14 +5467,16 @@ function TripDetail({
     }
   }
 
-  if (loading) return <p className="list-state">正在加载行程详情…</p>;
+  if (loading) return <AdminPageState compact tone="loading" title="正在加载行程详情" description="正在获取行程状态、参与方和关联协作。" />;
   if (error || !detail) {
     return (
-      <section className="list-state">
-        <strong>无法加载行程详情</strong>
-        <p role="alert">{error ?? "行程不存在或当前账号无权查看。"}</p>
-        <button onClick={onBack}>返回行程列表</button>
-      </section>
+      <AdminPageState
+        tone="error"
+        title="无法加载行程详情"
+        description={error ?? "行程不存在，或当前工作身份无法查看。"}
+        primaryAction={{ label: "返回行程列表", onAction: onBack }}
+        focusOnMount
+      />
     );
   }
 
@@ -4661,17 +5485,17 @@ function TripDetail({
       <section className="page-heading detail-heading">
         <div>
           <button className="text-action" onClick={onBack}>← 返回行程列表</button>
-          <span className="eyebrow">行程 360°</span>
-          <h1>{detail.trip.routeSummary}</h1>
-          <p>{detail.trip.tripId} · {detail.trip.operatorName}</p>
+          <span className="eyebrow">行程全景</span>
+          <h1>{productDisplayText(detail.trip.routeSummary)}</h1>
+          <p>{displayReference(detail.trip.tripId, "行程")} · {detail.trip.operatorName}</p>
         </div>
       </section>
       <section className="detail-grid">
         <article className="detail-card">
-          <h2>权威行程事实</h2>
+          <h2>行程状态与参与方</h2>
           <dl className="detail-list">
             <div><dt>行程状态</dt><dd>{tripStateLabel(detail.profile.authoritativeState)}</dd></div>
-            <div><dt>权威版本</dt><dd>v{detail.profile.authoritativeVersion}</dd></div>
+            <div><dt>状态版本</dt><dd>v{detail.profile.authoritativeVersion}</dd></div>
             <div><dt>乘客</dt><dd>{detail.profile.passengerMasked}</dd></div>
             <div><dt>车主</dt><dd>{detail.profile.driverMasked}</dd></div>
             <div><dt>车辆</dt><dd>{detail.profile.vehicleMasked}</dd></div>
@@ -4681,19 +5505,19 @@ function TripDetail({
           <h2>运营任务</h2>
           {detail.operationTask ? (
             <dl className="detail-list">
-              <div><dt>任务编号</dt><dd>{detail.operationTask.taskId}</dd></div>
+              <div><dt>任务编号</dt><dd>{displayReference(detail.operationTask.taskId, "任务")}</dd></div>
               <div><dt>任务类型</dt><dd>{tripCategoryLabel(detail.operationTask.category)}</dd></div>
               <div><dt>任务状态</dt><dd>{tripOperationStateLabel(detail.operationTask.state)}</dd></div>
               <div><dt>优先级</dt><dd>{tripPriorityLabel(detail.operationTask.priority)}</dd></div>
-              <div><dt>任务摘要</dt><dd>{detail.operationTask.summary}</dd></div>
+              <div><dt>任务摘要</dt><dd>{productDisplayText(detail.operationTask.summary)}</dd></div>
             </dl>
           ) : <p>当前行程没有开放运营任务。</p>}
         </article>
         <article className="detail-card">
           <h2>关联协作</h2>
           <dl className="detail-list">
-            <div><dt>客服案件</dt><dd>{detail.relatedCases.supportCaseId ?? "无"}</dd></div>
-            <div><dt>安全案件</dt><dd>{detail.relatedCases.safetyCaseId ?? "无"}</dd></div>
+            <div><dt>客服案件</dt><dd>{detail.relatedCases.supportCaseId ? displayReference(detail.relatedCases.supportCaseId, "客服案件") : "无"}</dd></div>
+            <div><dt>安全案件</dt><dd>{detail.relatedCases.safetyCaseId ? displayReference(detail.relatedCases.safetyCaseId, "安全案件") : "无"}</dd></div>
             <div><dt>资金能力</dt><dd>只读</dd></div>
             <div><dt>主体快照</dt><dd>不可改写</dd></div>
           </dl>
@@ -4781,7 +5605,8 @@ function TripDetail({
 function FeatureUnavailablePage({
   title,
   roleName,
-}: Readonly<{ title: string; roleName: string }>) {
+  onBack,
+}: Readonly<{ title: string; roleName: string; onBack(): void }>) {
   return (
     <>
       <section className="page-heading">
@@ -4791,13 +5616,13 @@ function FeatureUnavailablePage({
           <h1>功能暂未开放</h1>
         </div>
       </section>
-      <section className="feature-unavailable" aria-labelledby="feature-unavailable-title">
-        <span aria-hidden="true">—</span>
-        <div>
-          <h2 id="feature-unavailable-title">该业务域尚未达到任务闭环标准</h2>
-          <p>详细列表、单条详情、角色操作、结果确认与审计能力完成并接入服务端数据后，此入口才会开放。</p>
-        </div>
-      </section>
+      <AdminPageState
+        tone="unavailable"
+        title="该工作领域尚未开放"
+        description="当前还不能在这里完成完整任务。请先返回工作台处理已经开放的事项。"
+        primaryAction={{ label: "返回工作台", onAction: onBack }}
+        focusOnMount
+      />
     </>
   );
 }
@@ -4831,25 +5656,26 @@ function EmptyState({
   description,
   actionLabel,
   onAction,
+  tone = "empty",
 }: Readonly<{
   title: string;
   description: string;
   actionLabel?: string;
   onAction?(): void;
+  tone?: "empty" | "error";
 }>) {
   return (
-    <section className="state-panel">
-      <h2>{title}</h2>
-      <p>{description}</p>
-      {actionLabel && onAction ? (
-        <button className="text-action" onClick={onAction}>{actionLabel}</button>
-      ) : null}
-    </section>
+    <AdminPageState
+      tone={tone}
+      title={title}
+      description={description}
+      compact
+      focusOnMount={tone === "error"}
+      {...(actionLabel && onAction
+        ? { primaryAction: { label: actionLabel, onAction } }
+        : {})}
+    />
   );
-}
-
-function EntryFrame({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <main className="entry-screen"><div className="entry-background" />{children}</main>;
 }
 
 function persistSession(session: AdminProductSession) {
@@ -4961,11 +5787,164 @@ function auditStatusTone(state: string): string {
 
 function auditSystemActionLabel(action: AdminAuditAction): string {
   return ({
-    open_investigation: "创建技术调查",
+    open_investigation: "创建调查",
     assign_investigation: "分派调查",
     add_investigation_note: "追加调查记录",
-    resolve_investigation: "解决调查",
+    resolve_investigation: "确认结案",
     reopen_investigation: "重新打开调查",
+  } as Record<AdminAuditAction, string>)[action];
+}
+
+function auditDirectorySummary(
+  item: AdminAuditDirectoryPage["items"][number],
+): string {
+  const kind = item.kind === "event" ? "审计事件" : "调查处理";
+  return `${kind} · ${auditDomainLabel(item.domain)} · ${item.organizationName}`;
+}
+
+function auditDirectoryTitle(
+  item: AdminAuditDirectoryPage["items"][number],
+): string {
+  if (!item.title.includes("_")) return item.title;
+  return ({
+    executive_metric_definition_viewed: "驾驶舱指标口径已查看",
+    executive_dashboard_viewed: "高层驾驶舱已查看",
+    data_report_viewed: "数据报表已查看",
+    data_report_refreshed: "数据报表已刷新",
+    admin_global_search_performed: "跨域搜索已执行",
+    audit_resource_viewed: "审计记录已查看",
+  } as Record<string, string>)[item.title] ?? "业务操作记录";
+}
+
+function auditEventTypeLabel(eventType: string): string {
+  return ({
+    access_allowed: "访问获得授权",
+    access_denied: "访问被拒绝",
+    authentication_succeeded: "登录验证成功",
+    authentication_failed: "登录验证失败",
+    resource_viewed: "业务资料已查看",
+    state_changed: "业务状态已更新",
+    admin_global_search_performed: "跨域搜索已执行",
+  } as Record<string, string>)[eventType] ?? "业务操作记录";
+}
+
+function auditActorLabel(actorInternalUserId: string): string {
+  const suffix = actorInternalUserId.split("-").at(-1);
+  return suffix ? `内部操作者 · ${suffix}` : "内部操作者";
+}
+
+function auditResourceLabel(
+  resourceType: string | undefined,
+  resourceId: string | undefined,
+): string {
+  if (!resourceType && !resourceId) return "未关联具体业务对象";
+  const typeLabel = ({
+    module: "后台模块",
+    driver: "车主档案",
+    vehicle: "车辆档案",
+    trip: "行程",
+    support_case: "客服案件",
+    safety_case: "安全案件",
+    finance_record: "财务记录",
+  } as Record<string, string>)[resourceType ?? ""] ?? "业务对象";
+  const resourceLabel = resourceType === "module"
+    ? ({
+        audit: "审计与系统",
+        executive: "高层驾驶舱",
+        finance: "财务与对账",
+        trips: "行程运营",
+      } as Record<string, string>)[resourceId ?? ""]
+    : undefined;
+  return resourceId
+    ? `${typeLabel} · ${resourceLabel ?? displayReference(resourceId, typeLabel)}`
+    : typeLabel;
+}
+
+function financeSourceLabel(source: string): string {
+  return ({
+    payment: "支付事实",
+    payments: "支付事实",
+    settlement: "结算事实",
+    payout: "车主付款事实",
+    refund: "退款事实",
+  } as Record<string, string>)[source] ?? "账务事实";
+}
+
+function financeAccountLabel(accountCode: string): string {
+  return ({
+    provider_receivable: "支付机构应收",
+    passenger_payable: "乘客应付",
+    platform_revenue: "平台服务收入",
+    operator_payable: "运营公司应付",
+    driver_payable: "车主应付",
+  } as Record<string, string>)[accountCode] ?? "账务科目";
+}
+
+function financeDimensionLabel(dimensionKey: string): string {
+  const labels = dimensionKey.split("|").map((part) => ({
+    platform: "平台",
+    shanghai: "上海",
+    CNY: "人民币",
+    provider_receivable: "支付机构应收",
+    passenger_payable: "乘客应付",
+    platform_revenue: "平台服务收入",
+    operator_payable: "运营公司应付",
+    driver_payable: "车主应付",
+  } as Record<string, string>)[part] ?? part);
+  return labels.join(" · ");
+}
+
+function auditActionResultMessage(action: AdminAuditAction): string {
+  return ({
+    open_investigation: "调查已创建，可以继续分派负责人并补充记录。",
+    assign_investigation: "调查负责人已更新。",
+    add_investigation_note: "调查记录已追加。",
+    resolve_investigation: "调查已结案，完整处理记录仍会保留。",
+    reopen_investigation: "调查已重新打开，可以继续处理。",
+  } as Record<AdminAuditAction, string>)[action];
+}
+
+function auditReasonLabel(reason: string): string {
+  return ({
+    controlled_audit_review: "例行审计复核",
+    integrity_warning_review: "完整性异常复核",
+    access_decision_review: "访问决策复核",
+  } as Record<string, string>)[reason] ?? "审计复核";
+}
+
+function auditConfirmationTitle(action: AdminAuditAction): string {
+  return ({
+    open_investigation: "为这条事件创建调查？",
+    assign_investigation: "更新调查负责人？",
+    add_investigation_note: "追加调查记录？",
+    resolve_investigation: "确认这项调查结案？",
+    reopen_investigation: "重新打开这项调查？",
+  } as Record<AdminAuditAction, string>)[action];
+}
+
+function auditConfirmationScope(
+  action: AdminAuditAction,
+  detail: AdminAuditDetail,
+): string {
+  if (action === "open_investigation") {
+    return `围绕“${detail.item.title}”建立独立调查，不改变原业务状态。`;
+  }
+  if (action === "assign_investigation") {
+    return `更新“${detail.item.title}”的调查负责人。`;
+  }
+  if (action === "resolve_investigation") {
+    return `结束“${detail.item.title}”的当前调查处理。`;
+  }
+  return `更新“${detail.item.title}”的调查进展。`;
+}
+
+function auditConfirmationConsequence(action: AdminAuditAction): string {
+  return ({
+    open_investigation: "生成独立调查记录，并保留与来源事件的关联。",
+    assign_investigation: "新负责人将承接后续核对和结案工作。",
+    add_investigation_note: "说明会加入调查记录。",
+    resolve_investigation: "调查状态改为已解决，后续仍可查看完整证据和处理轨迹。",
+    reopen_investigation: "调查恢复为处理中，可继续分派和补充记录。",
   } as Record<AdminAuditAction, string>)[action];
 }
 
@@ -5027,7 +6006,7 @@ function auditTrailActionLabel(
 ): string {
   return ({
     audit_resource_viewed: "查看审计资源",
-    audit_investigation_opened: "创建技术调查",
+    audit_investigation_opened: "创建调查",
     audit_investigation_assigned: "分派调查",
     audit_investigation_note_added: "追加调查记录",
     audit_investigation_resolved: "解决调查",
@@ -5044,6 +6023,15 @@ function executiveKindLabel(kind: string): string {
   } as Record<string, string>)[kind] ?? kind;
 }
 
+function executiveDirectorySummary(
+  item: AdminExecutiveDirectoryPage["items"][number],
+): string {
+  return ({
+    restoration_review_pending: "安全恢复仍在等待独立复核",
+    nonzero_reconciliation_difference: "仍有未闭环的对账差异",
+  } as Record<string, string>)[item.summary] ?? item.summary;
+}
+
 function executiveDomainName(domain: string): string {
   return ({
     operations: "运营",
@@ -5052,11 +6040,83 @@ function executiveDomainName(domain: string): string {
   } as Record<string, string>)[domain] ?? domain;
 }
 
+function executiveRoleLabel(role: string): string {
+  return ({
+    operations_lead: "运营负责人",
+    finance_lead: "财务负责人",
+    safety_lead: "安全负责人",
+    privacy_compliance: "隐私与合规负责人",
+    executive_sponsor: "项目决策人",
+  } as Record<string, string>)[role] ?? "指定负责人";
+}
+
+function executiveWorkspaceLabel(workspace: string): string {
+  return ({
+    workbench: "角色工作台",
+    operators: "运营公司",
+    trips: "行程运营",
+    cases: "客服与安全",
+    finance: "财务与对账",
+  } as Record<string, string>)[workspace] ?? "关联工作区";
+}
+
+function executiveDecisionLabel(decision: string): string {
+  return ({
+    continue_controlled_review: "继续跟进",
+    proceed_with_owner: "交由负责人推进",
+    hold_for_evidence: "等待补充依据",
+    close_without_action: "无需继续处理",
+  } as Record<string, string>)[decision] ?? decision;
+}
+
+function executiveReasonLabel(reason: string): string {
+  return ({
+    executive_governance_review: "经营治理复核",
+    routine_business_review: "例行经营复盘",
+    privacy_review: "隐私范围复核",
+    domain_review: "业务范围复核",
+    restoration_review_pending: "安全恢复仍在等待独立复核",
+    nonzero_reconciliation_difference: "仍有未闭环的对账差异",
+  } as Record<string, string>)[reason] ?? "其他经营事项";
+}
+
+function executiveFieldLabel(field: string): string {
+  return ({
+    trip_count: "行程数量",
+    completion_rate: "完成率",
+    cancellation_rate: "取消率",
+    gross_booking_value: "行程金额汇总",
+    reconciliation_state: "对账状态",
+    safety_case_count: "安全案件数量",
+    compliance_state: "合规状态",
+  } as Record<string, string>)[field] ?? "其他获准汇总字段";
+}
+
+function executiveMetricSourceLabel(source: string): string {
+  return ({
+    operations_aggregate: "运营汇总",
+    finance_aggregate: "财务汇总",
+    safety_compliance_aggregate: "安全与合规汇总",
+    task_facts: "工作任务记录",
+    audit_facts: "审计记录",
+  } as Record<string, string>)[source] ?? "统一经营数据";
+}
+
+function executiveDimensionLabel(dimension: string): string {
+  return ({
+    organization: "运营主体",
+    city: "城市",
+    time: "时间",
+    domain: "业务范围",
+    state: "状态",
+  } as Record<string, string>)[dimension] ?? "其他维度";
+}
+
 function executiveStateLabel(state: string): string {
   return ({
     open: "开放",
     awaiting_privacy_review: "等待隐私复核",
-    awaiting_domain_review: "等待职责域复核",
+    awaiting_domain_review: "等待业务范围复核",
     approved: "已批准",
     downloaded: "已下载",
     rejected: "已拒绝",
@@ -5103,11 +6163,64 @@ function executiveActionLabel(action: AdminExecutiveAction): string {
     create_export_request: "提交导出申请",
     privacy_approve_export: "隐私复核通过",
     privacy_reject_export: "隐私复核拒绝",
-    domain_approve_export: "职责域复核通过",
-    domain_reject_export: "职责域复核拒绝",
+    domain_approve_export: "业务范围复核通过",
+    domain_reject_export: "业务范围复核拒绝",
     revoke_export: "撤销导出授权",
     download_export: "单次下载并删除",
   } as const)[action];
+}
+
+function executiveConfirmationTitle(action: AdminExecutiveAction): string {
+  return ({
+    record_decision_opinion: "记录这项治理意见？",
+    create_export_request: "提交受控导出申请？",
+    privacy_approve_export: "确认隐私复核通过？",
+    privacy_reject_export: "确认隐私复核不通过？",
+    domain_approve_export: "确认业务复核通过？",
+    domain_reject_export: "确认业务复核不通过？",
+    revoke_export: "撤销这项导出授权？",
+    download_export: "执行单次下载？",
+  } as Record<AdminExecutiveAction, string>)[action];
+}
+
+function executiveConfirmationScope(
+  action: AdminExecutiveAction,
+  detail: AdminExecutiveDetail,
+): string {
+  const subject = `“${detail.item.title}”`;
+  if (action === "download_export") {
+    return `${subject}已通过必要复核，本次操作会获取获准范围内的数据文件。`;
+  }
+  if (action.includes("export") || action === "revoke_export") {
+    return `${subject}的用途、字段范围和时间窗口。`;
+  }
+  return `${subject}及其后续责任安排。`;
+}
+
+function executiveConfirmationReversibility(action: AdminExecutiveAction): string {
+  if (action === "download_export") {
+    return "单次下载完成后不能再次使用同一授权。";
+  }
+  if (action === "revoke_export") {
+    return "撤销后需重新提交并完成复核。";
+  }
+  if (action === "privacy_reject_export" || action === "domain_reject_export") {
+    return "拒绝结果会保留；如需继续，必须重新提交申请。";
+  }
+  return "处理记录会保留，可由后续复核继续推进。";
+}
+
+function executiveConfirmationConsequence(action: AdminExecutiveAction): string {
+  return ({
+    record_decision_opinion: "意见会加入事项记录，并交给指定负责人继续处理。",
+    create_export_request: "申请进入独立复核，不会立即生成下载文件。",
+    privacy_approve_export: "申请进入下一项业务范围复核。",
+    privacy_reject_export: "申请停止推进，并保留拒绝记录。",
+    domain_approve_export: "申请完成业务范围复核，按现有规则进入可用状态。",
+    domain_reject_export: "申请停止推进，并保留拒绝记录。",
+    revoke_export: "当前导出授权立即失效。",
+    download_export: "文件仅可下载一次，完成后授权按现有规则失效。",
+  } as Record<AdminExecutiveAction, string>)[action];
 }
 
 function executiveAuditLabel(
@@ -5118,7 +6231,7 @@ function executiveAuditLabel(
     executive_decision_opinion_recorded: "记录治理意见",
     executive_export_requested: "提交导出申请",
     executive_export_privacy_reviewed: "完成隐私复核",
-    executive_export_domain_reviewed: "完成职责域复核",
+    executive_export_domain_reviewed: "完成业务范围复核",
     executive_export_revoked: "撤销导出授权",
     executive_export_downloaded: "完成单次下载",
   } as const)[action];
@@ -5345,6 +6458,10 @@ function membershipAuditLabel(
   if (action === "admin_membership_suspended") return "暂停成员";
   if (action === "admin_membership_restored") return "恢复成员";
   return "查看成员";
+}
+
+function membershipActionLabel(action: AdminMembershipAction): string {
+  return action === "suspend_membership" ? "暂停成员" : "恢复成员";
 }
 
 function withDataReportSearch(
@@ -5947,10 +7064,28 @@ function caseStateLabel(state: string): string {
 }
 
 function caseDisplayText(value: string): string {
+  return productDisplayText(value)
+    .replaceAll("等待行程领域返回权威结果", "等待行程处理结果");
+}
+
+function productDisplayText(value: string): string {
   return value
     .replaceAll("（合成摘要）", "")
     .replaceAll("（合成路线）", "")
+    .replaceAll("合成案件", "案件")
+    .replaceAll("合成差异", "差异")
     .replace(/^合成/, "");
+}
+
+function displayReference(value: string, label: string): string {
+  if (!value.toLowerCase().includes("synthetic")) return value;
+  const numericParts = value.match(/\d+/g);
+  if (numericParts?.length) return `${label} ${numericParts.join("").slice(-6)}`;
+  let checksum = 0;
+  for (const character of value) {
+    checksum = (checksum * 31 + character.charCodeAt(0)) % 9000;
+  }
+  return `${label} ${String(checksum + 1000).padStart(4, "0")}`;
 }
 
 function supportCategoryLabel(category: string): string {

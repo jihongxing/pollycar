@@ -1,6 +1,7 @@
 import { rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
+import { createAmapClientEnvironment } from "./amap-client-environment.mjs";
 
 const mode = process.argv[2];
 if (!["sandbox", "demo", "production"].includes(mode)) {
@@ -8,14 +9,23 @@ if (!["sandbox", "demo", "production"].includes(mode)) {
 }
 
 const outputDirectory = resolve(`dist-${mode}`);
+
+if (mode === "production") {
+  await run(
+    process.execPath,
+    [resolve("scripts/check-production-release-readiness.mjs")],
+    process.env,
+  );
+}
+
 await rm(outputDirectory, { recursive: true, force: true });
 
-const env = {
+const env = createAmapClientEnvironment({
   ...process.env,
   EXPO_PUBLIC_BRAND_DEMO: mode === "demo" ? "true" : "",
   EXPO_PUBLIC_BRAND_PRODUCTION: mode === "production" ? "true" : "",
   EXPO_PUBLIC_BRAND_DISPLAY_ENV: "",
-};
+});
 
 await run(
   process.env.npm_execpath ? process.execPath : process.platform === "win32" ? "pnpm.cmd" : "pnpm",

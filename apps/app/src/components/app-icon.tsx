@@ -26,7 +26,9 @@ export type AppIconName =
   | "send"
   | "theme"
   | "privacy"
-  | "help";
+  | "help"
+  | "device"
+  | "logout";
 
 export function AppIcon({
   name,
@@ -322,6 +324,54 @@ export function AppIcon({
           height: strokeWidth,
           borderRadius: strokeWidth,
           transform: [{ rotate: "-62deg" }],
+        })}
+      </>
+    );
+  } else if (name === "device") {
+    graphic = (
+      <>
+        {outline({
+          top: size * 0.08,
+          left: size * 0.19,
+          width: size * 0.62,
+          height: size * 0.72,
+          borderRadius: size * 0.12,
+        })}
+        {line({
+          left: size * 0.34,
+          bottom: size * 0.08,
+          width: size * 0.32,
+          height: strokeWidth,
+          borderRadius: strokeWidth,
+        })}
+      </>
+    );
+  } else if (name === "logout") {
+    graphic = (
+      <>
+        {outline({
+          top: size * 0.12,
+          left: size * 0.08,
+          width: size * 0.46,
+          height: size * 0.76,
+          borderRightWidth: 0,
+          borderRadius: size * 0.08,
+        })}
+        {line({
+          top: size * 0.49,
+          left: size * 0.34,
+          width: size * 0.54,
+          height: strokeWidth,
+          borderRadius: strokeWidth,
+        })}
+        {outline({
+          top: size * 0.31,
+          right: size * 0.08,
+          width: size * 0.28,
+          height: size * 0.28,
+          borderLeftWidth: 0,
+          borderBottomWidth: 0,
+          transform: [{ rotate: "45deg" }],
         })}
       </>
     );

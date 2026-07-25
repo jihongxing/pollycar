@@ -5,6 +5,9 @@ import { Platform, Pressable, View } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 
 import { AppIcon, type AppIconName } from "../../components/app-icon";
+import { AuthAgreementGate } from "../../components/auth-agreement-gate";
+import { AuxiliaryInlineFeedback } from "../../components/auxiliary-page";
+import { AuthStepRail } from "../../components/auth-step-rail";
 import {
   AppText,
   NavigationRow,
@@ -12,21 +15,17 @@ import {
   SandboxIndicator,
   ScreenScroll,
   SectionCard,
-  StatusSummary,
-  StatusBanner,
   WorkbenchHeader,
 } from "../../components/ui";
 import {
   ProductFormField,
 } from "../../components/product-components";
 import {
-  AppV2ApplicationProgress,
   AppV2NavigationRow,
   AppV2ReadinessList,
   AppV2SectionHeader,
   AppV2SegmentedTabs,
   AppV2StageHeader,
-  AppV2StatusPanel,
   AppV2SummaryList,
   AppV2Timeline,
 } from "../../components/app-v2-components";
@@ -44,6 +43,7 @@ import {
   clearVehicleFormDraft,
   readVehicleFormDraft,
   saveVehicleFormDraft,
+  type VehicleMaterialCode,
 } from "./vehicle-draft-storage";
 import {
   normalizeInsuranceDate,
@@ -55,7 +55,7 @@ import {
 import {
   formatVehicleReviewDate,
   vehicleReviewEntryCopy,
-  vehicleReviewMaterialCopy,
+  vehicleReviewMaterialRequirements,
   vehicleReviewTimeline,
 } from "./vehicle-review-presentation";
 
@@ -96,6 +96,11 @@ export type AppScreen =
   | "owner-workbench"
   | "account"
   | "account-profile"
+  | "account-login"
+  | "legal-information"
+  | "service-agreement"
+  | "privacy-policy"
+  | "phone-auth-notice"
   | "identity-settings"
   | "vehicle-settings"
   | "eligibility-settings"
@@ -103,6 +108,7 @@ export type AppScreen =
   | "theme-settings"
   | "privacy-safety-settings"
   | "notifications"
+  | "notification-detail"
   | "notification-settings"
   | "help-feedback"
   | "trip-create"
@@ -119,6 +125,27 @@ export type AppScreen =
   | "safety-appeal"
   | "safety-result";
 
+const ownerMaterialRequirements = [
+  {
+    code: "driver_license",
+    icon: "account" as const,
+    title: "驾驶资格材料",
+    description: "确认你具备驾驶资格",
+  },
+  {
+    code: "vehicle_registration",
+    icon: "car" as const,
+    title: "车辆材料",
+    description: "确认车辆信息与申请一致",
+  },
+  {
+    code: "insurance_proof",
+    icon: "safety" as const,
+    title: "保险材料",
+    description: "确认保险仍在有效期内",
+  },
+] as const;
+
 export function PassengerWorkbench({ navigate }: { navigate: (screen: AppScreen) => void }) {
   const { dashboard, recoveryNotice } = useSyntheticTrip();
   const passengerTrip = dashboard.passengerTrip;
@@ -129,15 +156,14 @@ export function PassengerWorkbench({ navigate }: { navigate: (screen: AppScreen)
         title="今天想去哪里？"
         description="先完成当前任务，再查看身份、审核和安全状态。真实行程仍保持关闭。"
       />
-      <StatusSummary
+      <AppV2SummaryList
         items={[
           {
             label: "行程",
             value: passengerTrip ? syntheticTripStateLabels[passengerTrip.state] : "暂无进行中行程",
-            tone: "passenger",
+            emphasized: true,
           },
           { label: "支付", value: "仅 ¥0 合成前置" },
-          { label: "环境", value: "内部沙箱" },
         ]}
       />
       <View>
@@ -158,18 +184,28 @@ export function PassengerWorkbench({ navigate }: { navigate: (screen: AppScreen)
         />
       </SectionCard>
       {passengerTrip ? (
-        <StatusBanner
-          tone={passengerTrip.state === "completed" ? "success" : "warning"}
-          title={`合成行程：${syntheticTripStateLabels[passengerTrip.state]}`}
-          description={`${passengerTrip.originLabel} → ${passengerTrip.destinationLabel} · 支付金额 ¥0${
-            passengerTrip.closureReason ? ` · ${syntheticTripClosureLabels[passengerTrip.closureReason]}` : ""
-          }${
-            passengerTrip.recovery.state === "driver_acceptance_released" ? " · 已释放超时车主并恢复匹配" : ""
-          }`}
+        <AppV2SummaryList
+          items={[
+            {
+              label: "当前行程",
+              value: syntheticTripStateLabels[passengerTrip.state],
+              emphasized: true,
+            },
+            {
+              label: "路线",
+              value: `${passengerTrip.originLabel} → ${passengerTrip.destinationLabel}`,
+            },
+            { label: "费用", value: "¥0" },
+          ]}
         />
       ) : null}
       {recoveryNotice ? (
-        <StatusBanner tone="warning" title="已完成异常恢复核对" description={recoveryNotice} />
+        <AuxiliaryInlineFeedback
+          icon="clock"
+          title="行程状态已更新"
+          description={recoveryNotice}
+          tone="neutral"
+        />
       ) : null}
       <NavigationRow
         title="通知与任务"
@@ -192,7 +228,6 @@ export function PassengerWorkbench({ navigate }: { navigate: (screen: AppScreen)
           onPress={() => navigate("owner-apply-intro")}
         />
       </View>
-      <StatusBanner title="内部沙箱" description="真实支付、邀请、接单和数据写入全部关闭。" />
     </ScreenScroll>
   );
 }
@@ -229,49 +264,47 @@ export function OwnerApplyIntro({ navigate }: { navigate: (screen: AppScreen) =>
         description={copy.description}
         tone="driver"
       />
-      <AppV2ReadinessList
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
+        currentStep={
+          review.status === "under_review" || review.status === "needs_material"
+            ? 2
+            : review.status === "approved"
+              ? 2
+              : 0
+        }
         tone="driver"
-        items={[
-          {
-            icon: "account",
-            title: "确认参与方式",
-            description: "了解偶发参与的责任、联系和安全要求",
-            status: review.status === "draft" ? "current" : "ready",
-          },
-          {
-            icon: "car",
-            title: "准备一辆常用车辆",
-            description: "核对车辆类型、可乘人数和保险有效期",
-            status: review.status === "draft" ? "pending" : "ready",
-          },
-          {
-            icon: "clock",
-            title: "等待车辆审核",
-            description: "审核期间无需停留，变化后会显示下一步",
-            status:
-              review.status === "under_review" || review.status === "needs_material"
-                ? "current"
-                : review.status === "approved"
-                  ? "ready"
-                  : "pending",
-          },
-        ]}
-      />
-      <AppV2StatusPanel
-        title="申请不会承诺订单或收入"
-        description="车主可以逐单判断是否参与；车辆审核完成后，仍需满足参与资格、额度和安全要求。"
-        tone="driver"
-      />
-      <AppV2StatusPanel
-        title="请只使用页面示例信息"
-        description="当前不会采集真实姓名、证件、车牌、保险文件或车辆照片。"
-        tone="neutral"
       />
     </MobilityPage>
   );
 }
 
 export function OwnerProfile({ navigate }: { navigate: (screen: AppScreen) => void }) {
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const agreements = [
+    {
+      id: "service",
+      icon: "orders" as const,
+      title: "车主参与协议",
+      summary: "逐单选择，不承诺持续在线或订单数量",
+      detail: "你可以根据路线、时间和乘车人数逐单决定是否参与。通过车主审核后，仍需遵守平台资格、额度和安全要求。",
+    },
+    {
+      id: "safety",
+      icon: "safety" as const,
+      title: "行程与安全责任",
+      summary: "了解联系、履约和安全处理边界",
+      detail: "平台只在行程履约与安全处理范围内提供联系和必要信息。发生安全事件时，需要配合平台完成处理。",
+    },
+    {
+      id: "privacy",
+      icon: "privacy" as const,
+      title: "认证材料与隐私说明",
+      summary: "了解身份、车辆和保险材料的使用范围",
+      detail: "提交的认证材料用于身份确认、车辆审核和必要的安全处理，平台会按适用规则控制访问和保存范围。",
+    },
+  ] as const;
+
   return (
     <MobilityPage
       title="参与确认"
@@ -282,49 +315,28 @@ export function OwnerProfile({ navigate }: { navigate: (screen: AppScreen) => vo
         <PrimaryButton
           label="我已了解，继续添加车辆"
           variant="owner"
+          disabled={!consentAccepted}
           onPress={() => navigate("vehicle-form")}
         />
       }
     >
-      <AppV2ApplicationProgress
-        steps={["参与确认", "车辆资料", "提交审核"]}
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
         currentStep={0}
+        tone="driver"
       />
       <AppV2StageHeader
         eyebrow="第 1 步 · 参与确认"
-        title="先确认你希望怎样参与"
-        description="PollyCar 的车主不是职业化接单者。你可以根据路线、时间和乘车人数逐单决定。"
+        title="先阅读并同意参与规则"
+        description="完成确认后，才能继续添加车辆。"
         tone="driver"
       />
-      <AppV2SummaryList
-        items={[
-          { label: "当前账户", value: "林屿" },
-          { label: "参与方式", value: "非职业、偶发参与", emphasized: true },
-          { label: "联系用途", value: "仅用于行程履约与安全处理" },
-        ]}
-      />
-      <AppV2ReadinessList
+      <AuthAgreementGate
+        agreements={agreements}
+        consentLabel="我已阅读并同意以上内容"
+        consentAccepted={consentAccepted}
+        onConsentChange={setConsentAccepted}
         tone="driver"
-        items={[
-          {
-            icon: "route",
-            title: "每次参与都由你决定",
-            description: "平台不会要求持续在线，也不会保证订单数量",
-            status: "ready",
-          },
-          {
-            icon: "people",
-            title: "按车辆能力接待乘车人",
-            description: "下一步需要确认车辆可乘人数",
-            status: "current",
-          },
-          {
-            icon: "safety",
-            title: "遵守联系与安全要求",
-            description: "身份切换不会绕过资格、额度或安全限制",
-            status: "ready",
-          },
-        ]}
       />
     </MobilityPage>
   );
@@ -337,6 +349,9 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
   const restoredDraft = useMemo(() => readVehicleFormDraft(), []);
   const [draftSavedAt, setDraftSavedAt] = useState(restoredDraft?.updatedAt);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [preparedMaterials, setPreparedMaterials] = useState<ReadonlySet<VehicleMaterialCode>>(
+    new Set(restoredDraft?.preparedMaterials),
+  );
   const { control, handleSubmit, formState, getValues, setValue, watch } = useForm<VehicleFormValues>({
     mode: "onChange",
     reValidateMode: "onChange",
@@ -352,11 +367,12 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
         vehicleType: values.vehicleType ?? "",
         insuranceDate: values.insuranceDate ?? "",
         maxPassengerCount: values.maxPassengerCount ?? 1,
+        preparedMaterials: [...preparedMaterials],
       });
       setDraftSavedAt(stored.updatedAt);
     });
     return () => subscription.unsubscribe();
-  }, [watch]);
+  }, [preparedMaterials, watch]);
   const confirmLeave = useCallback(
     () =>
       requestConfirmation({
@@ -394,15 +410,27 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
           insuranceExpiresOn: normalized.insuranceDate,
           syntheticAttachmentId: "synthetic-insurance-a",
         }),
-      { successTitle: "车辆资料已保存", successMessage: "可以继续完成提交前检查。" },
     );
     if (!saved) {
-      saveVehicleFormDraft(getValues());
+      saveVehicleFormDraft({
+        ...getValues(),
+        preparedMaterials: [...preparedMaterials],
+      });
       return;
     }
     allowNavigation();
     navigate("submission-review");
   });
+  const prepareMaterial = (materialCode: VehicleMaterialCode) => {
+    const nextMaterials = new Set(preparedMaterials).add(materialCode);
+    setPreparedMaterials(nextMaterials);
+    const stored = saveVehicleFormDraft({
+      ...getValues(),
+      preparedMaterials: [...nextMaterials],
+    });
+    setDraftSavedAt(stored.updatedAt);
+  };
+  const materialsReady = preparedMaterials.size === ownerMaterialRequirements.length;
 
   return (
     <MobilityPage
@@ -416,19 +444,20 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
           variant="owner"
           loading={actions["vehicle.save-draft"] === "running"}
           loadingLabel="正在保存"
-          disabled={!formState.isValid}
+          disabled={!formState.isValid || !materialsReady}
           onPress={() => void saveAndContinue()}
         />
       }
     >
-      <AppV2ApplicationProgress
-        steps={["参与确认", "车辆资料", "提交审核"]}
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
         currentStep={1}
+        tone="driver"
       />
       <AppV2StageHeader
         eyebrow="第 2 步 · 车辆资料"
         title="添加你准备使用的车辆"
-        description="核对车辆类型、可乘人数和保险有效期。当前请只使用页面示例信息。"
+        description="逐项添加材料，完成基础检查后再提交审核。"
         tone="driver"
       />
       <Controller
@@ -481,7 +510,7 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
               value={field.value}
               placeholder="2027-08-31"
               error={formState.errors.insuranceDate?.message}
-              helper="格式：YYYY-MM-DD，请使用页面示例日期"
+              helper="请填写保险到期日，格式为 YYYY-MM-DD"
               onBlur={() => {
                 field.onBlur();
                 setValue("insuranceDate", normalizeInsuranceDate(field.value), {
@@ -517,29 +546,28 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
           </View>
         )}
       />
-      <AppV2ReadinessList
-        tone="driver"
-        items={[
-          {
-            icon: "car",
-            title: "车辆基本信息",
-            description: "车辆类型和可乘人数将在提交前再次确认",
-            status: "ready",
-          },
-          {
-            icon: "safety",
-            title: "保险信息",
-            description: "本次使用页面提供的示例资料，不会读取相册或文件",
-            status: "ready",
-          },
-        ]}
+      <AppV2SectionHeader
+        title="审核材料"
+        detail={`${preparedMaterials.size}/${ownerMaterialRequirements.length} 已完成`}
       />
+      <View style={{ gap: theme.spacing.sm }}>
+        {ownerMaterialRequirements.map((material) => (
+          <OwnerMaterialCapture
+            key={material.code}
+            {...material}
+            prepared={preparedMaterials.has(material.code)}
+            onPress={() => prepareMaterial(material.code)}
+          />
+        ))}
+      </View>
       <AppText size="caption" tone="secondary">
-        {restoredDraft
-          ? "已恢复上次未完成的车辆资料。"
-          : draftSavedAt
-            ? `已自动保存 · ${formatVehicleReviewDate(draftSavedAt)}`
-            : "输入会自动保存在当前设备。"}
+        {materialsReady
+          ? "三项材料已完成基础检查。"
+          : restoredDraft
+            ? "已恢复上次未完成的车辆资料。"
+            : draftSavedAt
+              ? `已自动保存 · ${formatVehicleReviewDate(draftSavedAt)}`
+              : "请先完成全部审核材料。"}
       </AppText>
     </MobilityPage>
   );
@@ -548,6 +576,7 @@ export function VehicleForm({ navigate }: { navigate: (screen: AppScreen) => voi
 export function SubmissionReview({ navigate }: { navigate: (screen: AppScreen) => void }) {
   const { review, submit } = useVehicleReview();
   const { actions, runAction, confirm: requestConfirmation } = useInteraction();
+  const draft = readVehicleFormDraft();
   return (
     <MobilityPage
       title="提交前检查"
@@ -567,7 +596,7 @@ export function SubmissionReview({ navigate }: { navigate: (screen: AppScreen) =
                 message: "提交后将进入独立审核。审核期间无需重复提交，结果变化后会显示下一步。",
                 confirmLabel: "确认提交",
               })) return;
-              if (await runAction("vehicle.submit", submit, { successTitle: "车辆资料已提交" })) {
+              if (await runAction("vehicle.submit", submit)) {
                 clearVehicleFormDraft();
                 navigate("review-pending");
               }
@@ -577,21 +606,27 @@ export function SubmissionReview({ navigate }: { navigate: (screen: AppScreen) =
         </>
       }
     >
-      <AppV2ApplicationProgress
-        steps={["参与确认", "车辆资料", "提交审核"]}
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
         currentStep={2}
+        tone="driver"
       />
       <AppV2StageHeader
         eyebrow="第 3 步 · 提交审核"
         title="确认信息后提交"
-        description="请检查参与方式和车辆信息。提交后仍可离开页面，审核结果会保留在账户中。"
+        description="三项材料将一并交给平台审核。"
         tone="driver"
       />
-      <AppV2SummaryList
-        items={[
-          { label: "参与人", value: "林屿" },
-          { label: "参与方式", value: "非职业、偶发参与", emphasized: true },
-        ]}
+      <AppV2ReadinessList
+        tone="driver"
+        items={ownerMaterialRequirements.map((material) => ({
+          icon: material.icon,
+          title: material.title,
+          description: draft?.preparedMaterials.includes(material.code)
+            ? "基础检查通过"
+            : "尚未完成",
+          status: draft?.preparedMaterials.includes(material.code) ? "ready" as const : "pending" as const,
+        }))}
       />
       <AppV2NavigationRow
         icon="car"
@@ -601,12 +636,86 @@ export function SubmissionReview({ navigate }: { navigate: (screen: AppScreen) =
         tone="driver"
         onPress={() => navigate("vehicle-form")}
       />
-      <AppV2StatusPanel
+      <AuxiliaryInlineFeedback
+        icon="clock"
         title="提交后无需停留"
         description="审核完成、需要补充或无法继续时，页面会明确说明结果和下一步。"
-        tone="driver"
+        tone="neutral"
       />
     </MobilityPage>
+  );
+}
+
+function OwnerMaterialCapture({
+  icon,
+  title,
+  description,
+  prepared,
+  onPress,
+  pendingActionLabel = "添加",
+  preparedActionLabel = "重新添加",
+}: {
+  icon: AppIconName;
+  title: string;
+  description: string;
+  prepared: boolean;
+  onPress: () => void;
+  pendingActionLabel?: string;
+  preparedActionLabel?: string;
+}) {
+  const { theme } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}，${prepared ? `基础检查通过，可${preparedActionLabel}` : pendingActionLabel}`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 84,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.spacing.sm,
+        borderWidth: 1,
+        borderColor: prepared ? `${theme.colors.owner}65` : theme.colors.border,
+        borderRadius: theme.radius.medium,
+        backgroundColor: prepared
+          ? `${theme.colors.owner}0B`
+          : pressed
+            ? theme.colors.surfaceMuted
+            : theme.colors.surface,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+      })}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: theme.radius.pill,
+          backgroundColor: prepared ? `${theme.colors.owner}18` : theme.colors.surfaceMuted,
+        }}
+      >
+        <AppIcon
+          name={icon}
+          size={20}
+          color={prepared ? theme.colors.owner : theme.colors.textSecondary}
+        />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <AppText weight="bold">{title}</AppText>
+        <AppText size="small" tone="secondary">
+          {prepared ? "基础检查通过" : description}
+        </AppText>
+      </View>
+      <AppText
+        size="small"
+        weight="bold"
+        style={{ color: prepared ? theme.colors.owner : theme.colors.primary }}
+      >
+        {prepared ? preparedActionLabel : pendingActionLabel}
+      </AppText>
+    </Pressable>
   );
 }
 
@@ -650,28 +759,42 @@ export function ReviewPending({ navigate }: { navigate: (screen: AppScreen) => v
         </>
       }
     >
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
+        currentStep={2}
+        tone="driver"
+      />
       <AppV2StageHeader
-        eyebrow="车辆审核 · 处理中"
-        title="资料正在审核"
-        description="当前无需重复提交。你可以离开页面，状态变化后再继续处理。"
+        eyebrow="第 3 步 · 审核中"
+        title="平台正在审核车辆资料"
+        description="当前无需重复提交。"
         tone="driver"
       />
       <AppV2Timeline items={vehicleReviewTimeline(review)} />
-      <AppV2StatusPanel
-        title="当前无需操作"
-        description="请勿重复提交车辆资料。需要补充信息时，这里会直接显示要处理的内容。"
-        tone="driver"
-      />
     </MobilityPage>
   );
 }
 
 export function ReviewNeedsMaterial({ navigate }: { navigate: (screen: AppScreen) => void }) {
-  const [selected, setSelected] = useState("2027-08-31");
+  const { theme } = useAppTheme();
   const { review, resubmit } = useVehicleReview();
   const { actions, runAction } = useInteraction();
-  const material = vehicleReviewMaterialCopy(review);
-  const error = validateInsuranceDate(selected);
+  const materials = vehicleReviewMaterialRequirements(review);
+  const requiresInsuranceDate = materials.some((material) => material.needsInsuranceDate);
+  const [selectedInsuranceDate, setSelectedInsuranceDate] = useState(
+    review.insuranceExpiresOn ?? "",
+  );
+  const [preparedMaterials, setPreparedMaterials] = useState<ReadonlySet<VehicleMaterialCode>>(
+    new Set(),
+  );
+  const insuranceError = requiresInsuranceDate
+    ? validateInsuranceDate(selectedInsuranceDate)
+    : undefined;
+  const materialsReady = materials.every((material) => preparedMaterials.has(material.code));
+  const readyToSubmit = materialsReady && !insuranceError;
+  const prepareMaterial = (materialCode: VehicleMaterialCode) => {
+    setPreparedMaterials((current) => new Set(current).add(materialCode));
+  };
   return (
     <MobilityPage
       title="补充车辆资料"
@@ -683,7 +806,7 @@ export function ReviewNeedsMaterial({ navigate }: { navigate: (screen: AppScreen
           <PrimaryButton
             label="提交补充资料"
             variant="owner"
-            disabled={Boolean(error)}
+            disabled={!readyToSubmit}
             loading={actions["vehicle.resubmit"] === "running"}
             loadingLabel="正在提交"
             onPress={() => void (async () => {
@@ -691,10 +814,11 @@ export function ReviewNeedsMaterial({ navigate }: { navigate: (screen: AppScreen
                 "vehicle.resubmit",
                 () =>
                   resubmit({
-                    insuranceExpiresOn: normalizeInsuranceDate(selected),
-                    syntheticAttachmentId: "synthetic-insurance-b",
+                    insuranceExpiresOn: requiresInsuranceDate
+                      ? normalizeInsuranceDate(selectedInsuranceDate)
+                      : review.insuranceExpiresOn ?? "",
+                    syntheticAttachmentId: `synthetic-${materials.map((material) => material.code).join("-")}-b`,
                   }),
-                { successTitle: "补充资料已提交" },
               );
               if (updated) navigate("review-pending");
             })()}
@@ -707,25 +831,50 @@ export function ReviewNeedsMaterial({ navigate }: { navigate: (screen: AppScreen
         </>
       }
     >
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
+        currentStep={1}
+        tone="driver"
+      />
       <AppV2StageHeader
-        eyebrow="车辆审核 · 需要你处理"
-        title={material.title}
-        description={material.description}
+        eyebrow="第 2 步 · 补充资料"
+        title={materials.length === 1 ? materials[0]!.title : "请补交所需材料"}
+        description={materials.length === 1
+          ? materials[0]!.description
+          : "逐项完成基础检查后，平台会继续审核。"}
         tone="driver"
       />
-      <AppV2StatusPanel
-        title="只需处理当前这一项"
-        description="车辆类型、可乘人数和其他已确认内容会保持不变。"
-        tone="driver"
+      <AppV2SectionHeader
+        title="需要补充的材料"
+        detail={`${preparedMaterials.size}/${materials.length} 已完成`}
       />
-      <ProductFormField
-        label="保险有效期"
-        value={selected}
-        error={error}
-        helper="格式：YYYY-MM-DD，请使用页面示例日期"
-        onChangeText={setSelected}
-        webInputType="date"
-      />
+      <View style={{ gap: theme.spacing.sm }}>
+        {materials.map((material) => (
+          <OwnerMaterialCapture
+            key={material.code}
+            icon={material.icon}
+            title={material.title}
+            description={material.description}
+            prepared={preparedMaterials.has(material.code)}
+            onPress={() => prepareMaterial(material.code)}
+            pendingActionLabel="补交"
+            preparedActionLabel="重新补交"
+          />
+        ))}
+      </View>
+      {requiresInsuranceDate ? (
+        <ProductFormField
+          label="保险有效期"
+          value={selectedInsuranceDate}
+          error={insuranceError}
+          helper="请填写保险到期日，格式为 YYYY-MM-DD"
+          onChangeText={setSelectedInsuranceDate}
+          webInputType="date"
+        />
+      ) : null}
+      <AppText size="caption" tone="secondary">
+        {readyToSubmit ? "补充材料已完成基础检查。" : "请完成当前需要补交的材料。"}
+      </AppText>
       <AppV2Timeline items={vehicleReviewTimeline(review)} />
     </MobilityPage>
   );
@@ -760,10 +909,15 @@ export function ReviewApproved({ navigate }: { navigate: (screen: AppScreen) => 
         </>
       }
     >
+      <AuthStepRail
+        steps={["参与", "车辆", "审核"]}
+        currentStep={2}
+        tone="driver"
+      />
       <AppV2StageHeader
-        eyebrow="车辆审核 · 已完成"
+        eyebrow="第 3 步 · 审核完成"
         title="车辆资料已通过审核"
-        description="这辆车已经具备车辆准入条件。进入车主首页后，还需要查看参与资格、额度和安全状态。"
+        description="现在可以进入车主首页。"
         tone="driver"
       />
       <AppV2SummaryList
@@ -776,34 +930,6 @@ export function ReviewApproved({ navigate }: { navigate: (screen: AppScreen) => 
             value: formatVehicleReviewDate(review.timeline.at(-1)?.occurredAt),
           },
         ]}
-      />
-      <AppV2ReadinessList
-        tone="driver"
-        items={[
-          {
-            icon: "car",
-            title: "车辆审核",
-            description: "车辆资料已经完成审核",
-            status: "ready",
-          },
-          {
-            icon: "account",
-            title: "参与资格",
-            description: "进入车主首页后查看当前资格",
-            status: "current",
-          },
-          {
-            icon: "safety",
-            title: "额度与安全状态",
-            description: "每次上线前都会重新确认",
-            status: "pending",
-          },
-        ]}
-      />
-      <AppV2StatusPanel
-        title="审核完成不等于自动接单"
-        description="是否可以上线仍取决于参与资格、当前额度、车辆有效性和安全状态。"
-        tone="driver"
       />
     </MobilityPage>
   );
@@ -820,6 +946,32 @@ export function OwnerWorkbench({ navigate }: { navigate: (screen: AppScreen) => 
   const availableTrip = tripDashboard.availableDriverTrips[0];
   const { dashboard: safetyDashboard } = useSafetyCase();
   const { actions, runAction, confirm: requestConfirmation } = useInteraction();
+  const [qualificationFeedback, setQualificationFeedback] = useState<Readonly<{
+    tone: "success" | "neutral" | "danger";
+    title: string;
+    description: string;
+  }>>();
+  const runQualificationAction = async (
+    key: string,
+    action: () => Promise<void>,
+    success: Readonly<{ title: string; description: string; tone?: "success" | "neutral" }>,
+  ) => {
+    setQualificationFeedback(undefined);
+    const completed = await runAction(key, action, { resultPresentation: "local" });
+    setQualificationFeedback(
+      completed
+        ? {
+            tone: success.tone ?? "success",
+            title: success.title,
+            description: success.description,
+          }
+        : {
+            tone: "danger",
+            title: "资格状态没有更新",
+            description: "请检查网络后重试，当前参与资格不会改变。",
+          },
+    );
+  };
   const returnPassenger = async () => {
     await setActiveIdentity("passenger");
     navigate("passenger-workbench");
@@ -832,10 +984,10 @@ export function OwnerWorkbench({ navigate }: { navigate: (screen: AppScreen) => 
         description="车辆、资格、行程和安全状态集中呈现；真实接单继续关闭。"
         tone="owner"
       />
-      <StatusSummary
+      <AppV2SummaryList
         items={[
-          { label: "车辆", value: "审核有效", tone: "owner" },
-          { label: "资格", value: freeFlexTrialStateLabels[trial.state], tone: "owner" },
+          { label: "车辆", value: "审核有效", emphasized: true },
+          { label: "资格", value: freeFlexTrialStateLabels[trial.state] },
           {
             label: "行程任务",
             value: activeTrip
@@ -893,7 +1045,8 @@ export function OwnerWorkbench({ navigate }: { navigate: (screen: AppScreen) => 
         <AppText size="caption" tone="secondary" weight="bold">资格与车辆</AppText>
         <AppText size="title2" weight="bold">参与边界与可用额度</AppText>
       </View>
-      <StatusBanner
+      <AuxiliaryInlineFeedback
+        icon="car"
         tone="success"
         title="车辆状态有效"
         description={`示例 A · 合成审核有效 · 单次最多 ${review.maxPassengerCount} 人`}
@@ -914,10 +1067,30 @@ export function OwnerWorkbench({ navigate }: { navigate: (screen: AppScreen) => 
             label="申请免费弹性资格"
             variant="owner"
             loading={actions["flex.submit"] === "running"}
-            onPress={() => void runAction("flex.submit", submit, { successTitle: "资格申请已提交" })}
+            onPress={() => void runQualificationAction(
+              "flex.submit",
+              submit,
+              {
+                title: "资格申请已提交",
+                description: "审核期间无需重复申请，可以稍后回来查看结果。",
+              },
+            )}
           />
         ) : trial.state === "under_review" ? (
-          <PrimaryButton label="刷新资格审核状态" variant="secondary" onPress={() => void refresh()} />
+          <PrimaryButton
+            label="刷新资格审核状态"
+            variant="secondary"
+            loading={actions["flex.refresh"] === "running"}
+            onPress={() => void runQualificationAction(
+              "flex.refresh",
+              refresh,
+              {
+                title: "资格状态已更新",
+                description: "当前页面已经显示最新结果。",
+                tone: "neutral",
+              },
+            )}
+          />
         ) : trial.state === "awaiting_confirmation" ? (
           <PrimaryButton
             label="确认并启用 30 天资格"
@@ -929,8 +1102,22 @@ export function OwnerWorkbench({ navigate }: { navigate: (screen: AppScreen) => 
                 message: "资格不会自动续期，90 日内累计启用最多 60 日。",
                 confirmLabel: "确认启用",
               })) return;
-              await runAction("flex.confirm", confirm, { successTitle: "免费资格已启用" });
+              await runQualificationAction(
+                "flex.confirm",
+                confirm,
+                {
+                  title: "免费资格已启用",
+                  description: "资格周期已经开始，开始参与前仍会确认其他条件。",
+                },
+              );
             })()}
+          />
+        ) : null}
+        {qualificationFeedback ? (
+          <AuxiliaryInlineFeedback
+            title={qualificationFeedback.title}
+            description={qualificationFeedback.description}
+            tone={qualificationFeedback.tone}
           />
         ) : null}
       </SectionCard>
@@ -948,7 +1135,6 @@ export function OwnerWorkbench({ navigate }: { navigate: (screen: AppScreen) => 
         tone="owner"
         onPress={() => navigate("notifications")}
       />
-      <StatusBanner title="真实接单关闭" description="上海试点、邀请与真实支付尚未开放。" />
       <View style={{ gap: 12 }}>
         <AppText size="title2" weight="bold">账户与身份</AppText>
         <NavigationRow
@@ -1121,6 +1307,12 @@ export function AccountScreen({
               title="帮助与反馈"
               description="获取行程、实名和安全帮助，或分享产品建议"
               onPress={() => navigate("help-feedback")}
+            />
+            <AccountMenuRow
+              icon="device"
+              title="账户与登录"
+              description="查看当前登录状态或退出账户"
+              onPress={() => navigate("account-login")}
             />
           </AccountMenuGroup>
         </View>
@@ -1484,6 +1676,11 @@ export const screenTitles = Object.freeze({
   "owner-workbench": "车主工作台",
   account: "我的",
   "account-profile": "账户资料",
+  "account-login": "账户与登录",
+  "legal-information": "协议与隐私",
+  "service-agreement": "服务协议",
+  "privacy-policy": "隐私政策",
+  "phone-auth-notice": "手机号认证说明",
   "identity-settings": "身份切换",
   "vehicle-settings": "车辆",
   "eligibility-settings": "资格",
@@ -1491,6 +1688,7 @@ export const screenTitles = Object.freeze({
   "theme-settings": "主题",
   "privacy-safety-settings": "隐私与安全",
   notifications: "服务通知",
+  "notification-detail": "通知详情",
   "notification-settings": "通知设置",
   "help-feedback": "帮助与反馈",
   "trip-create": "创建行程",

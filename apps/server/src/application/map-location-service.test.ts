@@ -28,6 +28,19 @@ describe("地图与位置应用服务", () => {
     })).rejects.toThrow("MAP_COORDINATE_INVALID");
   });
 
+  it("合成逆地理编码保留地图准星选中的坐标", async () => {
+    const provider = new SyntheticMapProvider();
+    const selected = {
+      latitude: 31.2308,
+      longitude: 121.4741,
+      coordinateSystem: "gcj02" as const,
+    };
+    await expect(provider.reverseGeocode({ location: selected, radiusMeters: 50 })).resolves.toMatchObject({
+      name: "人民广场",
+      location: selected,
+    });
+  });
+
   it("限制每个账户每分钟最多十次搜索", async () => {
     const service = new MapLocationService(new SyntheticMapProvider(), new MemoryMapQuotaUsage());
     for (let index = 0; index < 10; index += 1) {

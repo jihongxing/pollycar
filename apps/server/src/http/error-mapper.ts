@@ -8,6 +8,11 @@ type ErrorDefinition = Readonly<{
 
 const definitions: Readonly<Record<string, ErrorDefinition>> = {
   VALIDATION_FAILED: { status: 400, message: "请求格式不正确", retryable: false },
+  AVATAR_UPLOAD_INVALID: { status: 400, message: "头像文件无效，请重新选择", retryable: false },
+  AVATAR_FILE_TOO_LARGE: { status: 413, message: "头像文件过大，请选择较小的图片", retryable: false },
+  AVATAR_IMAGE_INVALID: { status: 422, message: "无法读取这张图片，请重新选择", retryable: false },
+  AVATAR_DIMENSIONS_INVALID: { status: 422, message: "头像尺寸不符合要求，请重新选择", retryable: false },
+  AVATAR_NOT_FOUND: { status: 404, message: "头像不存在或已被替换", retryable: false },
   AUTHENTICATION_REQUIRED: { status: 401, message: "需要内部沙箱身份", retryable: false },
   AUTHORIZATION_DENIED: { status: 403, message: "当前身份无权执行此操作", retryable: false },
   ADMIN_INVITATION_INVALID: { status: 404, message: "邀请不存在或已完成激活", retryable: false },
@@ -18,6 +23,7 @@ const definitions: Readonly<Record<string, ErrorDefinition>> = {
   ADMIN_MFA_INVALID: { status: 401, message: "动态验证码不正确", retryable: true },
   ADMIN_WORK_IDENTITY_SELECTION_EXPIRED: { status: 410, message: "工作身份选择已过期，请重新登录", retryable: false },
   ADMIN_WORK_IDENTITY_FORBIDDEN: { status: 403, message: "当前账号不能使用该工作身份", retryable: false },
+  ADMIN_AUTH_MFA_FRESHNESS_REQUIRED: { status: 401, message: "切换工作身份前需要重新完成安全验证", retryable: false },
   ADMIN_PAGINATION_INVALID: { status: 422, message: "分页参数不正确", retryable: false },
   ADMIN_CURSOR_INVALID: { status: 422, message: "分页位置无效，请从第一页重新查询", retryable: false },
   ADMIN_CURSOR_SCOPE_MISMATCH: { status: 403, message: "分页位置与当前查询或组织范围不一致", retryable: false },

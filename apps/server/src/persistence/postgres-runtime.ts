@@ -12,6 +12,7 @@ import type {
   RefreshSessionRecord,
 } from "../application/phone-authentication-service.js";
 import type { AccountSessionRecord } from "../application/account-session-service.js";
+import type { TrustProfileRecord } from "../application/trust-profile-service.js";
 import { SyntheticLedgerTemplateService } from "../application/synthetic-ledger-template-service.js";
 import { FinancialReconciliationService } from "../application/financial-reconciliation-service.js";
 import { SyntheticOperatorFundsService } from "../application/synthetic-operator-funds-service.js";
@@ -72,6 +73,10 @@ export function createPostgresRuntime(connectionString: string) {
     ),
     identityVerifications: new PostgresStructuredRepository<RealNameVerificationRecord>(
       "pollycar_identity_verifications",
+      transaction,
+    ),
+    trustProfiles: new PostgresStructuredRepository<TrustProfileRecord>(
+      "pollycar_trust_profiles",
       transaction,
     ),
     safetyCases: new PostgresStructuredRepository<SafetyCaseRecord>(

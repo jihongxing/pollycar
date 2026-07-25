@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, TextInput, View } from "react-native";
 import type {
   PassengerCount,
@@ -16,6 +16,7 @@ import { useTrustProfile } from "../../application/trust-profile-context";
 import { useMobility } from "../../application/mobility-context";
 import {
   CountdownAction,
+  MapPointPicker,
   MapSurface,
   MobilityBottomSheet,
   MobilityFloatingAction,
@@ -77,7 +78,7 @@ import {
   type RideDraft,
   type RidePlace,
 } from "./ride-model";
-import { BrowserLocationAdapter, type LocationResolution } from "./location-adapter";
+import { DeviceLocationAdapter, type LocationResolution } from "./location-adapter";
 import {
   loadPlacePreferences,
   rememberRecentPlace,
@@ -272,7 +273,7 @@ export function PlaceSearchScreen({
 }) {
   const { theme } = useAppTheme();
   const [query, setQuery] = useState("");
-  const [origin, setOrigin] = useState<RidePlace>(createRideDraft().origin);
+  const [draft, setDraft] = useState<RideDraft>(() => loadRideDraft() ?? createRideDraft());
   const [manualOrigin, setManualOrigin] = useState("");
   const [preferences, setPreferences] = useState(loadPlacePreferences);
   const [locationState, setLocationState] = useState<LocationResolution["state"]>();
@@ -280,7 +281,9 @@ export function PlaceSearchScreen({
   const [remoteResults, setRemoteResults] = useState<readonly RidePlace[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string>();
+  const [mapTarget, setMapTarget] = useState<"origin" | "destination">();
   const [mapClient] = useState(() => new HttpMapLocationClient(resolveApiBaseUrl()));
+  const origin = draft.origin;
   const places = useMemo(
     () => [
       ...(preferences.saved.home ? [preferences.saved.home] : []),
@@ -306,7 +309,7 @@ export function PlaceSearchScreen({
     const timer = setTimeout(() => {
       setSearching(true);
       setSearchError(undefined);
-      void mapClient.searchPlaces(normalized)
+      void mapClient.searchPlaces(normalized, { biasLocation: origin.location })
         .then((result) => setRemoteResults(result.places.map(toRidePlace)))
         .catch((error: Error) => {
           setRemoteResults([]);
@@ -315,21 +318,29 @@ export function PlaceSearchScreen({
         .finally(() => setSearching(false));
     }, 350);
     return () => clearTimeout(timer);
-  }, [mapClient, query]);
+  }, [mapClient, origin.location, query]);
+  const updateDraft = useCallback((nextDraft: RideDraft) => {
+    setDraft(nextDraft);
+    saveRideDraft(nextDraft);
+  }, []);
+  const resolveDeviceLocation = useCallback(async () => {
+    const resolution = await new DeviceLocationAdapter().resolveCurrentPlace();
+    setLocationState(resolution.state);
+    return resolution.state === "resolved" ? resolution.place : undefined;
+  }, []);
   const useDeviceLocation = async () => {
     setLocating(true);
-    const resolution = await new BrowserLocationAdapter().resolveCurrentPlace();
-    setLocationState(resolution.state);
-    if (resolution.state === "resolved") {
-      if (resolution.place.location) {
+    const place = await resolveDeviceLocation();
+    if (place) {
+      if (place.location) {
         try {
-          const resolved = await mapClient.reverseGeocode(resolution.place.location);
-          setOrigin({ ...toRidePlace(resolved), kind: "current" });
+          const resolved = await mapClient.reverseGeocode(place.location);
+          updateDraft({ ...draft, origin: { ...toRidePlace(resolved), kind: "current" } });
         } catch {
-          setOrigin(resolution.place);
+          updateDraft({ ...draft, origin: place });
         }
       } else {
-        setOrigin(resolution.place);
+        updateDraft({ ...draft, origin: place });
       }
     }
     setLocating(false);
@@ -337,34 +348,57 @@ export function PlaceSearchScreen({
   const applyManualOrigin = () => {
     const value = manualOrigin.trim();
     if (!value) return;
-    setOrigin({
+    updateDraft({
+      ...draft,
+      origin: {
       id: `manual-${value.toLocaleLowerCase().replace(/\s+/g, "-")}`,
       label: value,
       address: value,
       kind: "search",
       synthetic: false,
+      },
     });
   };
   const savePlace = (kind: SavedPlaceKind, place: RidePlace) =>
     setPreferences(saveNamedPlace(kind, place));
-  const selectMapPoint = async () => {
-    setSearching(true);
-    setSearchError(undefined);
-    try {
-      const place = await mapClient.reverseGeocode({
-        latitude: 31.2184,
-        longitude: 121.4692,
-        coordinateSystem: "gcj02",
-      });
-      const selected = toRidePlace(place);
-      setPreferences(rememberRecentPlace(selected));
-      onSelect?.(selected);
-      navigate("ride-confirmation");
-    } catch (error) {
-      setSearchError(error instanceof Error ? error.message : "MAP_PROVIDER_UNAVAILABLE");
-    } finally {
-      setSearching(false);
-    }
+  const completeDestination = useCallback((place: RidePlace) => {
+    setPreferences(rememberRecentPlace(place));
+    updateDraft(selectDestination(draft, place));
+    onSelect?.(place);
+    navigate("ride-confirmation");
+  }, [draft, navigate, onSelect, updateDraft]);
+  const reverseGeocode = useCallback(
+    (point: NonNullable<RidePlace["location"]>) => mapClient.reverseGeocode(point),
+    [mapClient],
+  );
+  const locateForMap = useCallback(async () => {
+    const place = await resolveDeviceLocation();
+    return place?.location;
+  }, [resolveDeviceLocation]);
+
+  if (mapTarget) {
+    return (
+      <MapPointPicker
+        title={mapTarget === "origin" ? "选择上车点" : "选择目的地"}
+        initialPoint={
+          mapTarget === "origin"
+            ? draft.origin.location
+            : draft.destination?.location ?? draft.origin.location
+        }
+        reverseGeocode={reverseGeocode}
+        onLocate={locateForMap}
+        onCancel={() => setMapTarget(undefined)}
+        onConfirm={(mapPlace) => {
+          const selected = toRidePlace(mapPlace);
+          if (mapTarget === "origin") {
+            updateDraft({ ...draft, origin: { ...selected, kind: "current" } });
+            setMapTarget(undefined);
+            return;
+          }
+          completeDestination(selected);
+        }}
+      />
+    );
   };
   return (
     <MobilityPage
@@ -403,10 +437,10 @@ export function PlaceSearchScreen({
             onPress={() => void useDeviceLocation()}
           />
           <PrimaryButton
-            label="在地图上选点"
+            label="地图选择上车点"
             variant="secondary"
             disabled={searching}
-            onPress={() => void selectMapPoint()}
+            onPress={() => setMapTarget("origin")}
           />
         </View>
       </View>
@@ -433,6 +467,11 @@ export function PlaceSearchScreen({
             style={[rideV2Styles.fieldInput, { color: theme.colors.text }]}
           />
         </AppV2FieldFrame>
+        <PrimaryButton
+          label="在地图上选择目的地"
+          variant="secondary"
+          onPress={() => setMapTarget("destination")}
+        />
         {searching ? <AppV2StatusPanel title="正在搜索地点" description="请稍候，正在获取匹配地点。" /> : null}
         {searchError ? (
           <AppV2StatusPanel
@@ -450,9 +489,7 @@ export function PlaceSearchScreen({
             place={place}
             icon={place.kind === "home" ? "home" : place.kind === "work" ? "orders" : index < 2 ? "clock" : "location"}
             onPress={() => {
-              setPreferences(rememberRecentPlace(place));
-              onSelect?.(place);
-              navigate("ride-confirmation");
+              completeDestination(place);
             }}
             onSaveHome={() => savePlace("home", place)}
             onSaveWork={() => savePlace("work", place)}

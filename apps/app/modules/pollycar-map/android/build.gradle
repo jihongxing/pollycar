@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.pollycar'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.pollycarmap"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+}
+
+dependencies {
+  implementation files("libs/AMap3DMap_11.2.000_AMapSearch_9.8.0_AMapLocation_11.2.000_20260529.jar")
+}
