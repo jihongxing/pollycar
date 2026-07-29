@@ -23,13 +23,13 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
         ports: ["5432:5432"]
     env:
-      POLLYCAR_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
-      POLLYCAR_LEDGER_PROTOTYPE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
-      POLLYCAR_LEDGER_KERNEL_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
-      POLLYCAR_LEDGER_RESILIENCE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
-      POLLYCAR_LEDGER_TEMPLATES_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
-      POLLYCAR_RECONCILIATION_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
-      POLLYCAR_OPERATOR_FUNDS_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_dispatch
+      POLLYCAR_LEDGER_PROTOTYPE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ledger_prototype
+      POLLYCAR_LEDGER_KERNEL_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ledger_kernel
+      POLLYCAR_LEDGER_RESILIENCE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ledger_resilience
+      POLLYCAR_LEDGER_TEMPLATES_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ledger_templates
+      POLLYCAR_RECONCILIATION_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_reconciliation
+      POLLYCAR_OPERATOR_FUNDS_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_operator_funds
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,6 +40,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: |
+          for database in pollycar_dispatch pollycar_ledger_prototype pollycar_ledger_kernel pollycar_ledger_resilience pollycar_ledger_templates pollycar_reconciliation pollycar_operator_funds; do
+            PGPASSWORD=pollycar createdb --host=127.0.0.1 --username=pollycar "$database"
+          done
       - run: pnpm --filter @pollycar/contracts build
       - run: pnpm --filter @pollycar/domain build
       - run: pnpm --filter @pollycar/server db:migrate
@@ -77,6 +81,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: cd apps/app && pnpm exec expo prebuild --platform ios --no-install
+      - run: cd apps/app/ios && pod install
       - run: |
           project="$(find apps/app/ios -maxdepth 1 -name '*.xcodeproj' -print -quit)"
           test -n "$project"
