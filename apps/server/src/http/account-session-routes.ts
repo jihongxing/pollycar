@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AccountIdentityMode } from "@pollycar/contracts";
 import type { AccountSessionService } from "../application/account-session-service.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createAccountSessionHandler(dependencies: Readonly<{
   service: AccountSessionService;
@@ -94,12 +95,7 @@ function requireIdempotencyKey(request: IncomingMessage): string {
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  if (chunks.length === 0) return {};
-  const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("VALIDATION_FAILED");
-  return parsed as Record<string, unknown>;
+  return readJsonObject(request);
 }
 
 function applyCors(request: IncomingMessage, response: ServerResponse, allowedOrigins: readonly string[]) {

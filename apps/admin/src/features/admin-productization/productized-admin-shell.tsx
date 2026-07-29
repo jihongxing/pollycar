@@ -63,11 +63,13 @@ import {
 } from "./admin-supporting-experience";
 import { ProductizedAdminLayout } from "./productized-admin-layout";
 import { VehicleReviewWorkspace } from "./vehicle-review-workspace";
+import {
+  MemoryAdminSessionVault,
+  restoreAdminSession,
+} from "./admin-session-vault";
 import "./productized-admin-shell.css";
 
-const refreshStorageKey = "pollycar.admin.refresh-token";
 const listStateStoragePrefix = "pollycar.admin.list-state";
-const refreshRequests = new Map<string, Promise<AdminProductSession>>();
 
 export function ProductizedAdminShell({
   client: injectedClient,
@@ -77,6 +79,7 @@ export function ProductizedAdminShell({
     [injectedClient],
   );
   const [session, setSession] = useState<AdminProductSession>();
+  const [sessionVault] = useState(() => new MemoryAdminSessionVault());
   const [verification, setVerification] = useState<AdminMfaVerification>();
   const [challengeId, setChallengeId] = useState<string>();
   const [page, setPage] = useState<AdminNavigationDomain>("workbench");
@@ -108,20 +111,20 @@ export function ProductizedAdminShell({
   }, [client, invitationToken]);
 
   useEffect(() => {
-    const refreshToken = sessionStorage.getItem(refreshStorageKey);
+    const refreshToken = sessionVault.readRefreshToken();
     if (!refreshToken) {
       setRestoring(false);
       return;
     }
-    restoreSession(client, refreshToken)
+    restoreAdminSession(client, refreshToken)
       .then((next) => {
-        persistSession(next);
+        persistSession(sessionVault, next);
         setSession(next);
         applyInitialRoute(next);
       })
-      .catch(() => sessionStorage.removeItem(refreshStorageKey))
+      .catch(() => sessionVault.clear())
       .finally(() => setRestoring(false));
-  }, [client]);
+  }, [client, sessionVault]);
 
   async function login(workEmail: string, password: string) {
     setError(undefined);
@@ -152,7 +155,7 @@ export function ProductizedAdminShell({
         verification.selectionToken,
         workIdentityId,
       );
-      persistSession(next);
+      persistSession(sessionVault, next);
       setSession(next);
       applyInitialRoute(next);
     } catch (reason) {
@@ -166,14 +169,14 @@ export function ProductizedAdminShell({
       session.accessToken,
       workIdentityId,
     );
-    persistSession(next);
+    persistSession(sessionVault, next);
     setSession(next);
     applyInitialRoute(next);
   }
 
   async function logout() {
     if (session) await client.logout(session.accessToken).catch(() => undefined);
-    sessionStorage.removeItem(refreshStorageKey);
+    sessionVault.clear();
     setSession(undefined);
     setVerification(undefined);
     setChallengeId(undefined);
@@ -5678,22 +5681,11 @@ function EmptyState({
   );
 }
 
-function persistSession(session: AdminProductSession) {
-  sessionStorage.setItem(refreshStorageKey, session.refreshToken);
-}
-
-function restoreSession(
-  client: AdminProductizationClient,
-  refreshToken: string,
-): Promise<AdminProductSession> {
-  const existing = refreshRequests.get(refreshToken);
-  if (existing) return existing;
-  const request = client.refreshSession(refreshToken);
-  refreshRequests.set(refreshToken, request);
-  void request.finally(() => {
-    window.setTimeout(() => refreshRequests.delete(refreshToken), 1_000);
-  });
-  return request;
+function persistSession(
+  sessionVault: MemoryAdminSessionVault,
+  session: AdminProductSession,
+) {
+  sessionVault.writeRefreshToken(session.refreshToken);
 }
 
 function messageFor(reason: unknown): string {

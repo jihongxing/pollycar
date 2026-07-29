@@ -9,6 +9,7 @@ import type {
 import type { MapLocationService } from "../application/map-location-service.js";
 import { mapError } from "./error-mapper.js";
 import { createAppRequestContext } from "./request-context.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createMapLocationHandler(dependencies: Readonly<{
   service: MapLocationService;
@@ -103,12 +104,7 @@ function requireIdempotencyKey(request: IncomingMessage): string {
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  if (!chunks.length) return {};
-  const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("VALIDATION_INVALID_REQUEST");
-  return parsed as Record<string, unknown>;
+  return readJsonObject(request, { invalidErrorCode: "VALIDATION_INVALID_REQUEST" });
 }
 
 function send(response: ServerResponse, status: number, body: unknown, correlationId: string): true {

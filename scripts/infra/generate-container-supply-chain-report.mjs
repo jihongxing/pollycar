@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 const output = resolve(process.argv[2] ?? "output/container-supply-chain/report.json");
+const sbomPath = resolve(process.argv[3] ?? "output/sbom.cdx.json");
 const inputs = [
   "infrastructure/local-production/Dockerfile",
   "infrastructure/local-production/compose.yaml",
@@ -16,11 +17,26 @@ const files = await Promise.all(
     sha256: createHash("sha256").update(await readFile(resolve(path))).digest("hex"),
   })),
 );
+let sbom;
+try {
+  await access(sbomPath);
+  sbom = JSON.parse(await readFile(sbomPath, "utf8"));
+} catch {
+  throw new Error(
+    `CONTAINER_SBOM_REQUIRED: 请先运行 pnpm sbom:generate，缺少 ${sbomPath}`,
+  );
+}
 const report = {
   format: "pollycar.container-supply-chain.v1",
-  executionMode: "local_evidence_only",
+  executionMode: "cyclonedx_dependency_evidence",
   publication: { enabled: false, status: "blocked", reason: "IMAGE_REGISTRY_NOT_SELECTED" },
-  sbom: { enabled: true, format: "CycloneDX", components: files },
+  sbom: {
+    enabled: true,
+    format: "CycloneDX",
+    path: sbomPath,
+    serialNumber: sbom.serialNumber,
+    componentCount: sbom.components?.length ?? 0,
+  },
   provenance: { enabled: true, inputs: files },
   signature: { enabled: false, status: "blocked", reason: "SIGNING_IDENTITY_NOT_APPROVED" },
   vulnerabilityScan: { enabled: false, status: "blocked", reason: "SCANNER_AND_BUDGET_NOT_APPROVED" },

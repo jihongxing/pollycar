@@ -10,6 +10,8 @@ const productionEnvironment = {
   POLLYCAR_REAL_SMS_DELIVERY_APPROVED: "true",
   POLLYCAR_REAL_IDENTITY_APPROVED: "true",
   POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED: "true",
+  POLLYCAR_ANDROID_SIGNING_MODE: "eas-managed",
+  POLLYCAR_IOS_SIGNING_MODE: "eas-managed",
   EXPO_PUBLIC_POLLYCAR_API_BASE_URL: "https://api.pollycar.example",
   EXPO_PUBLIC_POLLYCAR_API_MODE: "production",
 };
@@ -39,6 +41,8 @@ describe("生产发布门禁", () => {
       expect.stringContaining("Android 包名"),
       expect.stringContaining("iOS Bundle Identifier"),
       expect.stringContaining("Expo slug"),
+      expect.stringContaining("POLLYCAR_ANDROID_SIGNING_MODE"),
+      expect.stringContaining("POLLYCAR_IOS_SIGNING_MODE"),
     ]));
   });
 
@@ -61,6 +65,21 @@ describe("生产发布门禁", () => {
       config: productionConfig,
       environment: productionEnvironment,
     })).toEqual([]);
+  });
+
+  it("本地 Android 发布签名要求完整的独立凭据", () => {
+    expect(collectProductionReleaseFailures({
+      config: productionConfig,
+      environment: {
+        ...productionEnvironment,
+        POLLYCAR_ANDROID_SIGNING_MODE: "local-keystore",
+      },
+    })).toEqual(expect.arrayContaining([
+      expect.stringContaining("POLLYCAR_ANDROID_RELEASE_STORE_FILE"),
+      expect.stringContaining("POLLYCAR_ANDROID_RELEASE_STORE_PASSWORD"),
+      expect.stringContaining("POLLYCAR_ANDROID_RELEASE_KEY_ALIAS"),
+      expect.stringContaining("POLLYCAR_ANDROID_RELEASE_KEY_PASSWORD"),
+    ]));
   });
 });
 

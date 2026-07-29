@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { SafetyCaseService } from "../application/safety-case-service.js";
 import { mapError } from "./error-mapper.js";
 import { createSafetyRequestContext } from "./request-context.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createAdminSafetyHandler(dependencies: Readonly<{
   service: SafetyCaseService;
@@ -71,13 +72,7 @@ function send(response: ServerResponse, status: number, body: unknown, correlati
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
-  } catch {
-    throw new Error("VALIDATION_FAILED");
-  }
+  return readJsonObject(request);
 }
 
 function requireVersion(body: Record<string, unknown>): number {

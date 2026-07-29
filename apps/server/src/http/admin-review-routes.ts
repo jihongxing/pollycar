@@ -7,6 +7,7 @@ import type {
 import type { AdminReviewTaskService } from "../application/admin-review-task-service.js";
 import { createRequestContext } from "./request-context.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 type RouteDependencies = Readonly<{
   service: AdminReviewTaskService;
@@ -240,16 +241,7 @@ function sendError(response: ServerResponse, error: unknown, correlationId: stri
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  if (chunks.length === 0) return {};
-  try {
-    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
-    return parsed as Record<string, unknown>;
-  } catch {
-    throw new Error("VALIDATION_FAILED");
-  }
+  return readJsonObject(request);
 }
 
 function requireIdempotencyKey(request: IncomingMessage): string {

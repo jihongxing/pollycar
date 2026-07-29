@@ -2,7 +2,7 @@ name: pollycar-production-readiness
 
 services:
   postgres:
-    image: docker.io/library/postgres:17-alpine
+    image: ${POLLYCAR_POSTGRES_IMAGE_DIGEST:?POLLYCAR_POSTGRES_IMAGE_DIGEST_REQUIRED}
     user: "0:0"
     environment:
       POSTGRES_DB: pollycar
@@ -29,7 +29,7 @@ services:
       - production-readiness
 
   otel-collector:
-    image: docker.io/otel/opentelemetry-collector-contrib:latest
+    image: ${POLLYCAR_OTEL_COLLECTOR_IMAGE_DIGEST:?POLLYCAR_OTEL_COLLECTOR_IMAGE_DIGEST_REQUIRED}
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
       - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
@@ -40,6 +40,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        POLLYCAR_NODE_IMAGE_DIGEST: ${POLLYCAR_NODE_IMAGE_DIGEST:?POLLYCAR_NODE_IMAGE_DIGEST_REQUIRED}
     environment:
       POLLYCAR_PRODUCTION_DATABASE_CA_PATH: /run/local-production/postgres-ca.crt
       POLLYCAR_PRODUCTION_PUBLIC_BASE_URL: https://api.pollycar.example
@@ -59,7 +61,7 @@ services:
       - production-readiness
 
   proxy:
-    image: docker.io/library/caddy:2-alpine
+    image: ${POLLYCAR_CADDY_IMAGE_DIGEST:?POLLYCAR_CADDY_IMAGE_DIGEST_REQUIRED}
     ports:
       - "127.0.0.1:8444:8443"
     volumes:

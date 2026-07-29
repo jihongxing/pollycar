@@ -3,6 +3,7 @@ import type { CommunicationService } from "../application/communication-service.
 import type { DataLifecycleService } from "../application/data-lifecycle-service.js";
 import { mapError } from "./error-mapper.js";
 import { createAppRequestContext } from "./request-context.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createCommunicationHandler(dependencies: Readonly<{
   service: CommunicationService;
@@ -90,12 +91,7 @@ function applyCors(request: IncomingMessage, response: ServerResponse, allowedOr
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  if (!chunks.length) return {};
-  const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_REQUEST");
-  return parsed as Record<string, unknown>;
+  return readJsonObject(request, { invalidErrorCode: "INVALID_REQUEST" });
 }
 
 function requireString(body: Record<string, unknown>, field: string) {

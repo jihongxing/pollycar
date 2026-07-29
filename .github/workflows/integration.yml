@@ -1,0 +1,76 @@
+name: 原生与数据库集成门禁
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pollycar_ci
+          POSTGRES_USER: pollycar
+          POSTGRES_PASSWORD: pollycar
+        options: >-
+          --health-cmd "pg_isready -U pollycar -d pollycar_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ["5432:5432"]
+    env:
+      POLLYCAR_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_LEDGER_PROTOTYPE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_LEDGER_KERNEL_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_LEDGER_RESILIENCE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_LEDGER_TEMPLATES_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_RECONCILIATION_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+      POLLYCAR_OPERATOR_FUNDS_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:postgres:integration
+
+  android-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/app/android && ./gradlew assembleRelease
+
+  ios-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/app && pnpm exec expo prebuild --platform ios --no-install
+      - run: cd apps/app/ios && xcodebuild -workspace PollyCar.xcworkspace -scheme PollyCar -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build

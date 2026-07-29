@@ -61,7 +61,7 @@ module.exports = function withPollyCarMapModule(config) {
       withoutExistingKey.push({
         $: {
           "android:name": "com.amap.api.v2.apikey",
-          "android:value": policy.androidApiKey,
+          "android:value": "${POLLYCAR_AMAP_ANDROID_API_KEY}",
         },
       });
       mainApplication["meta-data"] = withoutExistingKey;

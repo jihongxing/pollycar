@@ -46,6 +46,25 @@ export function collectProductionReleaseFailures({ config, environment }) {
     failures.push("Expo slug 不得包含 internal 或 sandbox");
   }
 
+  const androidSigningMode = environment.POLLYCAR_ANDROID_SIGNING_MODE;
+  if (!["local-keystore", "eas-managed"].includes(androidSigningMode)) {
+    failures.push("POLLYCAR_ANDROID_SIGNING_MODE 必须为 local-keystore 或 eas-managed");
+  } else if (androidSigningMode === "local-keystore") {
+    for (const name of [
+      "POLLYCAR_ANDROID_RELEASE_STORE_FILE",
+      "POLLYCAR_ANDROID_RELEASE_STORE_PASSWORD",
+      "POLLYCAR_ANDROID_RELEASE_KEY_ALIAS",
+      "POLLYCAR_ANDROID_RELEASE_KEY_PASSWORD",
+    ]) {
+      if (!environment[name]?.trim()) failures.push(`缺少 Android 发布签名配置：${name}`);
+    }
+  }
+
+  const iosSigningMode = environment.POLLYCAR_IOS_SIGNING_MODE;
+  if (!["xcode-managed", "eas-managed"].includes(iosSigningMode)) {
+    failures.push("POLLYCAR_IOS_SIGNING_MODE 必须为 xcode-managed 或 eas-managed");
+  }
+
   return failures;
 }
 

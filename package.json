@@ -47,13 +47,24 @@
     ,
     "production-candidate:report": "node scripts/infra/generate-production-candidate-readiness.mjs",
     "check:production-candidate": "powershell.exe -NoProfile -File scripts/test/check-production-candidate-readiness.ps1"
+    ,
+    "sbom:generate": "node scripts/infra/generate-cyclonedx-sbom.mjs",
+    "test:postgres:integration": "pnpm --filter @pollycar/server test:postgres-dispatch && pnpm --filter @pollycar/server test:postgres-ledger-prototype && pnpm --filter @pollycar/server test:postgres-ledger-kernel && pnpm --filter @pollycar/server test:postgres-ledger-resilience && pnpm --filter @pollycar/server test:postgres-ledger-templates && pnpm --filter @pollycar/server test:postgres-reconciliation && pnpm --filter @pollycar/server test:postgres-operator-funds"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
     "@playwright/test": "1.55.1",
     "@types/node": "22.19.1",
-    "serve": "14.2.4",
+    "serve": "14.2.6",
     "typescript": "5.9.3",
-    "vitest": "4.0.15"
+    "vitest": "4.1.10"
+  },
+  "pnpm": {
+    "overrides": {
+      "brace-expansion": "5.0.8",
+      "minimatch@<3.1.4": "3.1.4",
+      "minimatch@>=5.0.0 <5.1.8": "5.1.8",
+      "postcss": "8.5.18"
+    }
   }
 }

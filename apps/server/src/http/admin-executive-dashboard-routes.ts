@@ -9,6 +9,7 @@ import type {
 import type { AdminAccessActor } from "../application/admin-access-service.js";
 import type { ExecutiveDashboardQueryService } from "../application/executive-dashboard-query-service.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createAdminExecutiveDashboardHandler(
   dependencies: Readonly<{
@@ -150,13 +151,7 @@ function send(response: ServerResponse, status: number, body: unknown, correlati
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
-  } catch {
-    throw new Error("VALIDATION_FAILED");
-  }
+  return readJsonObject(request);
 }
 
 function requireString(value: unknown): string {

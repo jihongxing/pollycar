@@ -4,6 +4,7 @@ import type { VehicleLocationStage, VehicleLocationUpdate } from "@pollycar/cont
 import type { VehicleLocationService } from "../application/vehicle-location-service.js";
 import { createAppRequestContext } from "./request-context.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createVehicleLocationHandler(dependencies: Readonly<{
   service: VehicleLocationService;
@@ -60,11 +61,7 @@ function applyCors(request: IncomingMessage, response: ServerResponse, allowedOr
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("VALIDATION_INVALID_REQUEST");
-  return parsed as Record<string, unknown>;
+  return readJsonObject(request, { invalidErrorCode: "VALIDATION_INVALID_REQUEST" });
 }
 
 function requireIdempotencyKey(request: IncomingMessage): string {

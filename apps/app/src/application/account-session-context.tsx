@@ -17,9 +17,9 @@ import { resolveApiBaseUrl } from "../infrastructure/api-base-url";
 import { HttpPhoneAuthenticationClient } from "../infrastructure/http-phone-authentication-client";
 import {
   readBrowserStorage,
-  removeBrowserStorage,
   writeBrowserStorage,
 } from "../infrastructure/browser-storage";
+import { secureCredentialStore } from "../infrastructure/secure-credential-store";
 import {
   setSessionToken,
   subscribeToSessionAuthenticationFailure,
@@ -48,31 +48,31 @@ export function AccountSessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<InternalAccountSessionView>();
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const deviceId = useMemo(resolveDeviceId, []);
+  const [deviceId] = useState(resolveDeviceId);
 
-  const acceptAuthentication = (result: PhoneAuthenticationResult) => {
+  const acceptAuthentication = async (result: PhoneAuthenticationResult) => {
     setToken(result.accessToken);
     setSessionToken(result.accessToken);
     setSession(result.session);
     setSessionExpired(false);
-    writeStoredValue(REFRESH_TOKEN_KEY, result.refreshToken);
+    await secureCredentialStore.set(REFRESH_TOKEN_KEY, result.refreshToken);
   };
 
   const reconnect = async () => {
-    const refreshToken = readStoredValue(REFRESH_TOKEN_KEY);
+    const refreshToken = await secureCredentialStore.get(REFRESH_TOKEN_KEY);
     if (!refreshToken) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      acceptAuthentication(await phoneClient.refresh({
+      await acceptAuthentication(await phoneClient.refresh({
         refreshToken,
         deviceId,
         idempotencyKey: `refresh-${Date.now()}`,
       }));
     } catch {
-      writeStoredValue(REFRESH_TOKEN_KEY, undefined);
+      await secureCredentialStore.delete(REFRESH_TOKEN_KEY);
       setSessionToken(undefined);
       setToken(undefined);
       setSession(undefined);
@@ -109,7 +109,7 @@ export function AccountSessionProvider({ children }: PropsWithChildren) {
         deviceId,
         idempotencyKey: `phone-verify-${Date.now()}`,
       });
-      acceptAuthentication(result);
+      await acceptAuthentication(result);
       return result;
     },
     reconnect,
@@ -119,7 +119,7 @@ export function AccountSessionProvider({ children }: PropsWithChildren) {
     },
     revoke: async () => {
       if (token) await sessionClient.revoke(token);
-      writeStoredValue(REFRESH_TOKEN_KEY, undefined);
+      await secureCredentialStore.delete(REFRESH_TOKEN_KEY);
       setSessionToken(undefined);
       setToken(undefined);
       setSession(undefined);
@@ -136,18 +136,9 @@ export function useAccountSession() {
 }
 
 function resolveDeviceId(): string {
-  const existing = readStoredValue(DEVICE_ID_KEY);
+  const existing = readBrowserStorage(DEVICE_ID_KEY);
   if (existing) return existing;
-  const created = `app-device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  writeStoredValue(DEVICE_ID_KEY, created);
+  const created = `app-device-${crypto.randomUUID()}`;
+  writeBrowserStorage(DEVICE_ID_KEY, created);
   return created;
-}
-
-function readStoredValue(key: string): string | undefined {
-  return readBrowserStorage(key);
-}
-
-function writeStoredValue(key: string, value: string | undefined): void {
-  if (value === undefined) removeBrowserStorage(key);
-  else writeBrowserStorage(key, value);
 }

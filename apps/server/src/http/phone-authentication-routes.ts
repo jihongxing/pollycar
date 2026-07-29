@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { PhoneAuthenticationService } from "../application/phone-authentication-service.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createPhoneAuthenticationHandler(dependencies: Readonly<{
   service: PhoneAuthenticationService;
@@ -33,9 +34,7 @@ export function createPhoneAuthenticationHandler(dependencies: Readonly<{
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
+  return readJsonObject(request);
 }
 
 function send(response: ServerResponse, status: number, body: unknown, correlationId: string): true {

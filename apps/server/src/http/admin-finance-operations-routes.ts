@@ -4,6 +4,7 @@ import type { AdminFinanceOperationsCommand } from "@pollycar/contracts";
 import type { AdminAccessActor } from "../application/admin-access-service.js";
 import type { AdminFinanceOperationsService } from "../application/admin-finance-operations-service.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 const basePath = "/v1/internal-sandbox/admin/finance-operations";
 
@@ -163,13 +164,7 @@ function send(
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
-  } catch {
-    throw new Error("VALIDATION_FAILED");
-  }
+  return readJsonObject(request);
 }
 
 function requireString(value: unknown): string {

@@ -126,6 +126,7 @@ $webLoader = Get-Content -LiteralPath $webLoaderPath -Raw
 $mapPicker = Get-Content -LiteralPath $mapPickerPath -Raw
 $androidModule = Get-Content -LiteralPath $androidModulePath -Raw
 $iosModule = Get-Content -LiteralPath $iosModulePath -Raw
+$androidManifest = Get-Content -LiteralPath (Join-Path $repo "apps\app\android\app\src\main\AndroidManifest.xml") -Raw
 
 foreach ($required in @(
   "resolveAmapBuildPolicy",
@@ -137,6 +138,16 @@ foreach ($required in @(
   if ($plugin -notmatch [regex]::Escape($required)) {
     throw "高德 Expo 配置插件缺少: $required"
   }
+}
+
+if ($plugin -notmatch [regex]::Escape('android:value": "${POLLYCAR_AMAP_ANDROID_API_KEY}"')) {
+  throw "高德 Android Key 必须通过构建占位符注入"
+}
+if ($androidManifest -notmatch [regex]::Escape('${POLLYCAR_AMAP_ANDROID_API_KEY}')) {
+  throw "Android Manifest 未使用高德 Key 构建占位符"
+}
+if ($androidManifest -match 'android:value="[0-9a-fA-F]{32}"') {
+  throw "Android Manifest 禁止提交高德明文 Key"
 }
 
 foreach ($required in @(

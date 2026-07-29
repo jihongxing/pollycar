@@ -8,6 +8,7 @@ type ErrorDefinition = Readonly<{
 
 const definitions: Readonly<Record<string, ErrorDefinition>> = {
   VALIDATION_FAILED: { status: 400, message: "请求格式不正确", retryable: false },
+  PAYLOAD_TOO_LARGE: { status: 413, message: "请求内容过大", retryable: false },
   AVATAR_UPLOAD_INVALID: { status: 400, message: "头像文件无效，请重新选择", retryable: false },
   AVATAR_FILE_TOO_LARGE: { status: 413, message: "头像文件过大，请选择较小的图片", retryable: false },
   AVATAR_IMAGE_INVALID: { status: 422, message: "无法读取这张图片，请重新选择", retryable: false },

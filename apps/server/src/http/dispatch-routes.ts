@@ -4,6 +4,7 @@ import type { DispatchService } from "../application/dispatch-service.js";
 import type { MobilityService } from "../application/mobility-service.js";
 import { mapError } from "./error-mapper.js";
 import { createAppRequestContext } from "./request-context.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createDispatchHandler(dependencies: {
   service: DispatchService;
@@ -120,17 +121,7 @@ function requireIdempotencyKey(request: IncomingMessage): string {
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  try {
-    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
-    return parsed as Record<string, unknown>;
-  } catch {
-    throw new Error("VALIDATION_FAILED");
-  }
+  return readJsonObject(request);
 }
 
 function applyCors(
@@ -163,4 +154,3 @@ function send(
   response.end(body === undefined ? undefined : JSON.stringify(body));
   return true;
 }
-

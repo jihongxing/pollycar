@@ -1,9 +1,6 @@
 import {
-  createHash,
   createHmac,
   randomBytes,
-  randomUUID,
-  timingSafeEqual,
 } from "node:crypto";
 import type {
   AdminInvitationSummary,
@@ -130,6 +127,12 @@ import type {
   AdminFinanceOperationsService,
 } from "./admin-finance-operations-service.js";
 import type { ExecutiveDashboardQueryService } from "./executive-dashboard-query-service.js";
+import {
+  createAdminToken,
+  digestAdminValue,
+  normalizeAdminEmail,
+  safelyCompareAdminCredentials,
+} from "./admin-authentication-credentials.js";
 
 type AccountFixture = {
   readonly email: string;
@@ -601,12 +604,12 @@ export class AdminAuthenticationService {
 
   public startLogin(workEmail: string, password: string): AdminLoginChallenge {
     this.assertAuthenticationEnabled();
-    const email = normalizeEmail(workEmail);
+    const email = normalizeAdminEmail(workEmail);
     const account = this.accounts.get(email);
     const now = this.now().getTime();
     if (!account?.active) throw new Error("ADMIN_CREDENTIAL_INVALID");
     if (account.lockedUntil && account.lockedUntil > now) throw new Error("ADMIN_ACCOUNT_LOCKED");
-    if (!safeEqual(account.password, password)) {
+    if (!safelyCompareAdminCredentials(account.password, password)) {
       account.failedCount += 1;
       if (account.failedCount >= 5) {
         account.failedCount = 0;
@@ -4406,7 +4409,9 @@ export class AdminAuthenticationService {
     const expected = createHmac("sha256", this.cursorSecret)
       .update(payload)
       .digest("base64url");
-    if (!safeEqual(expected, signature)) throw new Error("ADMIN_CURSOR_INVALID");
+    if (!safelyCompareAdminCredentials(expected, signature)) {
+      throw new Error("ADMIN_CURSOR_INVALID");
+    }
     try {
       const parsed = JSON.parse(
         Buffer.from(payload, "base64url").toString("utf8"),
@@ -6205,16 +6210,12 @@ function exportProfiles(role: AdminProductRole): readonly string[] {
   return ["none"];
 }
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
 function token(prefix: string): string {
-  return `${prefix}-${randomUUID()}`;
+  return createAdminToken(prefix);
 }
 
 function digest(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
+  return digestAdminValue(value);
 }
 
 function validateGlobalSearchQuery(value: string): string {
@@ -6235,13 +6236,4 @@ function operationsTaskStatusLabel(
     blocked: "受阻",
     completed: "已完成",
   } as const)[status];
-}
-
-function safeEqual(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return (
-    leftBuffer.length === rightBuffer.length &&
-    timingSafeEqual(leftBuffer, rightBuffer)
-  );
 }

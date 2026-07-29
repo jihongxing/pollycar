@@ -22,7 +22,7 @@ foreach ($path in $required) {
 }
 
 $matrix = Get-Content -LiteralPath (Join-Path $repo "qa\device-matrix.json") -Raw | ConvertFrom-Json
-if ($matrix.appId -ne "com.pollycar.internal.sandbox") {
+if ($matrix.appId -ne "com.yourcompany.pollycar") {
   throw "真实设备 QA appId 不一致。"
 }
 if ($matrix.profiles.Count -lt 6) {
@@ -42,8 +42,8 @@ foreach ($platform in @("android", "ios")) {
 
 $appJson = Get-Content -LiteralPath (Join-Path $repo "apps\app\app.json") -Raw
 foreach ($rule in @(
-  '"bundleIdentifier": "com.pollycar.internal.sandbox"',
-  '"package": "com.pollycar.internal.sandbox"'
+  '"bundleIdentifier": "com.yourcompany.pollycar"',
+  '"package": "com.yourcompany.pollycar"'
 )) {
   if ($appJson -notmatch [regex]::Escape($rule)) {
     throw "Expo 设备配置缺少: $rule"

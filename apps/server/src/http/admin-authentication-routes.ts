@@ -34,6 +34,7 @@ import type { AdminTripCaseManagementService } from "../application/admin-trip-c
 import type { AdminFinanceOperationsService } from "../application/admin-finance-operations-service.js";
 import type { ExecutiveDashboardQueryService } from "../application/executive-dashboard-query-service.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject } from "./http-boundary.js";
 
 const basePath = "/v1/internal-sandbox/admin";
 
@@ -1638,13 +1639,7 @@ function requireString(value: unknown): string {
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
-  } catch {
-    throw new Error("VALIDATION_FAILED");
-  }
+  return readJsonObject(request);
 }
 
 function applyCors(

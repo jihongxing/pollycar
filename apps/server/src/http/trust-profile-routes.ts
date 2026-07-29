@@ -6,6 +6,7 @@ import type {
 import type { TrustProfileService } from "../application/trust-profile-service.js";
 import { mapError } from "./error-mapper.js";
 import { createAppRequestContext } from "./request-context.js";
+import { readJsonObject } from "./http-boundary.js";
 
 export function createTrustProfileHandler(dependencies: Readonly<{
   service: TrustProfileService;
@@ -130,18 +131,10 @@ function applyCors(request: IncomingMessage, response: ServerResponse, allowedOr
 }
 
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const chunk of request) {
-    const buffer = Buffer.from(chunk);
-    total += buffer.length;
-    if (total > 2_100_000) throw new Error("AVATAR_FILE_TOO_LARGE");
-    chunks.push(buffer);
-  }
-  if (!chunks.length) return {};
-  const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("VALIDATION_FAILED");
-  return parsed as Record<string, unknown>;
+  return readJsonObject(request, {
+    maximumBytes: 2_100_000,
+    tooLargeErrorCode: "AVATAR_FILE_TOO_LARGE",
+  });
 }
 
 function requireString(

@@ -2,6 +2,7 @@
 import type { RealNameVerificationService } from "../application/real-name-verification-service.js";
 import { createAppRequestContext, createRequestContext } from "./request-context.js";
 import { mapError } from "./error-mapper.js";
+import { readJsonObject, readRequestText } from "./http-boundary.js";
 
 export function createAdultEligibilityHandler(dependencies: Readonly<{
   service: RealNameVerificationService;
@@ -147,14 +148,10 @@ function send(response: ServerResponse, status: number, body: unknown, correlati
   return true;
 }
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  const rawBody = await readText(request);
-  try { return JSON.parse(rawBody) as Record<string, unknown>; }
-  catch { throw new Error("VALIDATION_FAILED"); }
+  return readJsonObject(request);
 }
 async function readText(request: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  return Buffer.concat(chunks).toString("utf8");
+  return readRequestText(request);
 }
 function idempotency(request: IncomingMessage): string {
   const value = header(request, "idempotency-key");
