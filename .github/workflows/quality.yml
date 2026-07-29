@@ -23,6 +23,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --audit-level high
       - run: pnpm typecheck
+      - run: pnpm --filter @pollycar/contracts build
+      - run: pnpm --filter @pollycar/domain build
       - run: pnpm test
       - run: pnpm build
       - run: pwsh scripts/test/check-doc-governance.ps1
