@@ -40,6 +40,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @pollycar/domain build
       - run: pnpm test:postgres:integration
 
   android-release:
@@ -58,6 +59,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: chmod +x apps/app/android/gradlew
       - run: cd apps/app/android && ./gradlew assembleRelease
 
   ios-release:
@@ -73,4 +75,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: cd apps/app && pnpm exec expo prebuild --platform ios --no-install
-      - run: cd apps/app/ios && xcodebuild -workspace PollyCar.xcworkspace -scheme PollyCar -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
+      - run: cd apps/app/ios && xcodebuild -project PollyCar.xcodeproj -scheme PollyCar -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
