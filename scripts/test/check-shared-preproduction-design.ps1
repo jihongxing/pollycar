@@ -25,7 +25,13 @@ foreach ($required in @(
   "target_rpo_minutes: 5",
   "target_rto_minutes: 60",
   "cross_region_replication_enabled: false",
-  "cross_region_backup_enabled: false"
+  "cross_region_backup_enabled: false",
+  "plan_generation_enabled: true",
+  "apply_enabled: false",
+  "provider_adapter_enabled: false",
+  "plan_requires_zero_resource_changes_while_blocked: true",
+  "raw_secrets_in_input_forbidden: true",
+  "plan_digest_confirmation_required_for_apply: true"
 )) {
   if ($spec -notmatch [regex]::Escape($required)) {
     throw "共享预生产设计缺少失败关闭条件: $required"

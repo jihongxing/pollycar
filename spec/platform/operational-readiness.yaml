@@ -1,0 +1,27 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.operational-readiness"
+language: "zh-CN"
+status: "approved_internal"
+external_alert_delivery_enabled: false
+monitoring_provider_selected: false
+on_call_owner_selected: false
+runbook_execution_enabled: false
+slo:
+  api_availability_percent: 99.9
+  readiness_probe_interval_seconds: 30
+  database_readiness_required: true
+  alert_evaluation_window_minutes: 10
+alerts:
+  certificate_expiry_days: 30
+  backup_restore_rto_minutes: 60
+  backup_restore_rpo_minutes: 5
+  raw_request_body_collection_allowed: false
+  credential_collection_allowed: false
+drills:
+  restore:
+    frequency: monthly
+    isolated_target_required: true
+  availability_zone_failover:
+    frequency: quarterly
+  region_rebuild:
+    frequency: semiannual

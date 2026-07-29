@@ -1,0 +1,78 @@
+{
+  "contractVersion": "1.0",
+  "environmentName": "shared-preproduction",
+  "provider": null,
+  "contractEntity": null,
+  "accountReference": null,
+  "billing": {
+    "currency": null,
+    "monthlyBudgetLimit": null
+  },
+  "region": {
+    "mainlandChinaRegion": null,
+    "availabilityZones": []
+  },
+  "domains": {
+    "publicDomain": null,
+    "internalDomain": null,
+    "dnsProvider": null
+  },
+  "managedPostgresql": {
+    "service": null,
+    "version": null,
+    "instanceClass": null,
+    "storageGb": null,
+    "connectionLimit": null,
+    "maintenanceWindow": null
+  },
+  "certificates": {
+    "managedCertificateService": null
+  },
+  "secrets": {
+    "managedSecretStore": null,
+    "encryptionKeyReference": null,
+    "workloadIdentityReference": null
+  },
+  "network": {
+    "administrativeAccess": null,
+    "allowedEgressDomains": []
+  },
+  "monitoring": {
+    "provider": null,
+    "storageRegion": null,
+    "monthlyBudgetLimit": null,
+    "onCallOwner": null
+  },
+  "approvals": {
+    "productAndProductionDecision": {
+      "approved": false,
+      "evidenceReference": null,
+      "expiresAt": null,
+      "revoked": false
+    },
+    "engineeringAndOperations": {
+      "approved": false,
+      "evidenceReference": null,
+      "expiresAt": null,
+      "revoked": false
+    },
+    "security": {
+      "approved": false,
+      "evidenceReference": null,
+      "expiresAt": null,
+      "revoked": false
+    },
+    "privacyAndCompliance": {
+      "approved": false,
+      "evidenceReference": null,
+      "expiresAt": null,
+      "revoked": false
+    },
+    "finance": {
+      "approved": false,
+      "evidenceReference": null,
+      "expiresAt": null,
+      "revoked": false
+    }
+  }
+}

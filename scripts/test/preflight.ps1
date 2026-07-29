@@ -36,6 +36,18 @@ if ($FullGovernance) {
   Write-Host "== 共享预生产架构与审批门禁检查 =="
   & "$PSScriptRoot\check-shared-preproduction-design.ps1"
 
+  Write-Host "== 共享预生产 IaC 只读计划与 apply 门禁检查 =="
+  & "$PSScriptRoot\check-shared-preproduction-iac.ps1"
+
+  Write-Host "== 容器供应链本地证据与失败关闭门禁检查 =="
+  & "$PSScriptRoot\check-container-supply-chain.ps1"
+
+  Write-Host "== 本地故障演练报告与证据校验检查 =="
+  & "$PSScriptRoot\check-operational-drill-evidence.ps1"
+
+  Write-Host "== 生产候选就绪汇总报告检查 =="
+  & "$PSScriptRoot\check-production-candidate-readiness.ps1"
+
   Write-Host "== 真实账号与认证生产接入准备检查 =="
   & "$PSScriptRoot\check-production-authentication-readiness.ps1"
 

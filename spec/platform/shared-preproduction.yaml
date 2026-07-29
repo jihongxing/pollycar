@@ -11,6 +11,15 @@ business_routes_enabled: false
 real_data_allowed: false
 synthetic_data_only: true
 
+iac_readiness:
+  contract_version: "1.0"
+  plan_generation_enabled: true
+  apply_enabled: false
+  provider_adapter_enabled: false
+  plan_requires_zero_resource_changes_while_blocked: true
+  raw_secrets_in_input_forbidden: true
+  plan_digest_confirmation_required_for_apply: true
+
 environment:
   name: "shared-preproduction"
   dedicated_cloud_boundary_required: true

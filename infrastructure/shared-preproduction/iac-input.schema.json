@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/shared-preproduction-iac-input.schema.json",
+  "title": "PollyCar 共享预生产 IaC 输入",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "environmentName",
+    "provider",
+    "contractEntity",
+    "accountReference",
+    "billing",
+    "region",
+    "domains",
+    "managedPostgresql",
+    "certificates",
+    "secrets",
+    "network",
+    "monitoring",
+    "approvals"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1.0"
+    },
+    "environmentName": {
+      "const": "shared-preproduction"
+    },
+    "provider": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "contractEntity": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "accountReference": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "billing": {
+      "$ref": "#/$defs/billing"
+    },
+    "region": {
+      "$ref": "#/$defs/region"
+    },
+    "domains": {
+      "$ref": "#/$defs/domains"
+    },
+    "managedPostgresql": {
+      "$ref": "#/$defs/managedPostgresql"
+    },
+    "certificates": {
+      "$ref": "#/$defs/certificates"
+    },
+    "secrets": {
+      "$ref": "#/$defs/secrets"
+    },
+    "network": {
+      "$ref": "#/$defs/network"
+    },
+    "monitoring": {
+      "$ref": "#/$defs/monitoring"
+    },
+    "approvals": {
+      "$ref": "#/$defs/approvals"
+    }
+  },
+  "$defs": {
+    "nullableString": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "nullablePositiveNumber": {
+      "type": ["number", "null"],
+      "exclusiveMinimum": 0
+    },
+    "billing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "monthlyBudgetLimit"],
+      "properties": {
+        "currency": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "monthlyBudgetLimit": {
+          "$ref": "#/$defs/nullablePositiveNumber"
+        }
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mainlandChinaRegion", "availabilityZones"],
+      "properties": {
+        "mainlandChinaRegion": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "availabilityZones": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publicDomain", "internalDomain", "dnsProvider"],
+      "properties": {
+        "publicDomain": {
+          "type": ["string", "null"],
+          "format": "hostname"
+        },
+        "internalDomain": {
+          "type": ["string", "null"],
+          "format": "hostname"
+        },
+        "dnsProvider": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "managedPostgresql": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "service",
+        "version",
+        "instanceClass",
+        "storageGb",
+        "connectionLimit",
+        "maintenanceWindow"
+      ],
+      "properties": {
+        "service": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "version": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "instanceClass": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "storageGb": {
+          "$ref": "#/$defs/nullablePositiveNumber"
+        },
+        "connectionLimit": {
+          "$ref": "#/$defs/nullablePositiveNumber"
+        },
+        "maintenanceWindow": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "certificates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["managedCertificateService"],
+      "properties": {
+        "managedCertificateService": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "managedSecretStore",
+        "encryptionKeyReference",
+        "workloadIdentityReference"
+      ],
+      "properties": {
+        "managedSecretStore": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "encryptionKeyReference": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "workloadIdentityReference": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["administrativeAccess", "allowedEgressDomains"],
+      "properties": {
+        "administrativeAccess": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "allowedEgressDomains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "hostname"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "storageRegion",
+        "monthlyBudgetLimit",
+        "onCallOwner"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "storageRegion": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "monthlyBudgetLimit": {
+          "$ref": "#/$defs/nullablePositiveNumber"
+        },
+        "onCallOwner": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "evidenceReference", "expiresAt", "revoked"],
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "evidenceReference": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "expiresAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "revoked": {
+          "type": "boolean"
+        }
+      }
+    },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productAndProductionDecision",
+        "engineeringAndOperations",
+        "security",
+        "privacyAndCompliance",
+        "finance"
+      ],
+      "properties": {
+        "productAndProductionDecision": {
+          "$ref": "#/$defs/approval"
+        },
+        "engineeringAndOperations": {
+          "$ref": "#/$defs/approval"
+        },
+        "security": {
+          "$ref": "#/$defs/approval"
+        },
+        "privacyAndCompliance": {
+          "$ref": "#/$defs/approval"
+        },
+        "finance": {
+          "$ref": "#/$defs/approval"
+        }
+      }
+    }
+  }
+}

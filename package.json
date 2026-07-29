@@ -33,6 +33,20 @@
     "build:app:ios:production": "pnpm --filter @pollycar/app ios:production",
     "build:app:eas:production": "pnpm --filter @pollycar/app eas:production",
     "check:app:production-release": "pnpm --filter @pollycar/app ci:production:gate"
+    ,
+    "infra:shared-preproduction:plan": "node scripts/infra/run-shared-preproduction-iac.mjs plan",
+    "infra:shared-preproduction:apply": "node scripts/infra/run-shared-preproduction-iac.mjs apply",
+    "check:shared-preproduction:iac": "powershell.exe -NoProfile -File scripts/test/check-shared-preproduction-iac.ps1"
+    ,
+    "supply-chain:report": "node scripts/infra/generate-container-supply-chain-report.mjs",
+    "check:supply-chain": "powershell.exe -NoProfile -File scripts/test/check-container-supply-chain.ps1"
+    ,
+    "operational-drill:template": "node scripts/infra/run-operational-drill-evidence.mjs template",
+    "operational-drill:validate": "node scripts/infra/run-operational-drill-evidence.mjs validate",
+    "check:operational-drill": "powershell.exe -NoProfile -File scripts/test/check-operational-drill-evidence.ps1"
+    ,
+    "production-candidate:report": "node scripts/infra/generate-production-candidate-readiness.mjs",
+    "check:production-candidate": "powershell.exe -NoProfile -File scripts/test/check-production-candidate-readiness.ps1"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

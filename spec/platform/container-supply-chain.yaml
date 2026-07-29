@@ -1,0 +1,17 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.container-supply-chain"
+language: "zh-CN"
+status: "approved_internal"
+image_publication_enabled: false
+image_registry_selected: false
+image_signing_enabled: false
+vulnerability_scanning_enabled: false
+sbom_generation_enabled: true
+provenance_generation_enabled: true
+raw_signing_key_allowed: false
+floating_image_tag_allowed: false
+required_artifacts:
+  - "sbom.cdx.json"
+  - "provenance.json"
+  - "vulnerability-scan.json"
+  - "signature.json"
