@@ -2,9 +2,9 @@
 
 buildscript {
   repositories {
-    maven { url "https://maven.aliyun.com/repository/public" }
     google()
     mavenCentral()
+    maven { url "https://maven.aliyun.com/repository/public" }
     // POLLYCAR_AMAP_MAVEN_REPOSITORY
   }
   dependencies {
@@ -16,9 +16,9 @@ buildscript {
 
 allprojects {
   repositories {
-    maven { url "https://maven.aliyun.com/repository/public" }
     google()
     mavenCentral()
+    maven { url "https://maven.aliyun.com/repository/public" }
     maven { url 'https://www.jitpack.io' }
   }
 }

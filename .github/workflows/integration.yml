@@ -42,6 +42,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @pollycar/contracts build
       - run: pnpm --filter @pollycar/domain build
+      - run: pnpm --filter @pollycar/server db:migrate
       - run: pnpm test:postgres:integration
 
   android-release:
@@ -76,4 +77,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: cd apps/app && pnpm exec expo prebuild --platform ios --no-install
-      - run: cd apps/app/ios && xcodebuild -project PollyCar.xcodeproj -scheme PollyCar -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
+      - run: |
+          project="$(find apps/app/ios -maxdepth 1 -name '*.xcodeproj' -print -quit)"
+          test -n "$project"
+          scheme="$(xcodebuild -project "$project" -list -json | jq -r '.project.schemes[0]')"
+          test -n "$scheme" && test "$scheme" != "null"
+          xcodebuild -project "$project" -scheme "$scheme" -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
