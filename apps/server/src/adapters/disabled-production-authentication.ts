@@ -1,5 +1,9 @@
 import type { AdultEligibilityProvider } from "../ports/adult-eligibility-provider.js";
 import type { SmsDelivery } from "../ports/sms-delivery.js";
+import type {
+  AdminWorkforceIdentityProvider,
+  AdminWorkforceIdentityResult,
+} from "../ports/admin-workforce-identity-provider.js";
 
 export class DisabledProductionSmsDelivery implements SmsDelivery {
   public async sendVerificationCode(_input: Readonly<{
@@ -42,5 +46,40 @@ implements AdultEligibilityProvider {
 
   public async refresh(_requestId: string): Promise<never> {
     throw new Error("PRODUCTION_IDENTITY_PROVIDER_DISABLED");
+  }
+}
+
+export class DisabledProductionAdminWorkforceIdentityProvider
+implements AdminWorkforceIdentityProvider {
+  public readonly providerId = "production-admin-workforce-disabled";
+  public readonly realAccountsEnabled = false;
+
+  public async beginAuthorization(_input: Readonly<{
+    loginAttemptId: string;
+    redirectUri: string;
+    stateDigest: string;
+    nonceDigest: string;
+  }>): Promise<never> {
+    throw new Error("PRODUCTION_ADMIN_WORKFORCE_IDENTITY_DISABLED");
+  }
+
+  public async exchangeCallback(_input: Readonly<{
+    providerRequestReference: string;
+    authorizationCode: string;
+    stateDigest: string;
+  }>): Promise<AdminWorkforceIdentityResult> {
+    throw new Error("PRODUCTION_ADMIN_WORKFORCE_IDENTITY_DISABLED");
+  }
+
+  public async refreshResult(
+    _providerRequestReference: string,
+  ): Promise<AdminWorkforceIdentityResult> {
+    throw new Error("PRODUCTION_ADMIN_WORKFORCE_IDENTITY_DISABLED");
+  }
+
+  public async revokeSession(
+    _providerSubjectReference: string,
+  ): Promise<never> {
+    throw new Error("PRODUCTION_ADMIN_WORKFORCE_IDENTITY_DISABLED");
   }
 }

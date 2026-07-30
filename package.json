@@ -53,6 +53,9 @@
     "production-candidate:report": "node scripts/infra/generate-production-candidate-readiness.mjs",
     "check:production-candidate": "powershell.exe -NoProfile -File scripts/test/check-production-candidate-readiness.ps1"
     ,
+    "production-authentication:report": "node scripts/infra/generate-production-authentication-readiness.mjs",
+    "production-authentication:report:baseline": "node scripts/infra/generate-production-authentication-readiness.mjs infrastructure/production-authentication/readiness-evidence.example.json output/production-authentication/readiness-baseline.json",
+    "check:production-authentication:evidence": "powershell.exe -NoProfile -File scripts/test/check-production-authentication-evidence.ps1",
     "sbom:generate": "node scripts/infra/generate-cyclonedx-sbom.mjs",
     "test:postgres:integration": "pnpm --filter @pollycar/server test:postgres-dispatch && pnpm --filter @pollycar/server test:postgres-ledger-prototype && pnpm --filter @pollycar/server test:postgres-ledger-kernel && pnpm --filter @pollycar/server test:postgres-ledger-resilience && pnpm --filter @pollycar/server test:postgres-ledger-templates && pnpm --filter @pollycar/server test:postgres-reconciliation && pnpm --filter @pollycar/server test:postgres-operator-funds"
   },

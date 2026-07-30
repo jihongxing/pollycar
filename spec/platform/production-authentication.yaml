@@ -2,7 +2,7 @@ spec_version: "1.0"
 spec_id: "pollycar.platform.production-authentication"
 language: "zh-CN"
 status: "reviewing"
-source_document: "docs/decisions/0030-真实账号与认证生产接入准备.md"
+source_document: "docs/decisions/0036-真实账号供应商候选与账号策略决策.md"
 
 production_enabled: false
 phase: "real_accounts_and_authentication_readiness"
@@ -26,8 +26,9 @@ separation:
 
 consumer_phone:
   strategy: "login_or_register"
-  mainland_china_only_decision: "pending"
-  provider_selected: false
+  mainland_china_only_decision: "approved"
+  selected_provider_id: "tencent-cloud-sms"
+  provider_selected: true
   enterprise_account_ready: false
   sender_approved: false
   template_approved: false
@@ -45,7 +46,8 @@ consumer_phone:
   refresh_token_replay_revokes_family: true
 
 adult_eligibility:
-  provider_selected: false
+  selected_provider_id: "tencent-cloud-faceid"
+  provider_selected: true
   enterprise_contract_ready: false
   test_environment_ready: false
   identity_document_processing_approved: false
@@ -79,14 +81,15 @@ driver_liveness:
   accessibility_and_manual_recovery_required: true
 
 admin_workforce:
-  strategy_decision: "pending"
+  strategy_decision: "managed_oidc"
   recommended_strategy: "managed_oidc"
-  managed_oidc_selected: false
+  selected_provider_id: "alibaba-cloud-idaas-eiam"
+  managed_oidc_selected: true
   self_managed_password_selected: false
   identity_tenant_ready: false
   test_application_ready: false
   managed_secret_reference_ready: false
-  phishing_resistant_mfa_decision: "pending"
+  phishing_resistant_mfa_decision: "required_with_time_limited_totp_exception"
   sms_mfa_forbidden: true
   employee_departure_sync_required: true
   server_side_work_identity_switch_required: true
@@ -103,15 +106,15 @@ cryptography:
   managed_secret_references_required: true
 
 pending_decisions:
-  phone_scope: "pending"
-  recycled_number_policy: "pending"
-  consumer_account_recovery: "pending"
-  admin_account_strategy: "pending"
-  admin_mfa_strategy: "pending"
-  session_lifetimes_and_device_limits: "pending"
-  adult_eligibility_and_legal_gender: "pending"
-  retention_periods: "pending"
-  fraud_and_support_ownership: "pending"
+  phone_scope: "mainland_china_plus_86_only"
+  recycled_number_policy: "risk_and_inactivity_reverification_with_manual_dispute"
+  consumer_account_recovery: "original_phone_self_service_manual_recovery_with_step_up_and_cooling_off"
+  admin_account_strategy: "managed_oidc_alibaba_cloud_idaas_eiam"
+  admin_mfa_strategy: "phishing_resistant_mfa_required_totp_time_limited_exception"
+  session_lifetimes_and_device_limits: "consumer_15m_access_30d_refresh_3_devices_admin_15m_30m_idle_8h_absolute"
+  adult_eligibility_and_legal_gender: "decision_0010_adult_eligibility_and_transaction_stage_weak_legal_gender_disclosure"
+  retention_periods: "data_minimization_no_raw_identity_or_biometrics"
+  fraud_and_support_ownership: "security_policy_owner_trust_and_safety_case_owner_support_intake"
   preproduction_data_scope: "synthetic_and_provider_test_data_only"
 
 approval_gate:
@@ -138,10 +141,17 @@ approval_gate:
 
 implementation_boundary:
   readiness_configuration_implemented: true
+  readiness_evidence_schema_implemented: true
+  readiness_report_implemented: true
   disabled_sms_adapter_implemented: true
   disabled_identity_adapter_implemented: true
+  disabled_admin_workforce_identity_adapter_implemented: true
   synthetic_account_model_unchanged: true
   synthetic_fixed_code_unchanged: true
   production_database_schema_created: false
   production_http_routes_mounted: false
   supplier_sdk_integrated: false
+  baseline_blocker_count: 70
+  current_blocker_count: 37
+  provider_testing_plan_documented: true
+  approval_and_testing_register_implemented: true

@@ -1,0 +1,79 @@
+{
+  "contractVersion": "1.0",
+  "environment": "shared-preproduction",
+  "decisions": {
+    "phoneScope": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "recycledNumberPolicy": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "consumerAccountRecovery": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "adminAccountStrategy": { "status": "pending", "selectedValue": "managed_oidc_recommended", "evidenceReference": null },
+    "adminMfaStrategy": { "status": "pending", "selectedValue": "phishing_resistant_mfa_recommended", "evidenceReference": null },
+    "sessionLifetimesAndDeviceLimits": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "adultEligibilityAndLegalGender": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "retentionPeriods": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "fraudAndSupportOwnership": { "status": "pending", "selectedValue": null, "evidenceReference": null },
+    "preproductionDataScope": { "status": "approved", "selectedValue": "synthetic_and_provider_test_data_only", "evidenceReference": "evidence://internal/default-safe-scope" }
+  },
+  "providers": {
+    "sms": {
+      "selectedProviderId": null,
+      "providerSelected": false,
+      "enterpriseAccountReady": false,
+      "testEnvironmentReady": false,
+      "managedSecretReference": null,
+      "contractEvidenceReference": null,
+      "dataProcessingEvidenceReference": null,
+      "unknownResultRecoveryDocumented": false,
+      "callbackVerificationDocumented": false,
+      "idempotencyDocumented": false,
+      "rateLimitDocumented": false
+    },
+    "adultEligibility": {
+      "selectedProviderId": null,
+      "providerSelected": false,
+      "enterpriseAccountReady": false,
+      "testEnvironmentReady": false,
+      "managedSecretReference": null,
+      "contractEvidenceReference": null,
+      "dataProcessingEvidenceReference": null,
+      "unknownResultRecoveryDocumented": false,
+      "callbackVerificationDocumented": false,
+      "idempotencyDocumented": false,
+      "rateLimitDocumented": false
+    },
+    "adminWorkforce": {
+      "selectedProviderId": null,
+      "providerSelected": false,
+      "enterpriseAccountReady": false,
+      "testEnvironmentReady": false,
+      "managedSecretReference": null,
+      "contractEvidenceReference": null,
+      "dataProcessingEvidenceReference": null,
+      "unknownResultRecoveryDocumented": false,
+      "callbackVerificationDocumented": false,
+      "idempotencyDocumented": false,
+      "rateLimitDocumented": false
+    }
+  },
+  "cryptography": {
+    "phoneEncryptionKeyReference": null,
+    "phoneDigestKeyReference": null,
+    "otpHmacKeyReference": null,
+    "sessionSigningKeyReference": null,
+    "rotationRunbookEvidenceReference": null
+  },
+  "approvals": {
+    "productAndAccountPolicy": { "approved": false, "evidenceReference": null },
+    "security": { "approved": false, "evidenceReference": null },
+    "privacyAndLegal": { "approved": false, "evidenceReference": null },
+    "operationsAndCustomerSupport": { "approved": false, "evidenceReference": null },
+    "supplierProcurementAndFinance": { "approved": false, "evidenceReference": null },
+    "productionDecision": { "approved": false, "evidenceReference": null }
+  },
+  "verification": {
+    "supplierSandboxTestEvidenceReference": null,
+    "penetrationTestEvidenceReference": null,
+    "recoveryDrillEvidenceReference": null,
+    "realDeviceTestEvidenceReference": null,
+    "dataDeletionEvidenceReference": null
+  }
+}

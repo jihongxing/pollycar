@@ -57,6 +57,8 @@ if ($FullGovernance) {
 
   Write-Host "== 真实账号与认证生产接入准备检查 =="
   & "$PSScriptRoot\check-production-authentication-readiness.ps1"
+  Write-Host "== 真实账号与认证证据门禁检查 =="
+  & "$PSScriptRoot\check-production-authentication-evidence.ps1"
 
   Write-Host "== 运营后台设计与准入检查 =="
   & "$PSScriptRoot\check-admin-specs.ps1"

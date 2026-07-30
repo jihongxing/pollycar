@@ -1,0 +1,122 @@
+{
+  "contractVersion": "1.0",
+  "environment": "shared-preproduction",
+  "decisions": {
+    "phoneScope": {
+      "status": "approved",
+      "selectedValue": "mainland_china_plus_86_only",
+      "evidenceReference": "approval://docs/decisions/0036/phone-scope"
+    },
+    "recycledNumberPolicy": {
+      "status": "approved",
+      "selectedValue": "risk_and_inactivity_reverification_with_manual_dispute",
+      "evidenceReference": "approval://docs/decisions/0036/recycled-number-policy"
+    },
+    "consumerAccountRecovery": {
+      "status": "approved",
+      "selectedValue": "original_phone_self_service_manual_recovery_with_step_up_and_cooling_off",
+      "evidenceReference": "approval://docs/decisions/0036/consumer-account-recovery"
+    },
+    "adminAccountStrategy": {
+      "status": "approved",
+      "selectedValue": "managed_oidc_alibaba_cloud_idaas_eiam",
+      "evidenceReference": "approval://docs/decisions/0036/admin-account-strategy"
+    },
+    "adminMfaStrategy": {
+      "status": "approved",
+      "selectedValue": "phishing_resistant_mfa_required_totp_time_limited_exception",
+      "evidenceReference": "approval://docs/decisions/0036/admin-mfa-strategy"
+    },
+    "sessionLifetimesAndDeviceLimits": {
+      "status": "approved",
+      "selectedValue": "consumer_15m_access_30d_refresh_3_devices_admin_15m_30m_idle_8h_absolute",
+      "evidenceReference": "approval://docs/decisions/0036/session-lifetimes-and-device-limits"
+    },
+    "adultEligibilityAndLegalGender": {
+      "status": "approved",
+      "selectedValue": "decision_0010_adult_eligibility_and_transaction_stage_weak_legal_gender_disclosure",
+      "evidenceReference": "approval://docs/decisions/0036/adult-eligibility-and-legal-gender"
+    },
+    "retentionPeriods": {
+      "status": "approved",
+      "selectedValue": "data_minimization_no_raw_identity_or_biometrics",
+      "evidenceReference": "approval://docs/decisions/0036/retention-periods"
+    },
+    "fraudAndSupportOwnership": {
+      "status": "approved",
+      "selectedValue": "security_policy_owner_trust_and_safety_case_owner_support_intake",
+      "evidenceReference": "approval://docs/decisions/0036/fraud-and-support-ownership"
+    },
+    "preproductionDataScope": {
+      "status": "approved",
+      "selectedValue": "synthetic_and_provider_test_data_only",
+      "evidenceReference": "evidence://internal/default-safe-scope"
+    }
+  },
+  "providers": {
+    "sms": {
+      "selectedProviderId": "tencent-cloud-sms",
+      "providerSelected": true,
+      "enterpriseAccountReady": false,
+      "testEnvironmentReady": false,
+      "managedSecretReference": null,
+      "contractEvidenceReference": null,
+      "dataProcessingEvidenceReference": null,
+      "unknownResultRecoveryDocumented": true,
+      "callbackVerificationDocumented": true,
+      "idempotencyDocumented": true,
+      "rateLimitDocumented": true
+    },
+    "adultEligibility": {
+      "selectedProviderId": "tencent-cloud-faceid",
+      "providerSelected": true,
+      "enterpriseAccountReady": false,
+      "testEnvironmentReady": false,
+      "managedSecretReference": null,
+      "contractEvidenceReference": null,
+      "dataProcessingEvidenceReference": null,
+      "unknownResultRecoveryDocumented": true,
+      "callbackVerificationDocumented": true,
+      "idempotencyDocumented": true,
+      "rateLimitDocumented": true
+    },
+    "adminWorkforce": {
+      "selectedProviderId": "alibaba-cloud-idaas-eiam",
+      "providerSelected": true,
+      "enterpriseAccountReady": false,
+      "testEnvironmentReady": false,
+      "managedSecretReference": null,
+      "contractEvidenceReference": null,
+      "dataProcessingEvidenceReference": null,
+      "unknownResultRecoveryDocumented": true,
+      "callbackVerificationDocumented": true,
+      "idempotencyDocumented": true,
+      "rateLimitDocumented": true
+    }
+  },
+  "cryptography": {
+    "phoneEncryptionKeyReference": null,
+    "phoneDigestKeyReference": null,
+    "otpHmacKeyReference": null,
+    "sessionSigningKeyReference": null,
+    "rotationRunbookEvidenceReference": null
+  },
+  "approvals": {
+    "productAndAccountPolicy": {
+      "approved": false,
+      "evidenceReference": null
+    },
+    "security": { "approved": false, "evidenceReference": null },
+    "privacyAndLegal": { "approved": false, "evidenceReference": null },
+    "operationsAndCustomerSupport": { "approved": false, "evidenceReference": null },
+    "supplierProcurementAndFinance": { "approved": false, "evidenceReference": null },
+    "productionDecision": { "approved": false, "evidenceReference": null }
+  },
+  "verification": {
+    "supplierSandboxTestEvidenceReference": null,
+    "penetrationTestEvidenceReference": null,
+    "recoveryDrillEvidenceReference": null,
+    "realDeviceTestEvidenceReference": null,
+    "dataDeletionEvidenceReference": null
+  }
+}

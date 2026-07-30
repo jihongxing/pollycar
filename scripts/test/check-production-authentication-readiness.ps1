@@ -8,6 +8,7 @@ $unifiedConfigPath = Join-Path $repo "packages\configuration\src\server-runtime-
 $adapterPath = Join-Path $repo "apps\server\src\adapters\disabled-production-authentication.ts"
 $testPath = Join-Path $repo "apps\server\src\authentication\production-authentication-readiness.test.ts"
 $unifiedConfigTestPath = Join-Path $repo "packages\configuration\src\server-runtime-config.test.js"
+$adminWorkforcePortPath = Join-Path $repo "apps\server\src\ports\admin-workforce-identity-provider.ts"
 
 foreach ($path in @(
   $specPath,
@@ -16,7 +17,8 @@ foreach ($path in @(
   $unifiedConfigPath,
   $adapterPath,
   $testPath,
-  $unifiedConfigTestPath
+  $unifiedConfigTestPath,
+  $adminWorkforcePortPath
 )) {
   if (-not (Test-Path -LiteralPath $path)) {
     throw "生产认证准备缺少文件: $path"
@@ -88,10 +90,24 @@ $adapter = Get-Content -LiteralPath $adapterPath -Raw
 foreach ($required in @(
   "PRODUCTION_SMS_DELIVERY_DISABLED",
   "PRODUCTION_IDENTITY_PROVIDER_DISABLED",
+  "PRODUCTION_ADMIN_WORKFORCE_IDENTITY_DISABLED",
   "realDataEnabled = false"
 )) {
   if ($adapter -notmatch [regex]::Escape($required)) {
     throw "生产认证失败关闭适配器缺少: $required"
+  }
+}
+
+$adminWorkforcePort = Get-Content -LiteralPath $adminWorkforcePortPath -Raw
+foreach ($required in @(
+  "beginAuthorization",
+  "exchangeCallback",
+  "refreshResult",
+  "revokeSession",
+  "realAccountsEnabled"
+)) {
+  if ($adminWorkforcePort -notmatch [regex]::Escape($required)) {
+    throw "运营后台身份源端口缺少能力: $required"
   }
 }
 

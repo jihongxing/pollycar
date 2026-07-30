@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DisabledProductionAdminWorkforceIdentityProvider,
   DisabledProductionAdultEligibilityProvider,
   DisabledProductionSmsDelivery,
 } from "../adapters/disabled-production-authentication.js";
@@ -89,6 +90,8 @@ describe("生产认证接入准备配置", () => {
   it("生产短信和实名适配器始终失败关闭", async () => {
     const sms = new DisabledProductionSmsDelivery();
     const identity = new DisabledProductionAdultEligibilityProvider();
+    const adminWorkforce =
+      new DisabledProductionAdminWorkforceIdentityProvider();
 
     await expect(sms.sendVerificationCode({
       maskedPhoneNumber: "138****0000",
@@ -99,5 +102,12 @@ describe("生产认证接入准备配置", () => {
       accountId: "account-1",
       expiresAt: new Date().toISOString(),
     })).rejects.toThrow("PRODUCTION_IDENTITY_PROVIDER_DISABLED");
+    await expect(adminWorkforce.beginAuthorization({
+      loginAttemptId: "login-1",
+      redirectUri: "https://admin.example.com/callback",
+      stateDigest: "state-digest",
+      nonceDigest: "nonce-digest",
+    })).rejects.toThrow("PRODUCTION_ADMIN_WORKFORCE_IDENTITY_DISABLED");
+    expect(adminWorkforce.realAccountsEnabled).toBe(false);
   });
 });

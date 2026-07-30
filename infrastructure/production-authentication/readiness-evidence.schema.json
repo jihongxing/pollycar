@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollycar.local/spec/production-authentication-readiness-evidence.schema.json",
+  "title": "PollyCar 真实账号与认证就绪证据",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "environment",
+    "decisions",
+    "providers",
+    "cryptography",
+    "approvals",
+    "verification"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1.0"
+    },
+    "environment": {
+      "const": "shared-preproduction"
+    },
+    "decisions": {
+      "$ref": "#/$defs/decisions"
+    },
+    "providers": {
+      "$ref": "#/$defs/providers"
+    },
+    "cryptography": {
+      "$ref": "#/$defs/cryptography"
+    },
+    "approvals": {
+      "$ref": "#/$defs/approvals"
+    },
+    "verification": {
+      "$ref": "#/$defs/verification"
+    }
+  },
+  "$defs": {
+    "nullableEvidenceReference": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "pattern": "^(approval|evidence|contract|vault|secret)://"
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "selectedValue", "evidenceReference"],
+      "properties": {
+        "status": {
+          "enum": ["pending", "approved"]
+        },
+        "selectedValue": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "evidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phoneScope",
+        "recycledNumberPolicy",
+        "consumerAccountRecovery",
+        "adminAccountStrategy",
+        "adminMfaStrategy",
+        "sessionLifetimesAndDeviceLimits",
+        "adultEligibilityAndLegalGender",
+        "retentionPeriods",
+        "fraudAndSupportOwnership",
+        "preproductionDataScope"
+      ],
+      "properties": {
+        "phoneScope": { "$ref": "#/$defs/decision" },
+        "recycledNumberPolicy": { "$ref": "#/$defs/decision" },
+        "consumerAccountRecovery": { "$ref": "#/$defs/decision" },
+        "adminAccountStrategy": { "$ref": "#/$defs/decision" },
+        "adminMfaStrategy": { "$ref": "#/$defs/decision" },
+        "sessionLifetimesAndDeviceLimits": { "$ref": "#/$defs/decision" },
+        "adultEligibilityAndLegalGender": { "$ref": "#/$defs/decision" },
+        "retentionPeriods": { "$ref": "#/$defs/decision" },
+        "fraudAndSupportOwnership": { "$ref": "#/$defs/decision" },
+        "preproductionDataScope": { "$ref": "#/$defs/decision" }
+      }
+    },
+    "providerCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selectedProviderId",
+        "providerSelected",
+        "enterpriseAccountReady",
+        "testEnvironmentReady",
+        "managedSecretReference",
+        "contractEvidenceReference",
+        "dataProcessingEvidenceReference",
+        "unknownResultRecoveryDocumented",
+        "callbackVerificationDocumented",
+        "idempotencyDocumented",
+        "rateLimitDocumented"
+      ],
+      "properties": {
+        "selectedProviderId": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "providerSelected": { "type": "boolean" },
+        "enterpriseAccountReady": { "type": "boolean" },
+        "testEnvironmentReady": { "type": "boolean" },
+        "managedSecretReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "contractEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "dataProcessingEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "unknownResultRecoveryDocumented": { "type": "boolean" },
+        "callbackVerificationDocumented": { "type": "boolean" },
+        "idempotencyDocumented": { "type": "boolean" },
+        "rateLimitDocumented": { "type": "boolean" }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sms", "adultEligibility", "adminWorkforce"],
+      "properties": {
+        "sms": { "$ref": "#/$defs/providerCapability" },
+        "adultEligibility": { "$ref": "#/$defs/providerCapability" },
+        "adminWorkforce": { "$ref": "#/$defs/providerCapability" }
+      }
+    },
+    "cryptography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phoneEncryptionKeyReference",
+        "phoneDigestKeyReference",
+        "otpHmacKeyReference",
+        "sessionSigningKeyReference",
+        "rotationRunbookEvidenceReference"
+      ],
+      "properties": {
+        "phoneEncryptionKeyReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "phoneDigestKeyReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "otpHmacKeyReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "sessionSigningKeyReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "rotationRunbookEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "evidenceReference"],
+      "properties": {
+        "approved": { "type": "boolean" },
+        "evidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        }
+      }
+    },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productAndAccountPolicy",
+        "security",
+        "privacyAndLegal",
+        "operationsAndCustomerSupport",
+        "supplierProcurementAndFinance",
+        "productionDecision"
+      ],
+      "properties": {
+        "productAndAccountPolicy": { "$ref": "#/$defs/approval" },
+        "security": { "$ref": "#/$defs/approval" },
+        "privacyAndLegal": { "$ref": "#/$defs/approval" },
+        "operationsAndCustomerSupport": { "$ref": "#/$defs/approval" },
+        "supplierProcurementAndFinance": { "$ref": "#/$defs/approval" },
+        "productionDecision": { "$ref": "#/$defs/approval" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supplierSandboxTestEvidenceReference",
+        "penetrationTestEvidenceReference",
+        "recoveryDrillEvidenceReference",
+        "realDeviceTestEvidenceReference",
+        "dataDeletionEvidenceReference"
+      ],
+      "properties": {
+        "supplierSandboxTestEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "penetrationTestEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "recoveryDrillEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "realDeviceTestEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        },
+        "dataDeletionEvidenceReference": {
+          "$ref": "#/$defs/nullableEvidenceReference"
+        }
+      }
+    }
+  }
+}
