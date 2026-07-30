@@ -5,10 +5,11 @@ import type {
   VehicleMaterialRecognitionProvider,
   VehicleMaterialRecognitionSignal,
 } from "../ports/vehicle-material-recognition.js";
+import type { SecretProvider } from "../ports/secret-provider.js";
 
 type TencentCloudOcrConfig = Readonly<{
-  secretId: string;
-  secretKey: string;
+  secretReference: string;
+  secrets: SecretProvider;
   region?: string;
   endpoint?: string;
   fetcher?: typeof fetch;
@@ -32,8 +33,8 @@ implements VehicleMaterialRecognitionProvider {
   private readonly now: () => Date;
 
   public constructor(private readonly config: TencentCloudOcrConfig) {
-    if (!config.secretId || !config.secretKey) {
-      throw new Error("TENCENT_CLOUD_OCR_CREDENTIALS_REQUIRED");
+    if (!config.secretReference) {
+      throw new Error("TENCENT_CLOUD_OCR_SECRET_REFERENCE_REQUIRED");
     }
     this.endpoint = config.endpoint ?? "https://ocr.tencentcloudapi.com";
     this.fetcher = config.fetcher ?? globalThis.fetch.bind(globalThis);
@@ -49,12 +50,13 @@ implements VehicleMaterialRecognitionProvider {
       ImageBase64: Buffer.from(input.content).toString("base64"),
     });
     const timestamp = Math.floor(this.now().getTime() / 1000);
+    const credentials = await this.readCredentials();
     const headers = createTencentCloudHeaders({
       action,
       endpoint: this.endpoint,
       payload,
-      secretId: this.config.secretId,
-      secretKey: this.config.secretKey,
+      secretId: credentials.secretId,
+      secretKey: credentials.secretKey,
       timestamp,
       ...(this.config.region ? { region: this.config.region } : {}),
     });
@@ -93,6 +95,36 @@ implements VehicleMaterialRecognitionProvider {
       ...providerResponse,
       RequestId: providerRequestId,
     });
+  }
+
+  private async readCredentials(): Promise<Readonly<{
+    secretId: string;
+    secretKey: string;
+  }>> {
+    const serialized = await this.config.secrets.read(
+      this.config.secretReference,
+    );
+    if (!serialized) throw new Error("TENCENT_CLOUD_OCR_CREDENTIALS_MISSING");
+    try {
+      const parsed = JSON.parse(serialized) as {
+        secretId?: unknown;
+        secretKey?: unknown;
+      };
+      if (
+        typeof parsed.secretId !== "string" ||
+        parsed.secretId.length === 0 ||
+        typeof parsed.secretKey !== "string" ||
+        parsed.secretKey.length === 0
+      ) {
+        throw new Error("invalid");
+      }
+      return {
+        secretId: parsed.secretId,
+        secretKey: parsed.secretKey,
+      };
+    } catch {
+      throw new Error("TENCENT_CLOUD_OCR_CREDENTIALS_INVALID");
+    }
   }
 }
 

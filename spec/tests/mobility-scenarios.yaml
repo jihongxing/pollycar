@@ -343,9 +343,9 @@ scenarios:
     classification: "L2"
     release_blocking: true
   - id: "MOB-001"
-    name: "车主主动上线后查看可接订单"
+    name: "车主完成本次活体检测后主动上线"
     category: "driver_availability"
-    initial_state: "offline"
+    initial_state: "liveness_authorized"
     actor: "driver"
     command: "driver.availability.update"
     expected_events: ["driver_availability_changed"]
@@ -353,6 +353,78 @@ scenarios:
     expected_error: null
     audit: "strict"
     classification: "L2"
+    release_blocking: true
+  - id: "MOB-041"
+    name: "车主上线前获得包含随机动作的短时活体挑战"
+    category: "driver_liveness_verification"
+    initial_state: "offline"
+    actor: "driver"
+    command: "driver.liveness.challenge.create"
+    expected_events: ["driver_liveness_challenge_created"]
+    expected_state: "created"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-042"
+    name: "没有活体授权的车主不能从离线进入在线"
+    category: "driver_availability"
+    initial_state: "offline"
+    actor: "driver"
+    command: "driver.availability.update"
+    expected_events: ["driver_online_denied_liveness_required"]
+    expected_state: "offline"
+    expected_error: "DRIVER_LIVENESS_REQUIRED"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-043"
+    name: "活体通过后签发的一次性授权允许本次上线"
+    category: "driver_liveness_verification"
+    initial_state: "in_progress"
+    actor: "driver"
+    command: "driver.liveness.complete"
+    expected_events: ["driver_liveness_result_recorded", "driver_liveness_authorization_issued"]
+    expected_state: "passed"
+    expected_error: null
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-044"
+    name: "车主下线后不能复用上一次活体授权再次上线"
+    category: "driver_availability"
+    initial_state: "offline_with_consumed_liveness_authorization"
+    actor: "driver"
+    command: "driver.availability.update"
+    expected_events: ["driver_online_denied_liveness_required"]
+    expected_state: "offline"
+    expected_error: "DRIVER_LIVENESS_AUTHORIZATION_REPLAYED"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-045"
+    name: "供应商结果未知时车主保持离线"
+    category: "driver_liveness_verification"
+    initial_state: "in_progress"
+    actor: "driver"
+    command: "driver.liveness.provider_result"
+    expected_events: ["driver_liveness_result_recorded"]
+    expected_state: "result_unknown"
+    expected_error: "DRIVER_LIVENESS_RESULT_UNKNOWN"
+    audit: "strict"
+    classification: "L4"
+    release_blocking: true
+  - id: "MOB-046"
+    name: "活体授权绑定错误设备或登录会话时拒绝上线"
+    category: "driver_availability"
+    initial_state: "liveness_authorized_for_other_binding"
+    actor: "driver"
+    command: "driver.availability.update"
+    expected_events: ["driver_online_denied_liveness_required"]
+    expected_state: "offline"
+    expected_error: "DRIVER_LIVENESS_AUTHORIZATION_MISMATCH"
+    audit: "strict"
+    classification: "L4"
     release_blocking: true
   - id: "MOB-002"
     name: "车主自主接受订单并进入接驾"

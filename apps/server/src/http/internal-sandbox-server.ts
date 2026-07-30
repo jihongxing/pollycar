@@ -8,6 +8,7 @@ import { createVehicleReviewHandler } from "./vehicle-review-routes.js";
 import { createFreeFlexTrialHandler } from "./free-flex-trial-routes.js";
 import { createSyntheticTripHandler } from "./synthetic-trip-routes.js";
 import { createMobilityHandler } from "./mobility-routes.js";
+import { createDriverLivenessHandler } from "./driver-liveness-routes.js";
 import { createAdminSafetyHandler } from "./admin-safety-routes.js";
 import { createSafetyCaseHandler } from "./safety-case-routes.js";
 import { createCommunicationHandler } from "./communication-routes.js";
@@ -24,6 +25,9 @@ import { createAdminTripCaseManagementHandler } from "./admin-trip-case-manageme
 import { createAdminFinanceOperationsHandler } from "./admin-finance-operations-routes.js";
 import { createAdminExecutiveDashboardHandler } from "./admin-executive-dashboard-routes.js";
 import { createAdminAuthenticationHandler } from "./admin-authentication-routes.js";
+import { bindRequestBodyLimit } from "./http-boundary.js";
+import type { ServerConfig } from "../config.js";
+import type { SecretProvider } from "../ports/secret-provider.js";
 
 export type InternalSandboxHttpServer = Readonly<{
   url: string;
@@ -40,6 +44,8 @@ export async function startInternalSandboxHttpServer(
     allowedOrigins?: readonly string[];
     executiveStateDir?: string;
     avatarObjectDirectory?: string;
+    config?: ServerConfig;
+    secretProvider?: SecretProvider;
   }> = {},
 ): Promise<InternalSandboxHttpServer> {
   const sandbox = createInternalSandbox(
@@ -52,6 +58,10 @@ export async function startInternalSandboxHttpServer(
         : {}),
       ...(options.avatarObjectDirectory
         ? { avatarObjectDirectory: options.avatarObjectDirectory }
+        : {}),
+      ...(options.config ? { config: options.config } : {}),
+      ...(options.secretProvider
+        ? { secretProvider: options.secretProvider }
         : {}),
     },
   );
@@ -78,6 +88,10 @@ export async function startInternalSandboxHttpServer(
   const mobilityHandler = createMobilityHandler({
     service: sandbox.mobility,
     dispatch: sandbox.dispatch,
+    allowedOrigins: sandbox.config.http.allowedOrigins,
+  });
+  const driverLivenessHandler = createDriverLivenessHandler({
+    service: sandbox.driverLiveness,
     allowedOrigins: sandbox.config.http.allowedOrigins,
   });
   const dispatchHandler = createDispatchHandler({
@@ -155,6 +169,10 @@ export async function startInternalSandboxHttpServer(
     allowedOrigins: sandbox.config.http.allowedOrigins,
   });
   const server = createServer(async (request, response) => {
+    bindRequestBodyLimit(
+      request,
+      sandbox.config.http.maximumJsonBodyBytes,
+    );
     if (
       request.method === "OPTIONS" &&
       request.url?.startsWith("/v1/internal-sandbox/admin/")
@@ -222,6 +240,7 @@ export async function startInternalSandboxHttpServer(
         request.headers.authorization = "Sandbox verified-app-session";
         request.headers["x-verified-account-id"] = context.accountId;
         request.headers["x-verified-active-identity"] = context.activeIdentity;
+        request.headers["x-verified-session-id"] = context.accountSessionId;
       } catch (error) {
         const correlationId = crypto.randomUUID();
         const mapped = mapError(error, correlationId);
@@ -276,6 +295,7 @@ export async function startInternalSandboxHttpServer(
       !(await adminFinanceOperationsHandler(request, response)) &&
       !(await adminExecutiveDashboardHandler(request, response)) &&
       !(await adminSafetyHandler(request, response)) &&
+      !(await driverLivenessHandler(request, response)) &&
       !(await mobilityHandler(request, response)) &&
       !(await syntheticTripHandler(request, response)) &&
       !(await handler(request, response)) &&
@@ -327,6 +347,7 @@ function authorizeIdentity(
 ): void {
   const path = url ?? "";
   const driverOnly =
+    path.includes("/driver/liveness/") ||
     path.includes("/driver-availability") ||
     path.includes("/available-trips") ||
     path.includes("/driver-orders") ||

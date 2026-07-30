@@ -1,0 +1,25 @@
+{
+  "name": "@pollycar/configuration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./public": {
+      "types": "./src/public-config.d.ts",
+      "default": "./src/public-config.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest run src",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@pollycar/contracts": "workspace:*"
+  }
+}

@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 import type { LedgerPostingCommand } from "../ports/ledger.js";
 import { runMigrations } from "./migrations.js";
 import { PostgresLedgerRepository } from "./postgres-ledger-repository.js";
 import { PostgresTransaction } from "./postgres-transaction.js";
 
-const databaseUrl = process.env.POLLYCAR_LEDGER_KERNEL_DATABASE_URL;
+const databaseUrl =
+  loadPostgresIntegrationTestConfig().ledgerKernelDatabaseUrl;
 const describePostgres = databaseUrl ? describe.sequential : describe.skip;
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 

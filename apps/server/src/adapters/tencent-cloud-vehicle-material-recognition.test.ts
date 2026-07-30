@@ -5,6 +5,11 @@ import {
 } from "./tencent-cloud-vehicle-material-recognition.js";
 
 describe("腾讯云车辆材料 OCR 适配器", () => {
+  const credentials = JSON.stringify({
+    secretId: "test-secret-id",
+    secretKey: "test-secret-key",
+  });
+
   it("按 TC3-HMAC-SHA256 生成服务端请求头", () => {
     const headers = createTencentCloudHeaders({
       action: "DriverLicenseOCR",
@@ -38,8 +43,8 @@ describe("腾讯云车辆材料 OCR 适配器", () => {
       }), { status: 200 });
     });
     const provider = new TencentCloudVehicleMaterialRecognitionProvider({
-      secretId: "test-secret-id",
-      secretKey: "test-secret-key",
+      secretReference: "vault://pollycar/vehicle-ocr",
+      secrets: { read: async () => credentials },
       fetcher: fetcher as typeof fetch,
       now: () => new Date("2026-07-23T00:00:00.000Z"),
     });
@@ -73,8 +78,8 @@ describe("腾讯云车辆材料 OCR 适配器", () => {
       }), { status: 200 });
     });
     const provider = new TencentCloudVehicleMaterialRecognitionProvider({
-      secretId: "test-secret-id",
-      secretKey: "test-secret-key",
+      secretReference: "vault://pollycar/vehicle-ocr",
+      secrets: { read: async () => credentials },
       fetcher: fetcher as typeof fetch,
     });
 
@@ -93,8 +98,8 @@ describe("腾讯云车辆材料 OCR 适配器", () => {
 
   it("供应商不可用时失败关闭", async () => {
     const provider = new TencentCloudVehicleMaterialRecognitionProvider({
-      secretId: "test-secret-id",
-      secretKey: "test-secret-key",
+      secretReference: "vault://pollycar/vehicle-ocr",
+      secrets: { read: async () => credentials },
       fetcher: vi.fn(async () => {
         throw new TypeError("network unavailable");
       }) as typeof fetch,
@@ -108,5 +113,20 @@ describe("腾讯云车辆材料 OCR 适配器", () => {
       outcome: "unknown",
       warningCodes: ["provider_unavailable"],
     });
+  });
+
+  it("只通过 Secret Reference 解引用凭据并拒绝无效内容", async () => {
+    const read = vi.fn(async () => undefined);
+    const provider = new TencentCloudVehicleMaterialRecognitionProvider({
+      secretReference: "vault://pollycar/vehicle-ocr",
+      secrets: { read },
+    });
+
+    await expect(provider.recognize({
+      materialKind: "driver_license",
+      mimeType: "image/jpeg",
+      content: new Uint8Array([1, 2, 3]),
+    })).rejects.toThrow("TENCENT_CLOUD_OCR_CREDENTIALS_MISSING");
+    expect(read).toHaveBeenCalledWith("vault://pollycar/vehicle-ocr");
   });
 });

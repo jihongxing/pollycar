@@ -4,10 +4,20 @@ $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $specPath = Join-Path $repo "spec\platform\production-authentication.yaml"
 $decisionPath = Join-Path $repo "docs\decisions\0030-真实账号与认证生产接入准备.md"
 $configPath = Join-Path $repo "apps\server\src\authentication\production-authentication-readiness.ts"
+$unifiedConfigPath = Join-Path $repo "packages\configuration\src\server-runtime-config.js"
 $adapterPath = Join-Path $repo "apps\server\src\adapters\disabled-production-authentication.ts"
 $testPath = Join-Path $repo "apps\server\src\authentication\production-authentication-readiness.test.ts"
+$unifiedConfigTestPath = Join-Path $repo "packages\configuration\src\server-runtime-config.test.js"
 
-foreach ($path in @($specPath, $decisionPath, $configPath, $adapterPath, $testPath)) {
+foreach ($path in @(
+  $specPath,
+  $decisionPath,
+  $configPath,
+  $unifiedConfigPath,
+  $adapterPath,
+  $testPath,
+  $unifiedConfigTestPath
+)) {
   if (-not (Test-Path -LiteralPath $path)) {
     throw "生产认证准备缺少文件: $path"
   }
@@ -23,6 +33,7 @@ foreach ($required in @(
   "real_sms_delivery_enabled: false",
   "real_identity_verification_enabled: false",
   "real_biometric_verification_enabled: false",
+  "real_driver_liveness_verification_enabled: false",
   "real_admin_accounts_enabled: false",
   "phone_authentication_grants_business_access: false",
   "app_account_reuse_for_admin_forbidden: true",
@@ -50,7 +61,17 @@ if ($approvalCount -ne 6 -or $evidenceCount -ne 6) {
   throw "生产认证准备必须包含六类默认未批准状态和证据引用"
 }
 
-$config = Get-Content -LiteralPath $configPath -Raw
+$configProxy = Get-Content -LiteralPath $configPath -Raw
+foreach ($required in @(
+  '@pollycar/configuration',
+  "getProductionAuthenticationReadinessConfig"
+)) {
+  if ($configProxy -notmatch [regex]::Escape($required)) {
+    throw "生产认证准备 Server 入口未接入统一配置: $required"
+  }
+}
+
+$config = Get-Content -LiteralPath $unifiedConfigPath -Raw
 foreach ($required in @(
   'mode: "disabled"',
   "PRODUCTION_AUTHENTICATION_NOT_APPROVED",

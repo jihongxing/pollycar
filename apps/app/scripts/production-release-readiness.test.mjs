@@ -3,8 +3,17 @@ import { describe, expect, it } from "vitest";
 import {
   collectProductionReleaseFailures,
 } from "./production-release-readiness.mjs";
+import {
+  BUILD_TOOLCHAIN,
+  createAppPublicConfig,
+  serializePublicConfig,
+} from "@pollycar/configuration";
 
 const productionEnvironment = {
+  POLLYCAR_BUILD_NODE_VERSION: BUILD_TOOLCHAIN.node,
+  POLLYCAR_BUILD_PNPM_VERSION: BUILD_TOOLCHAIN.pnpm,
+  POLLYCAR_BUILD_JAVA_VERSION: BUILD_TOOLCHAIN.java,
+  POLLYCAR_BUILD_EAS_CLI_VERSION: BUILD_TOOLCHAIN.easCli,
   POLLYCAR_RELEASE_APPROVAL_GRANTED: "true",
   POLLYCAR_PRODUCTION_API_APPROVED: "true",
   POLLYCAR_REAL_SMS_DELIVERY_APPROVED: "true",
@@ -12,8 +21,13 @@ const productionEnvironment = {
   POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED: "true",
   POLLYCAR_ANDROID_SIGNING_MODE: "eas-managed",
   POLLYCAR_IOS_SIGNING_MODE: "eas-managed",
-  EXPO_PUBLIC_POLLYCAR_API_BASE_URL: "https://api.pollycar.example",
-  EXPO_PUBLIC_POLLYCAR_API_MODE: "production",
+  EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG: serializePublicConfig(
+    createAppPublicConfig({
+      profile: "production",
+      apiBaseUrl: "https://api.pollycar.example",
+      brandDisplayEnvironment: "production",
+    }),
+  ),
 };
 
 const productionConfig = {
@@ -37,7 +51,8 @@ describe("生产发布门禁", () => {
       environment: {},
     })).toEqual(expect.arrayContaining([
       expect.stringContaining("POLLYCAR_RELEASE_APPROVAL_GRANTED=true"),
-      expect.stringContaining("EXPO_PUBLIC_POLLYCAR_API_BASE_URL"),
+      expect.stringContaining("POLLYCAR_BUILD_NODE_VERSION"),
+      expect.stringContaining("App PublicConfig"),
       expect.stringContaining("Android 包名"),
       expect.stringContaining("iOS Bundle Identifier"),
       expect.stringContaining("Expo slug"),
@@ -46,18 +61,20 @@ describe("生产发布门禁", () => {
     ]));
   });
 
-  it("拒绝本机、非 HTTPS 和非生产 API", () => {
+  it("拒绝非生产 PublicConfig", () => {
     expect(collectProductionReleaseFailures({
       config: productionConfig,
       environment: {
         ...productionEnvironment,
-        EXPO_PUBLIC_POLLYCAR_API_BASE_URL: "http://localhost:4321",
-        EXPO_PUBLIC_POLLYCAR_API_MODE: "sandbox",
+        EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG: serializePublicConfig(
+          createAppPublicConfig({
+            profile: "demo",
+            apiBaseUrl: "https://demo.pollycar.example",
+            brandDisplayEnvironment: "demo",
+          }),
+        ),
       },
-    })).toEqual([
-      "EXPO_PUBLIC_POLLYCAR_API_BASE_URL 必须是非本机 HTTPS 地址",
-      "EXPO_PUBLIC_POLLYCAR_API_MODE 必须为 production",
-    ]);
+    })).toContain("App PublicConfig 必须使用 production Profile");
   });
 
   it("在所有外部批准、正式服务和正式标识齐备时通过", () => {
@@ -105,5 +122,8 @@ describe("生产构建入口", () => {
       "node scripts/check-production-build-hook.mjs",
     );
     expect(easJson.build.production.env.POLLYCAR_PRODUCTION_BUILD).toBe("true");
+    expect(easJson.build.production.env.POLLYCAR_BUILD_PNPM_VERSION).toBe(
+      BUILD_TOOLCHAIN.pnpm,
+    );
   });
 });

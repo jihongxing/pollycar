@@ -1,7 +1,9 @@
+import type { AppPublicConfig } from "@pollycar/configuration/public";
+import { resolveAppPublicConfig } from "../infrastructure/public-config";
+
 export type WebAmapConfiguration = Readonly<{
   apiKey: string;
   securityCode: string;
-  approvalReference: string;
 }>;
 
 export type WebAmapLngLat = Readonly<{
@@ -46,27 +48,13 @@ type WebAmapWindow = Window &
 let pendingLoad: Promise<WebAmapNamespace> | undefined;
 
 export function resolveWebAmapConfiguration(
-  environment: Readonly<Record<string, string | undefined>> = {
-    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED:
-      process.env.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED,
-    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY:
-      process.env.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY,
-    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE:
-      process.env.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE,
-    EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE:
-      process.env.EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE,
-  },
+  config: AppPublicConfig = resolveAppPublicConfig(),
 ): WebAmapConfiguration | undefined {
-  if (environment.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED !== "true") return undefined;
-
-  const apiKey = environment.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY?.trim();
-  const securityCode =
-    environment.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE?.trim();
-  const approvalReference =
-    environment.EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE?.trim();
-  if (!apiKey || !securityCode || !approvalReference) return undefined;
-
-  return { apiKey, securityCode, approvalReference };
+  if (!config.maps.web.enabled) return undefined;
+  const apiKey = config.maps.web.apiKey?.trim();
+  const securityCode = config.maps.web.securityCode?.trim();
+  if (!apiKey || !securityCode) return undefined;
+  return { apiKey, securityCode };
 }
 
 export function buildWebAmapScriptUrl(apiKey: string): string {

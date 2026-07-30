@@ -1,10 +1,10 @@
 import { Pool } from "pg";
 import { readFile } from "node:fs/promises";
-import { createProductionConfig } from "../config.js";
+import { loadProductionReadinessServerConfig } from "@pollycar/configuration";
 import { createProductionPoolConnectionString } from "../persistence/production-postgres.js";
 import { startProductionReadinessServer } from "./production-readiness-server.js";
 
-const config = createProductionConfig();
+const config = loadProductionReadinessServerConfig();
 const databaseCertificateAuthority = await readFile(
   config.persistence.caCertificatePath,
   "utf8",

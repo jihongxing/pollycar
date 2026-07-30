@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
+import { createAppPublicConfig } from "@pollycar/configuration/public";
 import {
   buildWebAmapScriptUrl,
   ensureWebAmapContainerLayout,
@@ -13,30 +14,48 @@ afterEach(() => resetWebAmapLoaderForTest());
 
 describe("resolveWebAmapConfiguration", () => {
   it("默认保持 Web 高德能力关闭", () => {
-    expect(resolveWebAmapConfiguration({})).toBeUndefined();
+    expect(
+      resolveWebAmapConfiguration(
+        createAppPublicConfig({
+          profile: "test",
+          apiBaseUrl: "http://127.0.0.1:4321",
+          brandDisplayEnvironment: "sandbox",
+        }),
+      ),
+    ).toBeUndefined();
   });
 
   it("只有显式启用且配置完整时才返回配置", () => {
     expect(
-      resolveWebAmapConfiguration({
-        EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED: "true",
-        EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY: "client-key",
-        EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE: "security-code",
-        EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE: "approval",
-      }),
+      resolveWebAmapConfiguration(
+        createAppPublicConfig({
+          profile: "test",
+          apiBaseUrl: "http://127.0.0.1:4321",
+          brandDisplayEnvironment: "sandbox",
+          maps: {
+            web: {
+              enabled: true,
+              apiKey: "client-key",
+              securityCode: "security-code",
+            },
+          },
+        }),
+      ),
     ).toEqual({
       apiKey: "client-key",
       securityCode: "security-code",
-      approvalReference: "approval",
     });
   });
 
-  it("缺少安全码或批准引用时失败关闭", () => {
+  it("公开配置未启用时保持关闭", () => {
     expect(
-      resolveWebAmapConfiguration({
-        EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED: "true",
-        EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY: "client-key",
-      }),
+      resolveWebAmapConfiguration(
+        createAppPublicConfig({
+          profile: "test",
+          apiBaseUrl: "http://127.0.0.1:4321",
+          brandDisplayEnvironment: "sandbox",
+        }),
+      ),
     ).toBeUndefined();
   });
 });
@@ -70,7 +89,6 @@ describe("loadWebAmapSdk", () => {
     const configuration = {
       apiKey: "client-key",
       securityCode: "security-code",
-      approvalReference: "approval",
     };
 
     const first = loadWebAmapSdk(configuration, browserWindow, browserDocument);

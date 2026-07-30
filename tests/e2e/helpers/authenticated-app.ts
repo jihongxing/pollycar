@@ -81,11 +81,45 @@ export async function openAuthenticatedPage(page: Page, path: string): Promise<v
   await expect(page).toHaveURL(new RegExp(`${escapeRegExp(path)}$`));
 }
 
+export async function completeOwnerParticipationConsent(page: Page): Promise<void> {
+  for (const agreementName of [
+    "车主参与协议，未阅读",
+    "行程与安全责任，未阅读",
+    "认证材料与隐私说明，未阅读",
+  ]) {
+    await page.getByRole("button", { name: agreementName }).click();
+  }
+  await page.getByRole("checkbox", { name: "我已阅读并同意以上内容" }).click();
+  await page.getByRole("button", { name: "我已了解，继续添加车辆" }).click();
+}
+
+export async function completeVehicleMaterialChecklist(page: Page): Promise<void> {
+  for (const materialName of [
+    "驾驶资格材料，添加",
+    "车辆材料，添加",
+    "保险材料，添加",
+  ]) {
+    await page.getByRole("button", { name: materialName }).click();
+  }
+}
+
 async function completeAdultEligibility(page: Page): Promise<void> {
   const enterHome = page.getByRole("button", { name: "进入乘客首页" });
   if (await enterHome.isVisible()) {
     await enterHome.click();
     return;
+  }
+  const authorize = page.getByRole("button", { name: "同意并继续" });
+  if (await authorize.isVisible()) {
+    for (const agreementName of [
+      "实名与成年条件，未阅读",
+      "本人验证说明，未阅读",
+      "信息处理与安全，未阅读",
+    ]) {
+      await page.getByRole("button", { name: agreementName }).click();
+    }
+    await page.getByRole("checkbox", { name: "我已阅读并同意以上内容" }).click();
+    await authorize.click();
   }
   const startVerification = page.getByRole("button", { name: "开始实名确认" });
   if (await startVerification.isVisible()) {
@@ -94,9 +128,7 @@ async function completeAdultEligibility(page: Page): Promise<void> {
     await page.getByRole("button", { name: "进入乘客首页" }).click();
     return;
   }
-  const authorize = page.getByRole("button", { name: "了解并继续" });
-  await authorize.waitFor();
-  await authorize.click();
+  await startVerification.waitFor();
   await startVerification.click();
   await expect(page.getByRole("heading", { name: "实名资料" })).toBeVisible();
   await page.getByRole("button", { name: "进入乘客首页" }).click();

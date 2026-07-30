@@ -1,7 +1,10 @@
 import { Readable } from "node:stream";
 import type { IncomingMessage } from "node:http";
 import { describe, expect, it } from "vitest";
-import { readJsonObject } from "./http-boundary.js";
+import {
+  bindRequestBodyLimit,
+  readJsonObject,
+} from "./http-boundary.js";
 
 describe("HTTP 安全边界", () => {
   it("解析受限大小内的 JSON 对象", async () => {
@@ -22,6 +25,14 @@ describe("HTTP 安全边界", () => {
   it("拒绝数组和无效 JSON", async () => {
     await expect(readJsonObject(createRequest("[]"))).rejects.toThrow("VALIDATION_FAILED");
     await expect(readJsonObject(createRequest("{"))).rejects.toThrow("VALIDATION_FAILED");
+  });
+
+  it("使用 Server 为请求绑定的统一 Body Limit", async () => {
+    const request = createRequest('{"value":"too-large"}');
+    bindRequestBodyLimit(request, 8);
+    await expect(readJsonObject(request)).rejects.toThrow(
+      "PAYLOAD_TOO_LARGE",
+    );
   });
 });
 

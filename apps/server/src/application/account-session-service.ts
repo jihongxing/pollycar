@@ -27,12 +27,23 @@ type AccountAccess = Readonly<{
   driverAvailable: boolean;
 }>;
 
+type AccountSessionSecurityPolicy = Readonly<{
+  accountSessionTtlSeconds: number;
+}>;
+
 export class AccountSessionService {
   public constructor(
     private readonly repository: Repository<AccountSessionRecord>,
     private readonly transaction: Transaction,
     private readonly resolveAccess: (accountId: string) => Promise<AccountAccess>,
     private readonly now: () => Date,
+    private readonly onSessionBoundary: (
+      accountId: string,
+      reason: "session_created" | "logout" | "identity_switch",
+    ) => Promise<void> = async () => {},
+    private readonly securityPolicy: AccountSessionSecurityPolicy = {
+      accountSessionTtlSeconds: 30 * 60,
+    },
   ) {}
 
   public async create(accountId: string): Promise<CreateInternalAccountSessionResponse> {
@@ -52,11 +63,15 @@ export class AccountSessionService {
       adultEligibilityState: access.adultEligibilityState,
       businessAccessAllowed: access.businessAccessAllowed,
       issuedAt: issuedAt.toISOString(),
-      expiresAt: new Date(issuedAt.getTime() + 30 * 60 * 1000).toISOString(),
+      expiresAt: new Date(
+        issuedAt.getTime() +
+          this.securityPolicy.accountSessionTtlSeconds * 1000,
+      ).toISOString(),
       processedKeys: [],
       synthetic: true,
     };
     await this.repository.put(sessionId, record, 0);
+    await this.onSessionBoundary(accountId, "session_created");
     return { token, session: this.toView(record) };
   }
 
@@ -96,7 +111,18 @@ export class AccountSessionService {
         businessAccessAllowed: access.businessAccessAllowed,
         processedKeys: [...stored.value.processedKeys, idempotencyKey],
       };
-      return this.toView((await this.repository.put(next.sessionId, next, stored.version)).value);
+      const saved = await this.repository.put(
+        next.sessionId,
+        next,
+        stored.version,
+      );
+      if (
+        stored.value.activeIdentity === "driver" &&
+        requestedIdentity !== "driver"
+      ) {
+        await this.onSessionBoundary(stored.value.accountId, "identity_switch");
+      }
+      return this.toView(saved.value);
     });
   }
 
@@ -111,7 +137,13 @@ export class AccountSessionService {
         revokedAt: this.now().toISOString(),
         processedKeys: [...stored.value.processedKeys, idempotencyKey],
       };
-      return this.toView((await this.repository.put(next.sessionId, next, stored.version)).value);
+      const saved = await this.repository.put(
+        next.sessionId,
+        next,
+        stored.version,
+      );
+      await this.onSessionBoundary(stored.value.accountId, "logout");
+      return this.toView(saved.value);
     });
   }
 

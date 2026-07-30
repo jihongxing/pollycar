@@ -13,6 +13,7 @@
     "build:legacy": "tsc --noEmit && vite build"
   },
   "dependencies": {
+    "@pollycar/configuration": "workspace:*",
     "@pollycar/contracts": "workspace:*",
     "@vitejs/plugin-react": "5.1.1",
     "vite": "7.3.6",

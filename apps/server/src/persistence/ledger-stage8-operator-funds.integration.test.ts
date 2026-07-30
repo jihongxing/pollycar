@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 import { FinancialReconciliationService } from "../application/financial-reconciliation-service.js";
 import { SyntheticLedgerTemplateService } from "../application/synthetic-ledger-template-service.js";
 import { SyntheticOperatorFundsService } from "../application/synthetic-operator-funds-service.js";
@@ -10,7 +11,8 @@ import { PostgresOperatorFundsRepository } from "./postgres-operator-funds-repos
 import { PostgresReconciliationRepository } from "./postgres-reconciliation-repository.js";
 import { PostgresTransaction } from "./postgres-transaction.js";
 
-const databaseUrl = process.env.POLLYCAR_OPERATOR_FUNDS_DATABASE_URL;
+const databaseUrl =
+  loadPostgresIntegrationTestConfig().operatorFundsDatabaseUrl;
 const describePostgres = databaseUrl ? describe.sequential : describe.skip;
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 

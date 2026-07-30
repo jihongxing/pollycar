@@ -4,6 +4,7 @@ import type {
   AdminAuditDetail,
   AdminAuditDirectoryPage,
   AdminAuditDirectoryQuery,
+  AdminAuthorizationLevel,
   AdminCaseAction,
   AdminCaseDetail,
   AdminCaseDirectoryPage,
@@ -24,6 +25,7 @@ import type {
   AdminFinanceDetail,
   AdminFinanceDirectoryPage,
   AdminFinanceDirectoryQuery,
+  AdminHighRiskApprovalRecord,
   AdminInvitationSummary,
   AdminMembershipAction,
   AdminMembershipDetail,
@@ -40,6 +42,8 @@ import type {
   AdminOperationsTaskQuery,
   AdminProductizationClient,
   AdminProductSession,
+  AdminRecordActionBlocker,
+  AdminRecordNextStep,
   AdminTripDetail,
   AdminTripDirectoryPage,
   AdminTripDirectoryQuery,
@@ -479,7 +483,7 @@ function ActivationEntry({
         <AdminEntryHeader
           eyebrow="账号激活"
           title="设置后台登录方式"
-          description={invitation ? `${invitation.organizationName} · ${invitation.productRoleName}` : "正在核对邀请…"}
+          description={invitation ? `${invitation.organizationName} · ${invitation.positionName}` : "正在核对邀请…"}
         />
         <label>设置密码<input aria-label="设置密码" type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         <label>动态验证码<input aria-label="激活动态验证码" inputMode="numeric" maxLength={6} value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, ""))} /></label>
@@ -594,7 +598,7 @@ function IdentityEntry({
           {verification.workIdentities.map((identity) => (
             <button key={identity.workIdentityId} className="identity-option" onClick={() => void onSelect(identity.workIdentityId)}>
               <strong>{identity.organizationName}</strong>
-              <span>{identity.productRoleName}</span>
+              <span>{identity.positionName}</span>
               <small>{identity.type === "platform" ? "平台工作身份" : "运营公司工作身份"}</small>
             </button>
           ))}
@@ -992,7 +996,7 @@ function AuthenticatedShell({
           ) : (
             <FeatureUnavailablePage
               title={item.label}
-              roleName={session.workIdentity.productRoleName}
+              roleName={session.workIdentity.positionName}
               onBack={() => onNavigate("workbench")}
             />
           )}
@@ -1064,7 +1068,7 @@ function Workbench({
   return (
     <>
       <section className="page-heading">
-        <div><span className="eyebrow">今日工作</span><h1>{session.workIdentity.productRoleName}工作台</h1><p>这里汇总你当前可以处理和需要判断的任务。</p></div>
+        <div><span className="eyebrow">今日工作</span><h1>{session.workIdentity.positionName}工作台</h1><p>这里汇总你当前可以处理和需要判断的任务。</p></div>
         <div className="summary-card"><strong>{taskPage?.pageInfo.approximateTotal ?? "—"}</strong><span>当前范围任务</span></div>
       </section>
       <section className="task-panel">
@@ -1733,7 +1737,10 @@ function OperationsTaskDetail({
               </div>
             </>
           ) : (
-            <p>{detail.task.status === "completed" ? "任务已经完成，仅可查看审计记录。" : "当前角色在此任务状态下仅可查看。"}</p>
+            <AdminRecordActionGuidance
+              blockers={detail.actionBlockers}
+              nextSteps={detail.nextSteps}
+            />
           )}
           {operationMessage ? (
             <p
@@ -2242,6 +2249,13 @@ function DriverDetailView({
           actions={["查看车主资格与关联车辆"]}
         />
         <article className="detail-card">
+          <h2>处理建议</h2>
+          <AdminRecordActionGuidance
+            blockers={detail.actionBlockers}
+            nextSteps={detail.nextSteps}
+          />
+        </article>
+        <article className="detail-card">
           <h2>关联车辆</h2>
           <div className="linked-records">{detail.linkedVehicles.map((vehicle) => (
             <button key={vehicle.vehicleId} onClick={() => onOpenVehicle(vehicle.vehicleId)}>
@@ -2384,7 +2398,10 @@ function VehicleDetailView({
         <article className="detail-card">
           <h2>允许操作</h2>
           {detail.allowedActions.length === 0 ? (
-            <p>当前角色或任务状态仅允许查看。</p>
+            <AdminRecordActionGuidance
+              blockers={detail.actionBlockers}
+              nextSteps={detail.nextSteps}
+            />
           ) : (
             <div className="fleet-actions">
               {detail.allowedActions.includes("claim") ? (
@@ -2835,7 +2852,7 @@ function FinanceDetail({
         <AdminWorkScopeCard
           organizationName={detail.organizationScope.organizationName}
           cityScopes={detail.organizationScope.cityScopes}
-          roleName={session.workIdentity.productRoleName}
+          roleName={session.workIdentity.positionName}
           actions={["核对财务事实并提交处理"]}
         />
         <article className="detail-card detail-actions">
@@ -2860,7 +2877,10 @@ function FinanceDetail({
               ))}
             </div>
           ) : (
-            <p>当前可以查看这项记录，暂时无需继续处理。</p>
+            <AdminRecordActionGuidance
+              blockers={detail.actionBlockers}
+              nextSteps={detail.nextSteps}
+            />
           )}
           {operationMessage ? (
             <p
@@ -2875,6 +2895,7 @@ function FinanceDetail({
             </p>
           ) : null}
         </article>
+        <AdminApprovalRecords records={detail.approvalRecords} />
         <article className="detail-card detail-audit">
           <h2>处理记录</h2>
           {detail.auditTrail.length ? (
@@ -2903,7 +2924,14 @@ function FinanceDetail({
               ? "本次只查询原请求结果，不改变记录"
               : "提交后不能在本页撤回，需要按后续复核流程继续处理"
           }
-          consequence={`${financeActionLabel(pendingAction)}会写入处理记录，原始金额事实不会在此处修改。`}
+          reviewRelation={
+            pendingAction.startsWith("review_")
+              ? "你将作为独立复核人记录结论；系统已确认你不是本次制单人。"
+              : financeActionRequiresIndependentReview(pendingAction)
+                ? "提交后生成审批记录，必须由其他具备财务复核能力的负责人处理。"
+                : "本操作不替代后续独立复核。"
+          }
+          consequence={`${financeActionLabel(pendingAction)}会写入处理记录和审批记录，原始金额事实不会在此处修改。`}
           confirmLabel={`确认${financeActionLabel(pendingAction)}`}
           tone="primary"
           busy={operationState === "confirming"}
@@ -3049,6 +3077,36 @@ function FinanceRecordFacts({
   );
 }
 
+function AdminApprovalRecords({
+  records,
+}: Readonly<{ records: readonly AdminHighRiskApprovalRecord[] }>) {
+  return (
+    <article className="detail-card">
+      <h2>审批记录</h2>
+      {records.length ? (
+        <ol className="audit-list">
+          {records.map((record) => (
+            <li key={record.approvalId}>
+              <strong>{approvalActionLabel(record.requestedAction)}</strong>
+              <span>
+                {approvalStateLabel(record.state)} · 申请人：
+                {record.requester.actorRole}
+              </span>
+              <p>
+                {record.reviewer
+                  ? `复核人：${record.reviewer.actorRole}`
+                  : "等待其他具备复核能力的负责人处理"}
+              </p>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p>当前没有需要独立复核的审批记录。</p>
+      )}
+    </article>
+  );
+}
+
 function AuditDirectory({
   session,
   client,
@@ -3059,7 +3117,7 @@ function AuditDirectory({
   client: AdminProductizationClient;
   selectedAudit?: AdminRoute["audit"];
   onOpenAudit(
-    route: Readonly<{ kind: "event" | "investigation"; resourceId: string }>,
+    route: NonNullable<AdminRoute["audit"]>,
   ): void;
 }>) {
   const storageKey =
@@ -3141,14 +3199,15 @@ function AuditDirectory({
         <article><strong>{page?.summary.deniedEvents ?? "—"}</strong><span>拒绝事件</span></article>
         <article><strong>{page?.summary.highRiskEvents ?? "—"}</strong><span>高风险事件</span></article>
         <article><strong>{page?.summary.openInvestigations ?? "—"}</strong><span>开放调查</span></article>
+        <article><strong>{page?.summary.pendingApprovals ?? "—"}</strong><span>待复核审批</span></article>
         <article><strong>{page?.summary.integrityWarnings ?? "—"}</strong><span>完整性告警</span></article>
       </section>
       <section className="task-panel">
         <div className="list-toolbar">
           <label>搜索审计资源<input aria-label="搜索审计资源" value={query.search ?? ""} placeholder="事件、资源、组织或关联编号" onChange={(event) => update(auditQueryWithSearch(query, event.target.value))} /></label>
-          <label>资源类型<select aria-label="审计资源类型" value={query.kind ?? ""} onChange={(event) => update(auditQueryWithKind(query, event.target.value))}><option value="">全部</option><option value="event">原始事件</option><option value="investigation">调查案件</option></select></label>
+          <label>资源类型<select aria-label="审计资源类型" value={query.kind ?? ""} onChange={(event) => update(auditQueryWithKind(query, event.target.value))}><option value="">全部</option><option value="event">原始事件</option><option value="investigation">调查案件</option><option value="approval">审批记录</option></select></label>
           <label>业务域<select aria-label="审计业务域" value={query.domain ?? ""} onChange={(event) => update(auditQueryWithDomain(query, event.target.value))}><option value="">全部</option><option value="authentication">认证会话</option><option value="access">访问决策</option><option value="operator">运营主体</option><option value="driver_vehicle">车主与车辆</option><option value="trip">行程运营</option><option value="support_safety">客服与安全</option><option value="finance">财务与对账</option><option value="executive">高层驾驶舱</option><option value="audit_system">审计与系统</option></select></label>
-          <label>结果／状态<select aria-label="审计结果状态" value={query.result ?? ""} onChange={(event) => update(auditQueryWithResult(query, event.target.value))}><option value="">全部</option><option value="succeeded">成功</option><option value="allowed">允许</option><option value="denied">拒绝</option><option value="open">开放</option><option value="in_review">调查中</option><option value="resolved">已解决</option></select></label>
+          <label>结果／状态<select aria-label="审计结果状态" value={query.result ?? ""} onChange={(event) => update(auditQueryWithResult(query, event.target.value))}><option value="">全部</option><option value="succeeded">成功</option><option value="allowed">允许</option><option value="denied">拒绝</option><option value="open">开放</option><option value="in_review">调查中</option><option value="resolved">已解决</option><option value="pending">等待复核</option><option value="approved">已批准</option><option value="declined">未批准</option><option value="revoked">已撤销</option></select></label>
           <label>排序<select aria-label="审计资源排序" value={query.sort ?? "occurred_at_desc"} onChange={(event) => update({ ...query, sort: event.target.value as NonNullable<AdminAuditDirectoryQuery["sort"]> })}><option value="occurred_at_desc">最近发生</option><option value="resource_id_asc">资源编号</option></select></label>
         </div>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -3165,7 +3224,7 @@ function AuditDirectory({
                     className={selectedAuditKey === `${item.kind}:${item.resourceId}` ? "selected" : undefined}
                   >
                     <td><button ref={(node) => { const key = `${item.kind}:${item.resourceId}`; if (node) auditRowRefs.current.set(key, node); else auditRowRefs.current.delete(key); }} className="table-link" aria-pressed={selectedAuditKey === `${item.kind}:${item.resourceId}`} onClick={() => open(item)}><strong>{auditDirectoryTitle(item)}</strong><span>{auditDirectorySummary(item)}</span></button></td>
-                    <td data-label="类型">{item.kind === "event" ? "原始事件" : "调查案件"}</td>
+                    <td data-label="类型">{item.kind === "event" ? "原始事件" : item.kind === "investigation" ? "调查案件" : "审批记录"}</td>
                     <td data-label="业务域">{auditDomainLabel(item.domain)}</td>
                     <td data-label="组织">{item.organizationName}</td>
                     <td data-label="结果"><span className={`status-badge ${auditStatusTone(item.result)}`}>{auditStateLabel(item.result)}</span></td>
@@ -3472,7 +3531,7 @@ function MembershipDirectory({
                       </button>
                     </td>
                     <td data-label="组织">{item.organizationName}</td>
-                    <td data-label="角色">{item.productRoleName}</td>
+                    <td data-label="岗位">{item.positionName}</td>
                     <td data-label="状态">{membershipStateLabel(item.state)}</td>
                     <td data-label="活跃登录">{item.activeSessionCount}</td>
                   </tr>
@@ -3578,7 +3637,7 @@ function MembershipDetail({
           <button className="text-action" onClick={onBack}>← 返回成员列表</button>
           <span className="eyebrow">成员工作档案</span>
           <h1>{detail.item.displayName}</h1>
-          <p>{detail.item.organizationName} · {detail.item.productRoleName}</p>
+          <p>{detail.item.organizationName} · {detail.item.positionName}</p>
         </div>
         <span className={`status-pill ${detail.item.state === "active" ? "completed" : "blocked"}`}>
           {membershipStateLabel(detail.item.state)}
@@ -3599,7 +3658,7 @@ function MembershipDetail({
         <AdminWorkScopeCard
           organizationName={detail.scopeBindings.organizationName}
           cityScopes={detail.scopeBindings.cityScopes}
-          roleName={detail.roleBinding.roleName}
+          roleName={`${detail.authorizationBinding.positionName} · ${authorizationLevelLabel(detail.authorizationBinding.authorizationLevel)}`}
           actions={detail.allowedActions.map(membershipActionLabel)}
         />
         <article className="detail-card detail-actions">
@@ -3645,7 +3704,7 @@ function MembershipDetail({
         <AdminRiskConfirmationDialog
           titleId="membership-risk-confirmation-title"
           title={membershipActionLabel(pendingAction)}
-          objectLabel={`${detail.item.displayName} · ${detail.item.productRoleName}`}
+          objectLabel={`${detail.item.displayName} · ${detail.item.positionName}`}
           scope={`${detail.scopeBindings.organizationName}${detail.scopeBindings.cityScopes.length ? ` · ${detail.scopeBindings.cityScopes.join("、")}` : ""}`}
           reversible={
             pendingAction === "suspend_membership"
@@ -3748,7 +3807,7 @@ function DataReportDetail({
         <AdminWorkScopeCard
           organizationName={detail.item.organizationName}
           cityScopes={[]}
-          roleName={session.workIdentity.productRoleName}
+          roleName={session.workIdentity.positionName}
           actions={detail.allowedActions.length ? ["刷新聚合指标"] : []}
         />
         <article className="detail-card detail-actions">
@@ -3893,12 +3952,12 @@ function AuditDetail({
     <>
       <button className="back-action" onClick={onBack}>← 返回审计名录</button>
       <section className="page-heading">
-        <div><span className="eyebrow">{detail.kind === "event" ? "审计事件" : "调查处理"}</span><h1>{auditDirectoryTitle(detail.item)}</h1><p>{auditDirectorySummary(detail.item)}</p></div>
+        <div><span className="eyebrow">{detail.kind === "event" ? "审计事件" : detail.kind === "investigation" ? "调查处理" : "审批记录"}</span><h1>{auditDirectoryTitle(detail.item)}</h1><p>{auditDirectorySummary(detail.item)}</p></div>
         <span className={`status-badge ${auditStatusTone(detail.item.result)}`}>{auditStateLabel(detail.item.result)}</span>
       </section>
       <section className="detail-grid">
         <article className="detail-card">
-          <h2>{detail.kind === "event" ? "事件信息" : "调查进展"}</h2>
+          <h2>{detail.kind === "event" ? "事件信息" : detail.kind === "investigation" ? "调查进展" : "审批关系"}</h2>
           {detail.kind === "event" ? (
             <dl className="detail-list">
               <div><dt>事件类型</dt><dd>{auditEventTypeLabel(detail.record.event.eventType)}</dd></div>
@@ -3910,13 +3969,22 @@ function AuditDetail({
               <div><dt>访问决策编号</dt><dd>{detail.record.event.accessDecisionId ?? "—"}</dd></div>
               <div><dt>关联调查</dt><dd>{detail.record.linkedInvestigationId ?? "未创建"}</dd></div>
             </dl>
-          ) : (
+          ) : detail.kind === "investigation" ? (
             <dl className="detail-list">
               <div><dt>来源事件</dt><dd>{detail.record.sourceEventId}</dd></div>
               <div><dt>调查状态</dt><dd>{auditStateLabel(detail.record.state)}</dd></div>
               <div><dt>调查缘由</dt><dd>{auditReasonLabel(detail.record.reasonCode)}</dd></div>
               <div><dt>负责人</dt><dd>{detail.record.assigneeWorkIdentityId ?? "待分派"}</dd></div>
               <div><dt>调查记录</dt><dd>{detail.record.notes.length} 条</dd></div>
+            </dl>
+          ) : (
+            <dl className="detail-list">
+              <div><dt>审批状态</dt><dd>{approvalStateLabel(detail.record.state)}</dd></div>
+              <div><dt>申请事项</dt><dd>{approvalActionLabel(detail.record.requestedAction)}</dd></div>
+              <div><dt>申请人</dt><dd>{detail.record.requester.actorRole}</dd></div>
+              <div><dt>复核人</dt><dd>{detail.record.reviewer?.actorRole ?? "等待独立复核"}</dd></div>
+              <div><dt>职责分离</dt><dd>{detail.record.separationRequired ? "申请人与复核人必须不同" : "无需独立复核"}</dd></div>
+              <div><dt>关联对象</dt><dd>{displayReference(detail.record.resourceId, detail.record.resourceKind === "safety_case" ? "安全案件" : "财务记录")}</dd></div>
             </dl>
           )}
         </article>
@@ -3932,7 +4000,7 @@ function AuditDetail({
         <AdminWorkScopeCard
           organizationName={detail.item.organizationName}
           cityScopes={[]}
-          roleName={session.workIdentity.productRoleName}
+          roleName={session.workIdentity.positionName}
           actions={detail.allowedActions.map(auditSystemActionLabel)}
         />
         <article className="detail-card detail-actions">
@@ -4462,7 +4530,7 @@ function ExecutiveDetail({
         <AdminWorkScopeCard
           organizationName={detail.organizationScope.organizationName}
           cityScopes={detail.organizationScope.cityScopes}
-          roleName={session.workIdentity.productRoleName}
+          roleName={session.workIdentity.positionName}
           actions={detail.allowedActions.map(executiveActionLabel)}
         />
         <article className="detail-card detail-actions">
@@ -4921,6 +4989,13 @@ function CaseDetail({
   const [error, setError] = useState<string>();
   const [note, setNote] = useState("");
   const [ticketId, setTicketId] = useState("SEC-2026-CASE");
+  const [pendingAction, setPendingAction] = useState<Readonly<{
+    action: AdminCaseAction;
+    evidenceGrant?: Readonly<{
+      grantId: string;
+      resourceVersion: number;
+    }>;
+  }>>();
   const [operationState, setOperationState] = useState<
     "idle" | "confirming" | "confirmed" | "error"
   >("idle");
@@ -4975,6 +5050,7 @@ function CaseDetail({
       setOperationMessage(
         `${caseActionLabel(action)}已确认，操作编号 ${result.operationId}`,
       );
+      setPendingAction(undefined);
     } catch (reason) {
       setOperationState("error");
       setOperationMessage(messageFor(reason));
@@ -5062,13 +5138,19 @@ function CaseDetail({
                       <span>{caseStateLabel(grant.state)} · 有效至 {formatDate(grant.expiresAt)}</span>
                       {allowedActions.includes("approve_evidence") &&
                       grant.state === "requested" ? (
-                        <button onClick={() => void execute("approve_evidence", grant)}>
+                        <button onClick={() => setPendingAction({
+                          action: "approve_evidence",
+                          evidenceGrant: grant,
+                        })}>
                           批准证据访问
                         </button>
                       ) : null}
                       {allowedActions.includes("revoke_evidence") &&
                       (grant.state === "approved" || grant.state === "active") ? (
-                        <button onClick={() => void execute("revoke_evidence", grant)}>
+                        <button onClick={() => setPendingAction({
+                          action: "revoke_evidence",
+                          evidenceGrant: grant,
+                        })}>
                           撤销证据访问
                         </button>
                       ) : null}
@@ -5077,12 +5159,20 @@ function CaseDetail({
                 </ul>
               ) : <p>尚无证据授权申请。</p>}
             </article>
+            <AdminApprovalRecords records={detail.approvalRecords} />
           </>
         ) : null}
         <article className="detail-card task-actions">
           <h2>允许操作</h2>
           {allowedActions.length === 0 ? (
-            <p>当前角色或案件状态仅允许查看。</p>
+            detail.kind === "safety" ? (
+              <AdminRecordActionGuidance
+                blockers={detail.actionBlockers}
+                nextSteps={detail.nextSteps}
+              />
+            ) : (
+              <p>当前可以查看案件记录，暂时无需继续处理。</p>
+            )
           ) : (
             <>
               <label>
@@ -5119,7 +5209,13 @@ function CaseDetail({
                           : "primary-action"
                       }
                       disabled={operationState === "confirming"}
-                      onClick={() => void execute(action)}
+                      onClick={() => {
+                        if (caseActionRequiresConfirmation(action)) {
+                          setPendingAction({ action });
+                        } else {
+                          void execute(action);
+                        }
+                      }}
                     >
                       {caseActionLabel(action)}
                     </button>
@@ -5153,6 +5249,35 @@ function CaseDetail({
           ) : <p>尚无案件操作记录。</p>}
         </article>
       </section>
+      {pendingAction ? (
+        <AdminRiskConfirmationDialog
+          titleId="case-risk-confirmation-title"
+          title={caseActionLabel(pendingAction.action)}
+          objectLabel={detail.case.summary}
+          scope={`${detail.organizationScope.organizationName} · ${displayReference(detail.case.caseId, detail.kind === "safety" ? "安全案件" : "客服案件")}`}
+          reversible={caseActionReversibility(pendingAction.action)}
+          reviewRelation={caseActionReviewRelation(pendingAction.action)}
+          consequence={caseActionConsequence(pendingAction.action)}
+          confirmLabel={`确认${caseActionLabel(pendingAction.action)}`}
+          tone={
+            pendingAction.action === "restore_access" ||
+            pendingAction.action === "revoke_evidence" ||
+            pendingAction.action === "close"
+              ? "danger"
+              : "primary"
+          }
+          busy={operationState === "confirming"}
+          onCancel={() => {
+            if (operationState !== "confirming") setPendingAction(undefined);
+          }}
+          onConfirm={() =>
+            void execute(
+              pendingAction.action,
+              pendingAction.evidenceGrant,
+            )
+          }
+        />
+      ) : null}
     </>
   );
 }
@@ -5528,7 +5653,10 @@ function TripDetail({
         <article className="detail-card task-actions">
           <h2>允许操作</h2>
           {detail.allowedActions.length === 0 ? (
-            <p>当前角色或任务状态仅允许查看。</p>
+            <AdminRecordActionGuidance
+              blockers={detail.actionBlockers}
+              nextSteps={detail.nextSteps}
+            />
           ) : (
             <>
               {detail.allowedActions.includes("request_domain_action") ? (
@@ -5602,6 +5730,46 @@ function TripDetail({
         </article>
       </section>
     </>
+  );
+}
+
+function AdminRecordActionGuidance({
+  blockers,
+  nextSteps,
+}: Readonly<{
+  blockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}>) {
+  return (
+    <div className="record-action-guidance">
+      {blockers.length > 0 ? (
+        <div>
+          <strong>当前暂不能处理</strong>
+          <ul className="blocker-list">
+            {blockers.map((blocker) => (
+              <li key={`${blocker.action}-${blocker.code}`}>
+                <span aria-hidden="true">•</span>
+                <span>{blocker.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {nextSteps.length > 0 ? (
+        <div>
+          <strong>下一步</strong>
+          <ul className="record-next-step-list">
+            {nextSteps.map((step) => (
+              <li key={`${step.kind}-${step.action ?? step.label}`}>
+                {step.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p>当前无需处理。</p>
+      )}
+    </div>
   );
 }
 
@@ -5696,6 +5864,8 @@ function messageFor(reason: unknown): string {
     ADMIN_MFA_INVALID: "动态验证码不正确",
     ADMIN_OPERATIONS_TASK_NOT_FOUND: "未找到该工作任务",
     AUTHORIZATION_DENIED: "当前账号无权执行此操作",
+    ADMIN_SESSION_CONTRACT_INVALID:
+      "运营后台服务版本与当前页面不一致，请刷新服务后重试。",
     ADMIN_OPERATIONS_TASK_ACTION_INVALID: "当前任务状态不允许执行该操作",
     ADMIN_OPERATOR_RESOURCE_NOT_FOUND: "未找到该运营公司",
     ADMIN_OPERATOR_ACTION_INVALID: "当前主体状态或角色不允许执行该操作",
@@ -5768,12 +5938,16 @@ function auditStateLabel(state: string): string {
     open: "开放",
     in_review: "调查中",
     resolved: "已解决",
+    pending: "等待复核",
+    approved: "已批准",
+    declined: "未批准",
+    revoked: "已撤销",
   } as Record<string, string>)[state] ?? state;
 }
 
 function auditStatusTone(state: string): string {
-  if (state === "denied" || state === "open") return "danger";
-  if (state === "in_review") return "attention";
+  if (state === "denied" || state === "open" || state === "declined") return "danger";
+  if (state === "in_review" || state === "pending") return "attention";
   return "success";
 }
 
@@ -5790,7 +5964,12 @@ function auditSystemActionLabel(action: AdminAuditAction): string {
 function auditDirectorySummary(
   item: AdminAuditDirectoryPage["items"][number],
 ): string {
-  const kind = item.kind === "event" ? "审计事件" : "调查处理";
+  const kind =
+    item.kind === "event"
+      ? "审计事件"
+      : item.kind === "investigation"
+        ? "调查处理"
+        : "审批记录";
   return `${kind} · ${auditDomainLabel(item.domain)} · ${item.organizationName}`;
 }
 
@@ -6320,6 +6499,34 @@ function financeActionLabel(action: AdminFinanceAction): string {
   } as Record<AdminFinanceAction, string>)[action];
 }
 
+function approvalActionLabel(action: string): string {
+  if (action === "review_safety_restoration") return "安全恢复独立复核";
+  if (action === "approve_evidence") return "证据访问审批";
+  return financeActionLabel(action as AdminFinanceAction) ?? action;
+}
+
+function approvalStateLabel(
+  state: AdminHighRiskApprovalRecord["state"],
+): string {
+  return ({
+    pending: "等待复核",
+    approved: "已批准",
+    declined: "未批准",
+    revoked: "已撤销",
+  } as const)[state];
+}
+
+function financeActionRequiresIndependentReview(
+  action: AdminFinanceAction,
+): boolean {
+  return [
+    "prepare_operator_settlement",
+    "prepare_driver_payout",
+    "submit_reconciliation_resolution",
+    "prepare_business_day_close",
+  ].includes(action);
+}
+
 function financeAuditLabel(action: string): string {
   return ({
     finance_profile_viewed: "查看财务记录",
@@ -6441,6 +6648,14 @@ function membershipStateLabel(state: "active" | "suspended"): string {
   return state === "active" ? "正常" : "已暂停";
 }
 
+function authorizationLevelLabel(level: AdminAuthorizationLevel): string {
+  return {
+    level_1: "运营执行员",
+    level_2: "运营负责人",
+    level_3: "平台控制",
+  }[level];
+}
+
 function membershipAuditLabel(
   action:
     | "admin_membership_viewed"
@@ -6523,7 +6738,7 @@ type AdminRoute = Readonly<{
     resourceId: string;
   }>;
   audit?: Readonly<{
-    kind: "event" | "investigation";
+    kind: "event" | "investigation" | "approval";
     resourceId: string;
   }>;
   fleet?: Readonly<{
@@ -7111,6 +7326,64 @@ function caseActionLabel(action: AdminCaseAction): string {
     approve_evidence: "批准证据访问",
     revoke_evidence: "撤销证据访问",
   } as Record<AdminCaseAction, string>)[action];
+}
+
+function caseActionRequiresConfirmation(action: AdminCaseAction): boolean {
+  return [
+    "restore_access",
+    "uphold_freeze",
+    "request_evidence",
+    "approve_evidence",
+    "revoke_evidence",
+    "close",
+    "escalate_safety",
+    "escalate_finance",
+  ].includes(action);
+}
+
+function caseActionReversibility(action: AdminCaseAction): string {
+  if (action === "restore_access") {
+    return "恢复后如出现新风险，可重新冻结；本次复核记录不会删除。";
+  }
+  if (action === "revoke_evidence") {
+    return "撤销后立即停止后续访问，已形成的审计记录继续保留。";
+  }
+  if (action === "close") {
+    return "关闭后如有新事实，需要重新打开或升级案件。";
+  }
+  return "提交后不能在本页撤回，需要按案件后续流程继续处理。";
+}
+
+function caseActionReviewRelation(action: AdminCaseAction): string {
+  if (action === "restore_access" || action === "uphold_freeze") {
+    return "你将作为独立复核人记录结论；调查人与冻结执行人不能参与本次复核。";
+  }
+  if (action === "request_evidence") {
+    return "申请提交后生成审批记录，必须由其他具备证据审批能力的负责人处理。";
+  }
+  if (action === "approve_evidence" || action === "revoke_evidence") {
+    return "你将作为独立审批人处理申请；申请人不能审批自己的证据访问。";
+  }
+  return "操作会记录当前工作身份和处理责任。";
+}
+
+function caseActionConsequence(action: AdminCaseAction): string {
+  if (action === "restore_access") {
+    return "案件将记录恢复结论；只有所有恢复阻断解除后，访问限制才会改变。";
+  }
+  if (action === "uphold_freeze") {
+    return "现有安全限制继续有效，并保留独立复核结论。";
+  }
+  if (action === "request_evidence") {
+    return "仅创建受时限和字段范围约束的访问申请，不会直接开放证据。";
+  }
+  if (action === "approve_evidence") {
+    return "只开放申请中列明的字段和时限，所有访问继续写入记录。";
+  }
+  if (action === "revoke_evidence") {
+    return "后续证据访问立即停止，案件和审批记录继续保留。";
+  }
+  return `${caseActionLabel(action)}会写入案件记录。`;
 }
 
 function caseAuditActionLabel(

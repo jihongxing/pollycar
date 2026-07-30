@@ -2,46 +2,36 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath, URL as NodeUrl } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import type { AdminProductRole } from "@pollycar/contracts";
+import type { AdminBusinessCapability } from "@pollycar/contracts";
 import {
   adminV2CanonicalShell,
   adminV2CanonicalShellModules,
   adminV2CompatibilityShells,
   adminV2DetailRoutePatterns,
   adminV2Domains,
-  adminV2MissingAcceptanceRoles,
+  adminV2MissingAcceptanceCapabilities,
   adminV2RequiredViewports,
-  adminV2RoleTaskModes,
+  adminV2CapabilityTaskModes,
 } from "./admin-v2-governance";
 
-const contractRoles = [
-  "platform_access_administrator",
-  "operations_officer",
-  "operations_lead",
-  "operator_management_officer",
-  "reviewer",
-  "senior_reviewer",
-  "customer_support",
-  "support_lead",
-  "safety_officer",
-  "safety_lead",
-  "finance_officer",
-  "finance_lead",
-  "privacy_compliance",
-  "data_analyst",
-  "auditor",
-  "technical_operations",
-  "executive_sponsor",
-  "operator_account_administrator",
-  "operator_operations_lead",
-  "operator_fleet_officer",
-  "operator_customer_support",
-  "operator_safety_liaison",
-  "operator_finance_officer",
-  "operator_finance_lead",
-  "operator_auditor",
-  "operator_executive",
-] satisfies readonly AdminProductRole[];
+const contractCapabilities = [
+  "membership_governance",
+  "operations_task",
+  "operator_governance",
+  "trip_operation",
+  "fleet_operation",
+  "fleet_review",
+  "support_case",
+  "safety_investigation",
+  "safety_restoration_review",
+  "finance_operation",
+  "finance_review",
+  "privacy_governance",
+  "analytics_read",
+  "audit_read",
+  "technical_recovery",
+  "executive_read",
+] satisfies readonly AdminBusinessCapability[];
 
 describe("Admin v2 治理", () => {
   it("唯一产品壳和兼容壳边界保持明确", async () => {
@@ -81,9 +71,9 @@ describe("Admin v2 治理", () => {
     expect(shell).toContain("return <LegacyShell />");
     expect(shell).toContain("return <ProductizedAdminShell");
     expect(shell).toContain("<StageOneShell");
-    expect(build).toContain('VITE_SYNTHETIC_ADMIN_MULTI_ORGANIZATION: "true"');
-    expect(build).toContain('VITE_SYNTHETIC_ADMIN_AUTHENTICATION: "true"');
-    expect(build).toContain('VITE_SYNTHETIC_ADMIN_ROLE_ACCESS_MATRIX: "true"');
+    expect(build).toContain("createPublicConfigEnvironment");
+    expect(build).toContain("VITE_POLLYCAR_PUBLIC_CONFIG");
+    expect(build).not.toContain('VITE_SYNTHETIC_ADMIN_AUTHENTICATION: "true"');
     expect(productShell).toContain("ProductizedAdminLayout");
     expect(productShell).toContain('label="角色任务工作区"');
     expect(productShell).toContain('label="运营公司工作区"');
@@ -127,16 +117,16 @@ describe("Admin v2 治理", () => {
     ]);
   });
 
-  it("二十六个角色被七种任务模式完整且唯一覆盖", () => {
-    const groupedRoles = Object.values(adminV2RoleTaskModes).flat();
+  it("十六项业务能力被七种任务模式完整且唯一覆盖", () => {
+    const groupedCapabilities = Object.values(adminV2CapabilityTaskModes).flat();
 
-    expect(groupedRoles).toHaveLength(contractRoles.length);
-    expect(new Set(groupedRoles).size).toBe(contractRoles.length);
-    expect([...groupedRoles].sort()).toEqual([...contractRoles].sort());
+    expect(groupedCapabilities).toHaveLength(contractCapabilities.length);
+    expect(new Set(groupedCapabilities).size).toBe(contractCapabilities.length);
+    expect([...groupedCapabilities].sort()).toEqual([...contractCapabilities].sort());
   });
 
-  it("二十六个角色均具备可登录验收身份样本", () => {
-    expect(adminV2MissingAcceptanceRoles).toEqual([]);
+  it("十六项业务能力均具备可登录验收身份样本", () => {
+    expect(adminV2MissingAcceptanceCapabilities).toEqual([]);
   });
 
   it("产品壳保持视口固定和内容区内部滚动", async () => {

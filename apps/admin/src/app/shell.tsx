@@ -9,24 +9,19 @@ import type {
 import { LegacyShell } from "./legacy-shell";
 import { StageOneShell } from "../features/admin-stage-one/stage-one-shell";
 import { ProductizedAdminShell } from "../features/admin-productization/productized-admin-shell";
+import { resolveAdminPublicCapabilities } from "../infrastructure/admin-public-capabilities";
+
+const adminPublicCapabilities = resolveAdminPublicCapabilities();
 
 export function Shell({
-  multiOrganizationEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_MULTI_ORGANIZATION === "true",
-  operatorManagementEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_OPERATOR_MANAGEMENT === "true",
-  tripOperationsEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_TRIP_OPERATIONS === "true",
-  caseManagementEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_CASE_MANAGEMENT === "true",
-  financeOperationsEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_FINANCE_OPERATIONS === "true",
-  executiveDashboardEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_EXECUTIVE_DASHBOARD === "true",
-  authenticationEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_AUTHENTICATION === "true",
-  roleAccessMatrixEnabled = import.meta.env
-    .VITE_SYNTHETIC_ADMIN_ROLE_ACCESS_MATRIX === "true",
+  multiOrganizationEnabled = adminPublicCapabilities.multiOrganizationEnabled,
+  operatorManagementEnabled = adminPublicCapabilities.operatorManagementEnabled,
+  tripOperationsEnabled = adminPublicCapabilities.tripOperationsEnabled,
+  caseManagementEnabled = adminPublicCapabilities.caseManagementEnabled,
+  financeOperationsEnabled = adminPublicCapabilities.financeOperationsEnabled,
+  executiveDashboardEnabled = adminPublicCapabilities.executiveDashboardEnabled,
+  authenticationEnabled = adminPublicCapabilities.authenticationEnabled,
+  roleAccessMatrixEnabled = adminPublicCapabilities.roleAccessMatrixEnabled,
   accessClient,
   operatorManagementClient,
   tripCaseManagementClient,

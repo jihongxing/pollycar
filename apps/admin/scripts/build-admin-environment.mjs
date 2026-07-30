@@ -1,4 +1,10 @@
 import { spawnSync } from "node:child_process";
+import {
+  assertNoDeprecatedConfigurationEnvironmentVariables,
+  createAdminPublicConfig,
+  createPublicConfigEnvironment,
+  getLocalSandboxProfile,
+} from "@pollycar/configuration";
 
 const environment = process.argv[2] ?? "sandbox";
 if (environment !== "sandbox") {
@@ -6,19 +12,24 @@ if (environment !== "sandbox") {
 }
 
 const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const env = {
-  ...process.env,
-  VITE_ADMIN_API_BASE_URL:
-    process.env.VITE_ADMIN_API_BASE_URL ?? "http://127.0.0.1:4321",
-  VITE_SYNTHETIC_ADMIN_MULTI_ORGANIZATION: "true",
-  VITE_SYNTHETIC_ADMIN_AUTHENTICATION: "true",
-  VITE_SYNTHETIC_ADMIN_ROLE_ACCESS_MATRIX: "true",
-  VITE_SYNTHETIC_ADMIN_OPERATOR_MANAGEMENT: "true",
-  VITE_SYNTHETIC_ADMIN_TRIP_OPERATIONS: "true",
-  VITE_SYNTHETIC_ADMIN_CASE_MANAGEMENT: "true",
-  VITE_SYNTHETIC_ADMIN_FINANCE_OPERATIONS: "true",
-  VITE_SYNTHETIC_ADMIN_EXECUTIVE_DASHBOARD: "true",
-};
+assertNoDeprecatedConfigurationEnvironmentVariables(process.env);
+const profile = getLocalSandboxProfile(process.env);
+const env = createPublicConfigEnvironment(
+  process.env,
+  "VITE_POLLYCAR_PUBLIC_CONFIG",
+  createAdminPublicConfig({
+    profile: profile.id,
+    apiBaseUrl: profile.network.apiBaseUrl,
+    capabilities: Object.fromEntries(
+      Object.keys(profile.capabilities).map((name) => [
+        name.replace(/^syntheticAdmin/, "").replace(/^./, (letter) =>
+          letter.toLowerCase(),
+        ),
+        true,
+      ]),
+    ),
+  }),
+);
 
 run(["exec", "tsc", "--noEmit"], env);
 run(["exec", "vite", "build"], env);

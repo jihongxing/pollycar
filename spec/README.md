@@ -39,6 +39,7 @@
 | `experiments/free-flex-trial.yaml` | 免费资格名单、批次、指标和停止规则 | 真实邀请关闭、付费关闭 |
 | `payments/zero-money-payment.yaml` | 零金额支付前置、退款语义和孤立支付 | 真实支付关闭 |
 | `platform/persistence.yaml` | PostgreSQL、迁移、乐观并发和事务 outbox | 默认内存，本机数据库显式启用 |
+| `platform/configuration-governance.yaml` | Admin、Server、App、CI、EAS 与基础设施统一配置键、Profile、敏感等级和迁移门禁 | 批次一完成，现有运行入口尚未迁移 |
 
 ### 资金规范
 

@@ -64,6 +64,13 @@ export type RefreshSessionRecord = Readonly<{
   synthetic: true;
 }>;
 
+type PhoneAuthenticationSecurityPolicy = Readonly<{
+  phoneChallengeTtlSeconds: number;
+  phoneChallengeMaximumAttempts: number;
+  phoneChallengeResendSeconds: number;
+  phoneChallengeHourlyLimit: number;
+}>;
+
 export class PhoneAuthenticationService {
   public constructor(
     private readonly accounts: Repository<PhoneAccountRecord>,
@@ -76,6 +83,12 @@ export class PhoneAuthenticationService {
     private readonly audit: AuditLog,
     private readonly now: () => Date,
     private readonly secret = "synthetic-phone-auth-secret",
+    private readonly securityPolicy: PhoneAuthenticationSecurityPolicy = {
+      phoneChallengeTtlSeconds: 5 * 60,
+      phoneChallengeMaximumAttempts: 5,
+      phoneChallengeResendSeconds: 60,
+      phoneChallengeHourlyLimit: 5,
+    },
   ) {}
 
   public async requestCode(input: RequestPhoneCodeRequest): Promise<PhoneCodeChallengeView> {
@@ -90,7 +103,9 @@ export class PhoneAuthenticationService {
       now.getTime() - new Date(value.sentAt).getTime() < 60 * 60 * 1000
     );
     if (recent.some(({ value }) => now < new Date(value.resendAvailableAt))) throw new Error("PHONE_CODE_RATE_LIMITED");
-    if (recent.length >= 5) throw new Error("PHONE_CODE_RATE_LIMITED");
+    if (recent.length >= this.securityPolicy.phoneChallengeHourlyLimit) {
+      throw new Error("PHONE_CODE_RATE_LIMITED");
+    }
     await Promise.all(existing.filter(({ value }) => value.state === "pending").map(({ value, version }) =>
       this.challenges.put(value.challengeId, { ...value, state: "superseded" }, version)));
     const challengeId = `phone-challenge-${randomUUID()}`;
@@ -108,10 +123,14 @@ export class PhoneAuthenticationService {
       deviceId: input.deviceId,
       state: delivery.state === "unknown" ? "delivery_unknown" : "pending",
       attempts: 0,
-      maximumAttempts: 5,
+      maximumAttempts: this.securityPolicy.phoneChallengeMaximumAttempts,
       sentAt: now.toISOString(),
-      expiresAt: new Date(now.getTime() + 5 * 60 * 1000).toISOString(),
-      resendAvailableAt: new Date(now.getTime() + 60 * 1000).toISOString(),
+      expiresAt: new Date(
+        now.getTime() + this.securityPolicy.phoneChallengeTtlSeconds * 1000,
+      ).toISOString(),
+      resendAvailableAt: new Date(
+        now.getTime() + this.securityPolicy.phoneChallengeResendSeconds * 1000,
+      ).toISOString(),
       providerReference: delivery.providerReference,
       processedKeys: [input.idempotencyKey],
       synthetic: true,

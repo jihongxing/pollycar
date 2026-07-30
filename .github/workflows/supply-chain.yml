@@ -4,12 +4,19 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
   packages: write
+
+env:
+  POLLYCAR_BUILD_NODE_VERSION: "22"
+  POLLYCAR_BUILD_PNPM_VERSION: "10.22.0"
+  POLLYCAR_BUILD_JAVA_VERSION: "17"
+  POLLYCAR_BUILD_EAS_CLI_VERSION: "21.4.0"
 
 jobs:
   evidence:
@@ -24,6 +31,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm check:build-config container-evidence
       - run: pnpm sbom:generate
       - uses: anchore/sbom-action@v0
         with:
@@ -52,14 +60,32 @@ jobs:
       contents: read
       id-token: write
       packages: write
+    env:
+      POLLYCAR_IMAGE_PUBLICATION_APPROVED: ${{ vars.POLLYCAR_IMAGE_PUBLICATION_APPROVED }}
+      POLLYCAR_IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+      POLLYCAR_IMAGE_SIGNING_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/supply-chain.yml@${{ github.ref }}
+      POLLYCAR_NODE_IMAGE_DIGEST: ${{ vars.POLLYCAR_NODE_IMAGE_DIGEST }}
+      POLLYCAR_POSTGRES_IMAGE_DIGEST: ${{ vars.POLLYCAR_POSTGRES_IMAGE_DIGEST }}
+      POLLYCAR_OTEL_COLLECTOR_IMAGE_DIGEST: ${{ vars.POLLYCAR_OTEL_COLLECTOR_IMAGE_DIGEST }}
+      POLLYCAR_CADDY_IMAGE_DIGEST: ${{ vars.POLLYCAR_CADDY_IMAGE_DIGEST }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:build-config container-publication
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
+        id: build
         with:
           context: infrastructure/local-production
           push: true
@@ -67,4 +93,11 @@ jobs:
           build-args: |
             POLLYCAR_NODE_IMAGE_DIGEST=${{ vars.POLLYCAR_NODE_IMAGE_DIGEST }}
       - uses: sigstore/cosign-installer@v3
-      - run: cosign sign --yes ghcr.io/${{ github.repository_owner }}/pollycar:${{ github.ref_name }}
+      - run: |
+          image="ghcr.io/${{ github.repository_owner }}/pollycar"
+          echo "${image}@${{ steps.build.outputs.digest }}" > output/published-image-digest.txt
+          cosign sign --yes "${image}@${{ steps.build.outputs.digest }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: published-image-digest
+          path: output/published-image-digest.txt

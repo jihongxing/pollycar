@@ -182,8 +182,8 @@ test("车主订单页显示完整预约时间并保留自主接单决定", async
   await page.getByRole("button", { name: "查看附近订单" }).click();
   await expect(page).toHaveURL(/\/driver-orders$/);
 
-  await expect(page.getByText("选择你愿意接的行程")).toBeVisible();
-  await expect(page.getByText("平台不会强制派单，也不会自动接受。")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "附近订单" })).toBeVisible();
+  await expect(page.getByText("逐单查看路线、人数和时间，再决定是否接受。")).toBeVisible();
   await expect(page.getByText(/预约行程 · 是否接受由你决定/)).toBeVisible();
   await expect(page.getByText(/7\/13.*15:00–15:10/)).toBeVisible();
   await expect(page.getByText("林女士")).toBeVisible();

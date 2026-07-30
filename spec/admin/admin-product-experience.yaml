@@ -96,6 +96,54 @@ domain_page_foundation:
   return_scroll_restoration_required: true
   initial_validation_resource: "operations_task"
 
+record_action_guidance:
+  applies_to: ["operations_task", "driver", "vehicle", "trip", "safety_case", "finance_record"]
+  server_authoritative: true
+  required_fields: ["allowed_actions", "action_blockers", "next_steps"]
+  blocker_fields: ["action", "code", "reason", "next_step"]
+  next_step_fields: ["kind", "label", "action"]
+  blocker_codes:
+    - "NO_CAPABILITY"
+    - "WRONG_ORGANIZATION_SCOPE"
+    - "WRONG_CITY_SCOPE"
+    - "INVALID_RECORD_STATE"
+    - "REQUIRES_REVIEW"
+    - "REQUIRES_PLATFORM_REVIEW"
+    - "REQUIRES_INDEPENDENT_REVIEW"
+    - "MISSING_MATERIAL"
+    - "LEASE_NOT_OWNED"
+    - "ALREADY_COMPLETED"
+    - "RISK_RESTRICTION"
+
+high_risk_approval_records:
+  applies_to: ["safety_restoration", "evidence_access", "finance_review"]
+  server_authoritative: true
+  required_fields: ["approval_id", "domain", "resource_kind", "resource_id", "requested_action", "state", "requester", "reviewer", "separation_required", "resource_version", "updated_at"]
+  states: ["pending", "approved", "declined", "revoked"]
+  requester_and_reviewer_must_differ: true
+  business_detail_visibility_required: true
+  audit_directory_visibility_required: true
+  append_only_audit_reference_required: true
+  raw_sensitive_payload_allowed: false
+
+high_risk_confirmation:
+  required_for: ["safety_restoration", "evidence_access_request", "evidence_access_approval", "evidence_access_revocation", "finance_preparation", "finance_review"]
+  required_sections: ["business_action", "affected_scope", "reversibility", "review_relation", "business_consequence", "confirm_and_cancel"]
+  review_relation_must_identify_independent_reviewer: true
+  internal_state_machine_language_allowed: false
+  next_step_kinds:
+    - "EXECUTE_ACTION"
+    - "REQUEST_MATERIAL"
+    - "SUBMIT_REVIEW"
+    - "REQUEST_PLATFORM_REVIEW"
+    - "WAIT"
+    - "CONTACT_OWNER"
+    - "NONE"
+  client_side_action_inference_forbidden: true
+  blocker_code_direct_display_forbidden: true
+  unavailable_action_button_display_forbidden: true
+  localized_reason_and_next_step_required: true
+
 operations_task_closure:
   resource_version_required: true
   idempotency_key_required: true
@@ -121,6 +169,7 @@ operations_task_closure:
   append_only_audit_required: true
   audit_actions: ["task_created", "scope_checked", "task_assigned", "task_processed", "task_reviewed"]
   completed_task_write_forbidden: true
+  detail_action_guidance_required: true
 
 operator_management_closure:
   source_contract: "spec/admin/operator-management.yaml"
@@ -167,6 +216,8 @@ driver_vehicle_closure:
   summary_required: true
   list_capabilities: ["search", "state_filter", "sort", "signed_cursor_pagination"]
   return_state_restoration_required: true
+  driver_detail_composition: ["driver_360", "linked_vehicles", "organization_scope", "allowed_actions", "action_blockers", "next_steps", "audit_trail"]
+  vehicle_detail_composition: ["vehicle_360", "driver_summary", "review_task", "organization_scope", "allowed_actions", "action_blockers", "next_steps", "audit_trail"]
   reviewer_actions: ["claim", "request_material", "approve", "reject"]
   action_source_of_truth: "existing_admin_review_task_service"
   role_and_state_intersection_required: true
@@ -193,7 +244,7 @@ trip_operations_closure:
   summary_fields: ["total_trips", "active_trips", "attention_trips", "safety_frozen_trips", "awaiting_authoritative_result_trips"]
   list_capabilities: ["search", "authoritative_state_filter", "operation_state_filter", "sort", "signed_cursor_pagination"]
   return_state_restoration_required: true
-  detail_composition: ["trip_360", "masked_parties", "operator_snapshot", "operation_task", "case_references", "audit_trail"]
+  detail_composition: ["trip_360", "masked_parties", "operator_snapshot", "operation_task", "case_references", "organization_scope", "allowed_actions", "action_blockers", "next_steps", "audit_trail"]
   direct_trip_state_mutation_forbidden: true
   action_source_of_truth: "existing_admin_trip_case_management_service"
   role_and_state_intersection_required: true
@@ -232,7 +283,9 @@ support_safety_closure:
   list_capabilities: ["search", "case_kind_filter", "support_state_filter", "safety_state_filter", "sort", "signed_cursor_pagination"]
   return_state_restoration_required: true
   support_detail_composition: ["support_case", "trip_360", "organization_scope", "allowed_actions", "audit_trail"]
-  safety_detail_composition: ["safety_investigation", "trip_360", "blockers", "evidence_grants", "organization_scope", "allowed_actions", "audit_trail"]
+  safety_detail_composition: ["safety_investigation", "trip_360", "blockers", "evidence_grants", "organization_scope", "allowed_actions", "action_blockers", "next_steps", "audit_trail"]
+  restoration_reviewer_must_differ_from_investigator_and_freeze_actor: true
+  evidence_approver_must_differ_from_requester: true
   action_source_of_truth: "existing_admin_trip_case_management_service"
   role_and_state_intersection_required: true
   support_actions: ["continue_investigation", "await_user", "await_internal", "resolve", "close", "reopen", "escalate_operations", "escalate_safety", "escalate_finance"]
@@ -263,7 +316,8 @@ finance_operations_closure:
   list_capabilities: ["search", "resource_kind_filter", "state_filter", "blocking_filter", "sort", "signed_cursor_pagination"]
   resource_kinds: ["settlement", "payout", "refund_reversal", "reconciliation", "business_day", "ledger"]
   return_state_restoration_required: true
-  detail_composition: ["authoritative_finance_record", "organization_scope", "allowed_actions", "control_boundaries", "audit_trail"]
+  detail_composition: ["authoritative_finance_record", "organization_scope", "allowed_actions", "action_blockers", "next_steps", "approval_records", "control_boundaries", "audit_trail"]
+  preparer_and_reviewer_must_differ: true
   action_source_of_truth: "existing_admin_finance_operations_service"
   role_and_state_intersection_required: true
   platform_finance_actions: ["prepare_operator_settlement", "review_operator_settlement", "request_refund", "request_full_reversal", "submit_reconciliation_resolution", "review_reconciliation_resolution", "prepare_business_day_close", "review_business_day_close"]
@@ -320,6 +374,9 @@ executive_dashboard_closure:
 audit_system_closure:
   source_contract: "spec/admin/audit-event-model.yaml"
   feature_gate: "synthetic_admin_audit_system"
+  resource_kinds: ["event", "investigation", "approval"]
+  approval_filters: ["pending", "approved", "declined", "revoked"]
+  pending_approval_summary_required: true
   bearer_session_required: true
   server_scope_reauthorization_required: true
   routes:

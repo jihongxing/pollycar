@@ -1,0 +1,111 @@
+spec_version: "1.0"
+spec_id: "pollycar.platform.configuration-governance"
+language: "zh-CN"
+status: "approved"
+source_document: "docs/decisions/0034-统一配置治理与迁移规划.md"
+production_enabled: false
+current_batch: 4
+
+sensitivity_levels:
+  L0: "允许进入 Admin 或 App 公开构建产物"
+  L1: "仅内部运行和策略使用"
+  L2: "批准、密钥引用和发布完整性敏感"
+  L3: "数据库凭据、签名密码和供应商机密"
+
+profiles:
+  - id: "local-sandbox"
+    synthetic_capabilities: true
+    real_capabilities: false
+    https_public_urls_required: false
+    raw_secrets_allowed: false
+  - id: "test"
+    synthetic_capabilities: true
+    real_capabilities: false
+    https_public_urls_required: false
+    raw_secrets_allowed: false
+  - id: "demo"
+    synthetic_capabilities: true
+    real_capabilities: false
+    https_public_urls_required: false
+    raw_secrets_allowed: false
+  - id: "shared-preproduction"
+    synthetic_capabilities: true
+    real_capabilities: false
+    https_public_urls_required: true
+    raw_secrets_allowed: false
+  - id: "production-readiness"
+    synthetic_capabilities: false
+    real_capabilities: false
+    https_public_urls_required: true
+    raw_secrets_allowed: false
+  - id: "production"
+    synthetic_capabilities: false
+    real_capabilities: true
+    https_public_urls_required: true
+    raw_secrets_allowed: false
+
+configuration_keys:
+  - "runtime.profile"
+  - "public.apiBaseUrl"
+  - "public.snapshot"
+  - "local.admin.port"
+  - "local.app.port"
+  - "server.http.host"
+  - "server.http.port"
+  - "server.http.publicBaseUrl"
+  - "server.http.allowedOrigins"
+  - "server.http.trustedProxyHops"
+  - "server.http.maximumJsonBodyBytes"
+  - "sandbox.fixedNow"
+  - "sandbox.state.executiveDirectory"
+  - "capabilities.syntheticAdmin.multiOrganization"
+  - "capabilities.syntheticAdmin.authentication"
+  - "capabilities.syntheticAdmin.roleAccessMatrix"
+  - "capabilities.syntheticAdmin.operatorManagement"
+  - "capabilities.syntheticAdmin.driverVehicle"
+  - "capabilities.syntheticAdmin.tripOperations"
+  - "capabilities.syntheticAdmin.caseManagement"
+  - "capabilities.syntheticAdmin.financeOperations"
+  - "capabilities.syntheticAdmin.executiveDashboard"
+  - "capabilities.syntheticAdmin.auditSystem"
+  - "capabilities.syntheticAdmin.dataReports"
+  - "capabilities.syntheticAdmin.organizationAccounts"
+  - "server.persistence.databaseUrl"
+  - "server.persistence.tls.caCertificatePath"
+  - "server.persistence.pool.maximumSize"
+  - "server.persistence.pool.connectionTimeoutMs"
+  - "test.postgres.databaseUrls"
+  - "test.scenario.ledgerResiliencePhase"
+  - "server.secrets.providerReference"
+  - "server.providers.sms"
+  - "server.providers.identity"
+  - "server.providers.adminOidc"
+  - "server.cryptography.keyReferences"
+  - "capabilities.authentication"
+  - "maps.web"
+  - "maps.native"
+  - "maps.native.dependencies"
+  - "approvals.maps"
+  - "server.providers.amapWebService"
+  - "server.providers.vehicleOcr"
+  - "server.observability.otlpEndpoint"
+  - "server.observability.serviceName"
+  - "server.observability.logLevel"
+  - "securityPolicies.authentication"
+  - "build.profile"
+  - "build.android.signing"
+  - "build.ios.signing"
+  - "release.approval"
+  - "supplyChain.images"
+  - "toolchain.versions"
+  - "infrastructure.sharedPreproductionApproval"
+  - "test.browserAcceptance"
+
+governance:
+  public_configuration_maximum_sensitivity: "L0"
+  raw_authentication_secrets_forbidden: true
+  unknown_pollycar_environment_variables_rejected: true
+  deprecated_environment_variables_rejected: true
+  legacy_compatibility_removed_after_batch_seven: true
+  business_invariants_environment_configurable: false
+  capability_dependencies_environment_configurable: false

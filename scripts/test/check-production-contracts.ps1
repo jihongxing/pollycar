@@ -49,7 +49,7 @@ foreach ($required in @("amount_minor: 0", "zero_money_payment: true", "real_pay
 }
 
 $gates = Get-Content -LiteralPath (Join-Path $repo $files[4]) -Raw
-foreach ($required in @("synthetic_admin_multi_organization: false", "synthetic_admin_operator_management: false", "synthetic_admin_trip_operations: false", "synthetic_admin_case_management: false", "synthetic_admin_finance_operations: false", "synthetic_admin_executive_dashboard: false", "synthetic_admin_audit_system: false", "synthetic_admin_data_reports: false", "real_admin_organization_accounts: false", "real_admin_finance_operations: false", "production_admin_enabled: false", "synthetic_financial_ledger: false", "synthetic_financial_reconciliation: false", "synthetic_operator_funds: false", "real_payment: false", "real_settlement: false", "real_withdrawal: false", "driver_early_settlement_enabled: false", "real_operator_onboarding: false", "paid_flex_trial: false", "real_user_invitation: false", "shanghai_pilot: false", "real_data_ingestion: false", "external_identity_provider: false", "real_identity_verification: false", "real_biometric_verification: false", "real_sms_delivery: false", "real_phone_data: false", "production_authentication: false", "real_map: false", "external_map_provider: false", "real_device_location: false", "background_location: false", "real_vehicle_location_stream: false", "amap_sdk: false", "amap_web_service: false", "internal_sandbox: true", "deny_on_missing: true")) {
+foreach ($required in @("synthetic_admin_multi_organization: false", "synthetic_admin_operator_management: false", "synthetic_admin_trip_operations: false", "synthetic_admin_case_management: false", "synthetic_admin_finance_operations: false", "synthetic_admin_executive_dashboard: false", "synthetic_admin_audit_system: false", "synthetic_admin_data_reports: false", "real_admin_organization_accounts: false", "real_admin_finance_operations: false", "production_admin_enabled: false", "synthetic_financial_ledger: false", "synthetic_financial_reconciliation: false", "synthetic_operator_funds: false", "real_payment: false", "real_settlement: false", "real_withdrawal: false", "driver_early_settlement_enabled: false", "real_operator_onboarding: false", "paid_flex_trial: false", "real_user_invitation: false", "shanghai_pilot: false", "real_data_ingestion: false", "external_identity_provider: false", "real_identity_verification: false", "real_biometric_verification: false", "real_driver_liveness_verification: false", "real_sms_delivery: false", "real_phone_data: false", "production_authentication: false", "real_map: false", "external_map_provider: false", "real_device_location: false", "background_location: false", "real_vehicle_location_stream: false", "amap_sdk: false", "amap_web_service: false", "internal_sandbox: true", "deny_on_missing: true")) {
   if ($gates -notmatch [regex]::Escape($required)) { throw "平台门禁契约缺少: $required" }
 }
 
@@ -171,6 +171,7 @@ foreach ($required in @(
   'real_sms_delivery_enabled: false',
   'real_identity_verification_enabled: false',
   'real_biometric_verification_enabled: false',
+  'real_driver_liveness_verification_enabled: false',
   'real_admin_accounts_enabled: false',
   'recommended_strategy: "managed_oidc"',
   'raw_secrets_allowed: false',

@@ -1,6 +1,9 @@
 import { join } from "node:path";
 import type { FeatureGates } from "@pollycar/contracts";
-import { createInternalSandboxConfig } from "./config.js";
+import {
+  createInternalSandboxConfig,
+  type ServerConfig,
+} from "./config.js";
 import { MemoryAuditLog } from "./adapters/memory-audit.js";
 import { MemoryLogger, MemoryMetrics, MemoryTracer } from "./adapters/memory-observability.js";
 import { MemoryRepository, MemoryTransaction } from "./adapters/memory-repository.js";
@@ -34,6 +37,12 @@ import {
   type CompletionIntentRecord,
   type DriverAvailabilityRecord,
 } from "./application/mobility-service.js";
+import {
+  DriverLivenessService,
+  type DriverLivenessAuthorizationRecord,
+  type DriverLivenessChallengeRecord,
+} from "./application/driver-liveness-service.js";
+import { SyntheticDriverLivenessProvider } from "./adapters/synthetic-driver-liveness-provider.js";
 import {
   SafetyCaseService,
   type ChatRecord,
@@ -69,7 +78,7 @@ import {
   SyntheticMapProvider,
 } from "./adapters/synthetic-map-provider.js";
 import { AmapWebServiceProvider } from "./adapters/amap-web-service-provider.js";
-import { EnvironmentSecretProvider } from "./adapters/environment-secret-provider.js";
+import type { SecretProvider } from "./ports/secret-provider.js";
 import {
   MapLocationService,
   MemoryMapQuotaUsage,
@@ -102,18 +111,20 @@ import { FileAvatarObjectStore } from "./persistence/file-avatar-object-store.js
 export function createInternalSandbox(
   now: () => Date = () => new Date(0),
   options: Readonly<{
+    config?: ServerConfig;
     featureGates?: Partial<FeatureGates>;
     allowedOrigins?: readonly string[];
     executiveStateDir?: string;
     avatarObjectDirectory?: string;
+    secretProvider?: SecretProvider;
   }> = {},
 ) {
-  const config = createInternalSandboxConfig(
-    {
+  const config =
+    options.config ??
+    createInternalSandboxConfig({
       ...(options.featureGates ? { featureGates: options.featureGates } : {}),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
-    },
-  );
+    });
   if (
     config.featureGates.syntheticAdminExecutiveDashboard &&
     !options.executiveStateDir
@@ -136,6 +147,10 @@ export function createInternalSandbox(
     : new MemoryRepository<SyntheticTripRecord>();
   const driverAvailabilityRepository = new MemoryRepository<DriverAvailabilityRecord>();
   const completionIntentRepository = new MemoryRepository<CompletionIntentRecord>();
+  const driverLivenessChallengeRepository =
+    new MemoryRepository<DriverLivenessChallengeRecord>();
+  const driverLivenessAuthorizationRepository =
+    new MemoryRepository<DriverLivenessAuthorizationRecord>();
   const vehicleLocationRepository = new MemoryRepository<VehicleLocationRecord>();
   const temporaryChatRepository: Repository<ChatRecord> = postgres
     ? postgres.temporaryChats
@@ -160,7 +175,7 @@ export function createInternalSandbox(
   const tripRatingRepository = new MemoryRepository<TripRatingRecord>();
   const avatarObjectStore = new FileAvatarObjectStore(
     options.avatarObjectDirectory ??
-      join(process.cwd(), ".data", "internal-sandbox", "avatar-objects"),
+      join(process.cwd(), config.sandbox.avatarObjectDirectory),
   );
   const goodwillCancellationRepository: Repository<GoodwillCancellationRecord> =
     postgres?.goodwillCancellations ?? new MemoryRepository<GoodwillCancellationRecord>();
@@ -177,7 +192,21 @@ export function createInternalSandbox(
   const transaction: Transaction = postgres?.transaction ?? new MemoryTransaction();
   const coordinateTransformer = new StrictCoordinateTransformer();
   const mapProvider = config.featureGates.amapWebService
-    ? new AmapWebServiceProvider(true, new EnvironmentSecretProvider(), globalThis.fetch, now)
+    ? new AmapWebServiceProvider(
+        {
+          enabled: true,
+          apiBaseUrl: config.providers.amapWebService.apiBaseUrl,
+          ...(config.providers.amapWebService.status === "configured_disabled"
+            ? {
+                keyReference:
+                  config.providers.amapWebService.keyReference,
+              }
+            : {}),
+        },
+        options.secretProvider ?? { read: async () => undefined },
+        globalThis.fetch,
+        now,
+      )
     : new SyntheticMapProvider(now);
   const mapQuotaUsage = new MemoryMapQuotaUsage();
   const mapLocations = new MapLocationService(mapProvider, mapQuotaUsage, now);
@@ -244,6 +273,10 @@ export function createInternalSandbox(
     audit,
     now,
   );
+  let handleAccountSessionBoundary: (
+    accountId: string,
+    reason: "session_created" | "logout" | "identity_switch",
+  ) => Promise<void> = async () => {};
   const accountSessions = new AccountSessionService(
     accountSessionRepository,
     transaction,
@@ -260,6 +293,8 @@ export function createInternalSandbox(
       };
     },
     now,
+    (accountId, reason) => handleAccountSessionBoundary(accountId, reason),
+    config.securityPolicies.authentication,
   );
   const phoneAuthentication = new PhoneAuthenticationService(
     phoneAccountRepository,
@@ -271,6 +306,8 @@ export function createInternalSandbox(
     transaction,
     audit,
     now,
+    "synthetic-phone-auth-secret",
+    config.securityPolicies.authentication,
   );
   const resolveDriverEligibility = async (accountId: string) => {
     const vehicle = await vehicleReviews.get("vehicle-application-7", accountId);
@@ -306,6 +343,17 @@ export function createInternalSandbox(
     goodwillCancellations,
     postgres ? (accountId) => postgres.driverQuota.listCountedHistory(accountId) : undefined,
   );
+  const driverLiveness = new DriverLivenessService(
+    driverLivenessChallengeRepository,
+    driverLivenessAuthorizationRepository,
+    transaction,
+    audit,
+    new SyntheticDriverLivenessProvider(),
+    now,
+    "synthetic-driver-liveness-authorization-secret",
+    undefined,
+    config.securityPolicies.authentication,
+  );
   const mobility = new MobilityService(
     syntheticTripRepository,
     driverAvailabilityRepository,
@@ -313,10 +361,13 @@ export function createInternalSandbox(
     transaction,
     audit,
     resolveDriverEligibility,
+    driverLiveness,
     now,
     decoratePublicProfile,
     goodwillCancellations,
   );
+  handleAccountSessionBoundary = (accountId, reason) =>
+    mobility.forceOffline(accountId, reason);
   const notificationDelivery = new SyntheticNotificationDelivery();
   const dispatch = new DispatchService(
     syntheticTripRepository,
@@ -329,8 +380,14 @@ export function createInternalSandbox(
     (accountId) => mobility.listAvailableTrips(accountId),
     (accountId, tripId, expectedVersion, idempotencyKey) =>
       syntheticTrips.accept(accountId, tripId, expectedVersion, idempotencyKey),
-    async (accountId, state, idempotencyKey) => {
-      await mobility.setAvailability(accountId, state, true, idempotencyKey);
+    async (accountId, state, idempotencyKey, onlineAuthorization) => {
+      await mobility.setAvailability(
+        accountId,
+        state,
+        true,
+        idempotencyKey,
+        onlineAuthorization,
+      );
     },
     now,
   );
@@ -501,6 +558,7 @@ export function createInternalSandbox(
     config.featureGates.syntheticAdminAuditSystem,
     config.featureGates.syntheticAdminDataReports,
     config.featureGates.syntheticAdminOrganizationAccounts,
+    config.securityPolicies.authentication,
   );
   const executiveStateDirectory = options.executiveStateDir;
   if (config.featureGates.syntheticAdminExecutiveDashboard) {
@@ -562,6 +620,7 @@ export function createInternalSandbox(
     syntheticTrips,
     accountSessions,
     phoneAuthentication,
+    driverLiveness,
     mobility,
     dispatch,
     safetyCases,

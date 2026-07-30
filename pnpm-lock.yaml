@@ -20,6 +20,9 @@ importers:
       '@playwright/test':
         specifier: 1.55.1
         version: 1.55.1
+      '@pollycar/configuration':
+        specifier: workspace:*
+        version: link:packages/configuration
       '@types/node':
         specifier: 22.19.1
         version: 22.19.1
@@ -35,6 +38,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@pollycar/configuration':
+        specifier: workspace:*
+        version: link:../../packages/configuration
       '@pollycar/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -75,6 +81,9 @@ importers:
 
   apps/app:
     dependencies:
+      '@pollycar/configuration':
+        specifier: workspace:*
+        version: link:../../packages/configuration
       '@pollycar/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -130,6 +139,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@pollycar/configuration':
+        specifier: workspace:*
+        version: link:../../packages/configuration
       '@pollycar/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -143,6 +155,12 @@ importers:
       '@types/pg':
         specifier: 8.15.5
         version: 8.15.5
+
+  packages/configuration:
+    dependencies:
+      '@pollycar/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/contracts: {}
 

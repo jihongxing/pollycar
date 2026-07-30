@@ -1,4 +1,5 @@
 export * from "./admin-review.js";
+export * from "./admin-authorization.js";
 export * from "./admin-access.js";
 export * from "./admin-productization.js";
 export * from "./admin-operator-management.js";
@@ -9,6 +10,7 @@ export * from "./account-session.js";
 export * from "./app-recovery.js";
 export * from "./device-qa.js";
 export * from "./driver-commerce.js";
+export * from "./driver-liveness.js";
 export * from "./dispatch-offer.js";
 export * from "./feature-gates.js";
 export * from "./free-flex-trial.js";
@@ -31,3 +33,4 @@ export * from "./data-lifecycle.js";
 export * from "./map-location.js";
 export * from "./usability-acceptance.js";
 export * from "./vehicle-review.js";
+export * from "./configuration-governance.js";

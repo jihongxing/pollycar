@@ -1,5 +1,7 @@
 import type {
   AvailableDriverTripView,
+  DriverLivenessChallenge,
+  DriverLivenessResult,
   DriverOrderDetail,
   DriverOrderState,
   DriverOrderSummary,
@@ -35,6 +37,10 @@ type MobilityContextValue = Readonly<{
   recoveryNotice?: string;
   refresh(): Promise<void>;
   setAvailability(state: "online" | "offline"): Promise<void>;
+  createDriverLivenessChallenge(): Promise<DriverLivenessChallenge>;
+  completeDriverLivenessAndGoOnline(
+    challengeId: string,
+  ): Promise<DriverLivenessResult>;
   getOrder(orderId: string): Promise<DriverOrderDetail>;
   getCancellationEligibility(tripId: string): Promise<TripCancellationEligibility>;
   cancelAcceptedTrip(
@@ -118,7 +124,27 @@ export function MobilityProvider({ children }: PropsWithChildren) {
       ...(recoveryNotice ? { recoveryNotice } : {}),
       refresh,
       setAvailability: async (state) => {
+        if (state === "online") throw new Error("DRIVER_LIVENESS_REQUIRED");
         await executeWrite(() => client.setDriverAvailability(state));
+      },
+      createDriverLivenessChallenge: () =>
+        client.createDriverLivenessChallenge(),
+      completeDriverLivenessAndGoOnline: async (challengeId) => {
+        const result = await client.completeDriverLivenessChallenge(
+          challengeId,
+          "passed",
+        );
+        if (!result.livenessAuthorizationToken) {
+          throw new Error("DRIVER_LIVENESS_REQUIRED");
+        }
+        await executeWrite(() =>
+          client.setDriverAvailability(
+            "online",
+            true,
+            result.livenessAuthorizationToken,
+          ),
+        );
+        return result;
       },
       getOrder: (orderId) => client.getDriverOrder(orderId),
       getCancellationEligibility: (tripId) => client.getCancellationEligibility(tripId),
@@ -180,6 +206,7 @@ const initialAvailability: DriverAvailabilityView = {
   accountId: "synthetic-account-7",
   state: "offline",
   returnOnlineAfterTrip: true,
+  livenessRequiredBeforeNextOnline: true,
   updatedAt: new Date(0).toISOString(),
   productionEnabled: false,
   synthetic: true,

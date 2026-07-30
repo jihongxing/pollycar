@@ -11,6 +11,7 @@ import type { NotificationDelivery } from "../ports/communication-delivery.js";
 import type { Outbox } from "../ports/outbox.js";
 import type { Repository, Transaction } from "../ports/storage.js";
 import type { SyntheticTripRecord } from "./synthetic-trip-service.js";
+import type { DriverOnlineAuthorization } from "./mobility-service.js";
 
 export type DriverDispatchPresenceRecord = Readonly<{
   accountId: string;
@@ -53,6 +54,7 @@ export class DispatchService {
       accountId: string,
       state: "online" | "offline",
       idempotencyKey: string,
+      onlineAuthorization?: DriverOnlineAuthorization,
     ) => Promise<void>,
     private readonly now: () => Date,
   ) {}
@@ -62,6 +64,7 @@ export class DispatchService {
     state: "online" | "offline",
     location: DriverDispatchLocation | undefined,
     idempotencyKey: string,
+    onlineAuthorization?: DriverOnlineAuthorization,
   ): Promise<DriverDispatchPresenceView> {
     return this.transaction.run(async () => {
       const stored = await this.presences.get(accountId);
@@ -73,6 +76,7 @@ export class DispatchService {
         accountId,
         state,
         `${idempotencyKey}:availability`,
+        onlineAuthorization,
       );
       const updatedAt = this.now().toISOString();
       const next: DriverDispatchPresenceRecord = {

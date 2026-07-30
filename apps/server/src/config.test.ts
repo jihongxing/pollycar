@@ -6,23 +6,84 @@ describe("内部生产级沙箱功能门禁", () => {
   it("默认关闭所有真实能力", () => {
     expect(createInternalSandboxConfig()).toEqual({
       environment: "internal-sandbox",
+      profile: "local-sandbox",
       dataMode: "synthetic",
       persistence: {
         mode: "memory",
       },
       http: {
         host: "127.0.0.1",
-        port: 4310,
+        port: 4321,
         allowedOrigins: [
           "http://127.0.0.1:4173",
-          "http://localhost:4173",
-          "http://127.0.0.1:4174",
-          "http://localhost:4174",
-          "http://127.0.0.1:8081",
-          "http://localhost:8081",
           "http://127.0.0.1:8181",
-          "http://localhost:8181",
         ],
+        maximumJsonBodyBytes: 262144,
+      },
+      sandbox: {
+        executiveStateDirectory:
+          ".codex-runtime/admin-executive-dashboard",
+        avatarObjectDirectory:
+          ".data/internal-sandbox/avatar-objects",
+      },
+      observability: {
+        serviceName: "pollycar-server-local-sandbox",
+        logLevel: "info",
+        exporter: "memory",
+        redactHeaders: [
+          "authorization",
+          "cookie",
+          "set-cookie",
+          "x-api-key",
+        ],
+      },
+      secrets: {
+        provider: "disabled",
+        rawVendorSecretsAllowed: false,
+      },
+      providers: {
+        sms: {
+          status: "unconfigured",
+        },
+        identity: {
+          status: "unconfigured",
+        },
+        adminOidc: {
+          status: "unconfigured",
+          strategy: "pending_decision",
+        },
+        vehicleOcr: {
+          status: "unconfigured",
+          providerId: "tencent-cloud-ocr",
+          apiBaseUrl: "https://ocr.tencentcloudapi.com",
+        },
+        amapWebService: {
+          status: "unconfigured",
+          apiBaseUrl: "https://restapi.amap.com",
+        },
+      },
+      cryptography: {
+        status: "unconfigured",
+      },
+      securityPolicies: {
+        version: "authentication.v1",
+        authentication: {
+          phoneChallengeTtlSeconds: 300,
+          phoneChallengeMaximumAttempts: 5,
+          phoneChallengeResendSeconds: 60,
+          phoneChallengeHourlyLimit: 5,
+          accountSessionTtlSeconds: 1800,
+          driverLivenessChallengeTtlSeconds: 300,
+          driverLivenessAuthorizationTtlSeconds: 300,
+          adminLoginMaximumAttempts: 5,
+          adminAccountLockSeconds: 1800,
+          adminLoginChallengeTtlSeconds: 300,
+          adminWorkIdentitySelectionTtlSeconds: 300,
+          adminAccessSessionTtlSeconds: 900,
+          adminIdleSessionTtlSeconds: 1800,
+          adminAbsoluteSessionTtlSeconds: 28800,
+          adminMfaFreshnessSeconds: 900,
+        },
       },
       featureGates: {
         productionEnabled: false,
@@ -55,6 +116,7 @@ describe("内部生产级沙箱功能门禁", () => {
         realDataIngestion: false,
         realIdentityVerification: false,
         realBiometricVerification: false,
+        realDriverLivenessVerification: false,
         externalIdentityProvider: false,
         realSmsDelivery: false,
         realPhoneData: false,
@@ -270,7 +332,7 @@ describe("内部生产级沙箱功能门禁", () => {
 
 describe("生产基础设施配置", () => {
   const validEnvironment = {
-    POLLYCAR_PRODUCTION_DATABASE_URL:
+    POLLYCAR_DATABASE_URL:
       "postgresql://pollycar@db.pollycar.example:5432/pollycar?sslmode=verify-full",
     POLLYCAR_PRODUCTION_DATABASE_CA_PATH: "/run/secrets/pollycar-postgres-ca.crt",
     POLLYCAR_PRODUCTION_PUBLIC_BASE_URL: "https://api.pollycar.example",
@@ -310,12 +372,12 @@ describe("生产基础设施配置", () => {
   it("拒绝本机数据库、无 TLS 数据库和非 HTTPS 服务边界", () => {
     expect(() => createProductionConfig({
       ...validEnvironment,
-      POLLYCAR_PRODUCTION_DATABASE_URL:
+      POLLYCAR_DATABASE_URL:
         "postgresql://pollycar@localhost:5432/pollycar?sslmode=require",
     })).toThrow("PRODUCTION_DATABASE_MUST_BE_REMOTE");
     expect(() => createProductionConfig({
       ...validEnvironment,
-      POLLYCAR_PRODUCTION_DATABASE_URL:
+      POLLYCAR_DATABASE_URL:
         "postgresql://pollycar@db.pollycar.example:5432/pollycar",
     })).toThrow("PRODUCTION_DATABASE_TLS_REQUIRED");
     expect(() => createProductionConfig({

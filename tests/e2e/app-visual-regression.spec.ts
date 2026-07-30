@@ -21,6 +21,10 @@ const sharedPages = mobilityVisualPages.filter(
   (page) => page.group === "shared" && page.baselineState === "active",
 );
 const visualFixtureTime = Date.parse("2026-07-15T01:41:00.000Z");
+const messageCenterRoute =
+  /\/v1\/internal-sandbox\/app\/messages\/?(?:\?.*)?$/;
+const messageCenterReadRoute =
+  /\/v1\/internal-sandbox\/app\/messages\/[^/]+\/read\/?(?:\?.*)?$/;
 
 test.describe("移动端核心页面视觉回归", () => {
   test("390、430 与桌面端覆盖 R01–R08、S01–S03", async ({ page }) => {
@@ -53,6 +57,10 @@ test.describe("移动端核心页面视觉回归", () => {
         await setSharedFixture(page, visualPage.fixture);
         await page.goto(visualPage.route);
         await expect(page.getByText(visualPage.expectedAnchor).first()).toBeVisible();
+        if (visualPage.fixture === "shared-message-center") {
+          await expect(page.getByText("行程通知")).toBeVisible();
+          await expect(page.getByText("车主已接单，约 5 分钟到达。")).toBeVisible();
+        }
         await expect(page).toHaveScreenshot(`${visualPage.id}-${viewport.id}.png`, {
           animations: "disabled",
           caret: "hide",
@@ -83,6 +91,25 @@ test.describe("移动端核心页面视觉回归", () => {
       }
     }
   });
+});
+
+test("共享聊天切换消息中心时保持资格与消息内容", async ({ page }) => {
+  await prepareVisualPage(page);
+  await setPassengerFixture(page, "passenger-ready");
+  await openVisualSession(page);
+
+  await setSharedFixture(page, "shared-trip-chat");
+  await page.goto("/trip-chat");
+  await expect(page.getByText("行程联系")).toBeVisible();
+
+  await setSharedFixture(page, "shared-message-center");
+  await page.goto("/message-center");
+  await expect(page).toHaveURL(/\/message-center$/);
+  await expect(
+    page.getByRole("heading", { name: "行程联系与服务更新" }),
+  ).toBeVisible();
+  await expect(page.getByText("行程通知")).toBeVisible();
+  await expect(page.getByText("车主已接单，约 5 分钟到达。")).toBeVisible();
 });
 
 async function openVisualSession(page: Page) {
@@ -334,7 +361,8 @@ async function setDriverFixture(page: Page, fixture: MobilityVisualPage["fixture
 async function setSharedFixture(page: Page, fixture: MobilityVisualPage["fixture"]) {
   await page.unroute("**/v1/internal-sandbox/app/synthetic-trips/dashboard");
   await page.unroute("**/v1/internal-sandbox/app/synthetic-trips/*/chat");
-  await page.unroute("**/v1/internal-sandbox/app/messages");
+  await page.unroute(messageCenterRoute);
+  await page.unroute(messageCenterReadRoute);
 
   if (fixture === "shared-trip-chat") {
     const trip = {
@@ -418,7 +446,7 @@ async function setSharedFixture(page: Page, fixture: MobilityVisualPage["fixture
   if (fixture === "shared-message-center") {
     const trip = syntheticTrip(
       "accepted",
-      "shared-message-trip",
+      "shared-visual-trip",
       1,
       visualFixtureTime,
     );
@@ -468,51 +496,56 @@ async function setSharedFixture(page: Page, fixture: MobilityVisualPage["fixture
         });
       },
     );
-    await page.route("**/v1/internal-sandbox/app/messages", async (route) => {
+    const messageCenterView = {
+      items: [
+        {
+          itemId: "shared-message-chat",
+          category: "trip_chat",
+          title: "周师傅",
+          body: "我正在西藏中路路口。",
+          occurredAt: "2026-07-15T01:40:00.000Z",
+          pinned: true,
+          target: { kind: "trip_chat", tripId: "shared-visual-trip" },
+          synthetic: true,
+        },
+        {
+          itemId: "shared-message-trip-service",
+          category: "trip_service",
+          title: "行程通知",
+          body: "车主已接单，约 5 分钟到达。",
+          occurredAt: "2026-07-15T01:37:00.000Z",
+          pinned: false,
+          target: { kind: "trip", tripId: "shared-visual-trip" },
+          synthetic: true,
+        },
+        {
+          itemId: "shared-message-vehicle",
+          category: "vehicle_review",
+          title: "车辆审核",
+          body: "你的车辆资料审核已通过。",
+          occurredAt: "2026-07-14T01:41:00.000Z",
+          readAt: "2026-07-14T02:00:00.000Z",
+          pinned: false,
+          target: { kind: "vehicle_review", reviewId: "vehicle-application-7" },
+          synthetic: true,
+        },
+      ],
+      unreadCount: 2,
+      realPushEnabled: false,
+      externalNotificationProviderEnabled: false,
+      synthetic: true,
+    };
+    const fulfillMessageCenter = async (
+      route: Parameters<Parameters<typeof page.route>[1]>[0],
+    ) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          items: [
-            {
-              itemId: "shared-message-chat",
-              category: "trip_chat",
-              title: "周师傅",
-              body: "我正在西藏中路路口。",
-              occurredAt: "2026-07-15T01:40:00.000Z",
-              pinned: true,
-              target: { kind: "trip_chat", tripId: "shared-message-trip" },
-              synthetic: true,
-            },
-            {
-              itemId: "shared-message-trip-service",
-              category: "trip_service",
-              title: "行程通知",
-              body: "车主已接单，约 5 分钟到达。",
-              occurredAt: "2026-07-15T01:37:00.000Z",
-              pinned: false,
-              target: { kind: "trip", tripId: "shared-message-trip" },
-              synthetic: true,
-            },
-            {
-              itemId: "shared-message-vehicle",
-              category: "vehicle_review",
-              title: "车辆审核",
-              body: "你的车辆资料审核已通过。",
-              occurredAt: "2026-07-14T01:41:00.000Z",
-              readAt: "2026-07-14T02:00:00.000Z",
-              pinned: false,
-              target: { kind: "vehicle_review", reviewId: "vehicle-application-7" },
-              synthetic: true,
-            },
-          ],
-          unreadCount: 2,
-          realPushEnabled: false,
-          externalNotificationProviderEnabled: false,
-          synthetic: true,
-        }),
+        body: JSON.stringify(messageCenterView),
       });
-    });
+    };
+    await page.route(messageCenterRoute, fulfillMessageCenter);
+    await page.route(messageCenterReadRoute, fulfillMessageCenter);
     return;
   }
 

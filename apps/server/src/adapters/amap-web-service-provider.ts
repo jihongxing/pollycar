@@ -9,9 +9,15 @@ import type {
 } from "@pollycar/contracts";
 import type { SecretProvider } from "../ports/secret-provider.js";
 
+type AmapWebServiceConfig = Readonly<{
+  enabled: boolean;
+  apiBaseUrl: string;
+  keyReference?: string;
+}>;
+
 export class AmapWebServiceProvider implements MapProvider {
   public constructor(
-    private readonly enabled: boolean,
+    private readonly config: AmapWebServiceConfig,
     private readonly secrets: SecretProvider,
     private readonly fetcher: typeof fetch = globalThis.fetch.bind(globalThis),
     private readonly now: () => Date = () => new Date(),
@@ -71,11 +77,16 @@ export class AmapWebServiceProvider implements MapProvider {
     parameters: Readonly<Record<string, string>>,
     parse: (payload: unknown) => T,
   ): Promise<T> {
-    if (!this.enabled) throw new Error("AMAP_WEB_SERVICE_DISABLED");
-    const key = await this.secrets.read("POLLYCAR_AMAP_WEB_SERVICE_KEY");
+    if (!this.config.enabled) throw new Error("AMAP_WEB_SERVICE_DISABLED");
+    if (!this.config.keyReference) {
+      throw new Error("AMAP_WEB_SERVICE_KEY_REFERENCE_MISSING");
+    }
+    const key = await this.secrets.read(this.config.keyReference);
     if (!key) throw new Error("AMAP_WEB_SERVICE_KEY_MISSING");
     const query = new URLSearchParams({ ...parameters, key });
-    const response = await this.fetcher(`https://restapi.amap.com/${path}?${query.toString()}`);
+    const response = await this.fetcher(
+      `${this.config.apiBaseUrl.replace(/\/$/, "")}/${path}?${query.toString()}`,
+    );
     if (!response.ok) throw new Error("MAP_PROVIDER_UNAVAILABLE");
     return parse(await response.json());
   }

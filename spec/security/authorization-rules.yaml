@@ -16,8 +16,8 @@ actions:
     resource: "driver_dispatch_presence"
     allowed_roles: ["driver"]
     scope: "own_synthetic_location_only"
-    maximum_classification: "L3"
-    audit: "sensitive"
+    maximum_classification: "L4"
+    audit: "strict"
   - id: "dispatch.offer.read"
     resource: "dispatch_offer"
     allowed_roles: ["driver"]
@@ -303,6 +303,42 @@ actions:
     allowed_roles: ["reviewer", "senior_reviewer"]
     scope: "read_only_minimum_provider_trace"
     maximum_classification: "L3"
+    audit: "strict"
+  - id: "driver_liveness.challenge.create"
+    resource: "driver_liveness_challenge"
+    allowed_roles: ["driver"]
+    scope: "self_current_device_session"
+    maximum_classification: "L4"
+    audit: "strict"
+  - id: "driver_liveness.challenge.read"
+    resource: "driver_liveness_challenge"
+    allowed_roles: ["driver"]
+    scope: "self_current_device_session"
+    maximum_classification: "L4"
+    audit: "strict"
+  - id: "driver_liveness.challenge.complete"
+    resource: "driver_liveness_challenge"
+    allowed_roles: ["driver"]
+    scope: "self_current_device_session"
+    maximum_classification: "L4"
+    audit: "strict"
+  - id: "driver_liveness.provider_callback.receive"
+    resource: "driver_liveness_provider_callback"
+    allowed_roles: ["identity_provider"]
+    scope: "signed_callback_for_matching_challenge_only"
+    maximum_classification: "L4"
+    audit: "strict"
+  - id: "driver_availability.read"
+    resource: "driver_availability"
+    allowed_roles: ["driver"]
+    scope: "self"
+    maximum_classification: "L2"
+    audit: "standard"
+  - id: "driver_availability.update"
+    resource: "driver_availability"
+    allowed_roles: ["driver"]
+    scope: "self_current_device_session"
+    maximum_classification: "L4"
     audit: "strict"
   - id: "chat.evidence.read"
     resource: "chat_evidence"

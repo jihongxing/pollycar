@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { loginThroughPhoneVerification, openAuthenticatedPage } from "./helpers/authenticated-app";
+import {
+  completeOwnerParticipationConsent,
+  loginThroughPhoneVerification,
+  openAuthenticatedPage,
+} from "./helpers/authenticated-app";
 
 const criticalRules = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
@@ -59,7 +63,7 @@ test("底部主导航和我的页面具有可访问名称", async ({ page }) => 
 test("车主申请表单具有可识别标签", async ({ page }) => {
   await openAuthenticatedPage(page, "/owner-apply-intro");
   await page.getByRole("button", { name: "开始准备" }).click();
-  await page.getByRole("button", { name: "我已了解，继续添加车辆" }).click();
+  await completeOwnerParticipationConsent(page);
 
   await expect(page.getByRole("textbox", { name: "车辆类型" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "保险有效期" })).toBeVisible();

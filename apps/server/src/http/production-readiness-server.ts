@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { ProductionConfig } from "../config.js";
+import { bindRequestBodyLimit } from "./http-boundary.js";
 
 export interface ProductionReadinessServer {
   readonly url: string;
@@ -12,6 +13,7 @@ export async function startProductionReadinessServer(
   readinessProbe: () => Promise<void>,
 ): Promise<ProductionReadinessServer> {
   const server = createServer((request, response) => {
+    bindRequestBodyLimit(request, config.http.maximumJsonBodyBytes);
     void handleRequest(config, readinessProbe, request, response);
   });
 

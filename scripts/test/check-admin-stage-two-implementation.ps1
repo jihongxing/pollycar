@@ -60,7 +60,8 @@ $admin = (
   Get-Content -LiteralPath (Join-Path $repo "apps\admin\src\features\admin-stage-two\stage-two-workspace.tsx") -Raw
 )
 foreach ($rule in @(
-  "VITE_SYNTHETIC_ADMIN_OPERATOR_MANAGEMENT",
+  "resolveAdminPublicCapabilities",
+  "operatorManagementEnabled",
   "运营主体 360°",
   "运营主体入驻案件",
   "车主 360°",
@@ -70,6 +71,25 @@ foreach ($rule in @(
   "发送双方确认"
 )) {
   if ($admin -notmatch [regex]::Escape($rule)) { throw "阶段二 Admin 工作区缺少: $rule" }
+}
+
+$publicCapabilities = Get-Content -LiteralPath (
+  Join-Path $repo "apps\admin\src\infrastructure\admin-public-capabilities.ts"
+) -Raw
+$localProfile = Get-Content -LiteralPath (
+  Join-Path $repo "packages\configuration\src\index.js"
+) -Raw
+foreach ($rule in @(
+  "config.capabilities.operatorManagement",
+  "VITE_POLLYCAR_PUBLIC_CONFIG",
+  "syntheticAdminOperatorManagement"
+)) {
+  if (
+    $publicCapabilities -notmatch [regex]::Escape($rule) -and
+    $localProfile -notmatch [regex]::Escape($rule)
+  ) {
+    throw "阶段二统一配置链路缺少: $rule"
+  }
 }
 
 $openApi = Get-Content -LiteralPath (Join-Path $repo "spec\api\openapi.yaml") -Raw

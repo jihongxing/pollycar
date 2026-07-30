@@ -37,7 +37,7 @@ governance:
       gates: ["real_data_ingestion", "real_phone_data", "real_user_invitation"]
     identity:
       required_roles: ["identity_compliance_owner", "privacy_owner", "security_owner"]
-      gates: ["external_identity_provider", "real_identity_verification", "real_biometric_verification", "real_sms_delivery", "production_authentication"]
+      gates: ["external_identity_provider", "real_identity_verification", "real_biometric_verification", "real_driver_liveness_verification", "real_sms_delivery", "production_authentication"]
     maps:
       required_roles: ["map_vendor_owner", "privacy_owner", "security_owner"]
       gates: ["external_map_provider", "real_map", "real_device_location", "background_location", "real_vehicle_location_stream", "amap_sdk", "amap_web_service"]
@@ -104,6 +104,7 @@ defaults:
   external_identity_provider: false
   real_identity_verification: false
   real_biometric_verification: false
+  real_driver_liveness_verification: false
   real_sms_delivery: false
   real_phone_data: false
   production_authentication: false
@@ -145,6 +146,7 @@ dependencies:
   external_identity_provider: ["production_enabled", "real_data_ingestion"]
   real_identity_verification: ["production_enabled", "real_data_ingestion", "external_identity_provider"]
   real_biometric_verification: ["production_enabled", "real_data_ingestion", "real_identity_verification", "external_identity_provider"]
+  real_driver_liveness_verification: ["production_enabled", "production_authentication", "real_data_ingestion", "real_biometric_verification", "external_identity_provider"]
   real_sms_delivery: ["production_enabled", "real_data_ingestion"]
   real_phone_data: ["production_enabled", "real_data_ingestion"]
   production_authentication: ["production_enabled", "real_sms_delivery", "real_phone_data"]

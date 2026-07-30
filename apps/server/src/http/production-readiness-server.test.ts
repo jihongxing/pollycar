@@ -8,7 +8,7 @@ import {
 import type { ProductionConfig } from "../config.js";
 
 const environment = {
-  POLLYCAR_PRODUCTION_DATABASE_URL:
+  POLLYCAR_DATABASE_URL:
     "postgresql://pollycar@db.pollycar.example:5432/pollycar?sslmode=require",
   POLLYCAR_PRODUCTION_DATABASE_CA_PATH: "/run/secrets/postgres-ca.crt",
   POLLYCAR_PRODUCTION_PUBLIC_BASE_URL: "https://api.pollycar.example",

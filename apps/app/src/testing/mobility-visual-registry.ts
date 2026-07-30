@@ -41,7 +41,15 @@ export const mobilityVisualPages = Object.freeze([
   page("D09", "driver", "/driver-bank-card", "银行卡管理", "driver-bank-card", "绑定银行卡", "active"),
   page("D10", "driver", "/driver-withdraw", "提现申请", "driver-withdraw", "提现", "active"),
   page("S01", "shared", "/trip-chat", "行程联系", "shared-trip-chat", "行程联系", "active"),
-  page("S02", "shared", "/message-center", "消息中心", "shared-message-center", "消息", "active"),
+  page(
+    "S02",
+    "shared",
+    "/message-center",
+    "消息中心",
+    "shared-message-center",
+    "行程联系与服务更新",
+    "active",
+  ),
     page("S03", "shared", "/account", "账户与身份", "shared-account", "账户与设置", "active"),
 ] satisfies readonly MobilityVisualPage[]);
 

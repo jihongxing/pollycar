@@ -54,6 +54,7 @@ export function AdminRiskConfirmationDialog({
   scope,
   reversible,
   consequence,
+  reviewRelation,
   confirmLabel,
   tone = "danger",
   busy,
@@ -67,6 +68,7 @@ export function AdminRiskConfirmationDialog({
   scope: string;
   reversible: string;
   consequence: string;
+  reviewRelation?: string;
   confirmLabel: string;
   tone?: "primary" | "danger";
   busy: boolean;
@@ -91,6 +93,9 @@ export function AdminRiskConfirmationDialog({
       <dl className="admin-risk-dialog-summary">
         <div><dt>影响范围</dt><dd>{scope}</dd></div>
         <div><dt>是否可恢复</dt><dd>{reversible}</dd></div>
+        {reviewRelation ? (
+          <div><dt>复核关系</dt><dd>{reviewRelation}</dd></div>
+        ) : null}
         <div><dt>完成后</dt><dd>{consequence}</dd></div>
       </dl>
       {fields ? <div className="admin-risk-dialog-fields">{fields}</div> : null}

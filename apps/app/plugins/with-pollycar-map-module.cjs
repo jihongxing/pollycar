@@ -30,7 +30,7 @@ module.exports = function withPollyCarMapModule(config) {
       return modConfig;
     });
     nextConfig = withAppBuildGradle(nextConfig, (modConfig) => {
-      const marker = "// POLLYCAR_AMAP_ANDROID_DEPENDENCIES";
+      const marker = "// @pollycar managed amap dependencies";
       modConfig.modResults.contents = modConfig.modResults.contents.replace(
         new RegExp(`\\n${marker}\\ndependencies \\{[\\s\\S]*?\\n\\}\\n?`, "g"),
         "\n",

@@ -1,0 +1,145 @@
+spec_version: "1.0"
+spec_id: "pollycar.domain.driver-liveness-verification"
+language: "zh-CN"
+status: "implemented_production_disabled"
+production_enabled: false
+source_document: "docs/decisions/0032-车主上线前人脸活体检测.md"
+
+implementation:
+  synthetic_provider_adapter: "implemented"
+  disabled_production_provider_adapter: "implemented"
+  server_enforcement: "implemented"
+  app_flow: "implemented"
+  raw_media_uploaded_to_business_api: false
+  browser_mobile_viewports_verified: ["390x844", "375x812"]
+  verified_on: "2026-07-30"
+
+purpose:
+  trigger: "每次车主从 offline 请求进入 online"
+  required_before_driver_online: true
+  repeat_after_every_offline_transition: true
+  continuous_background_capture_forbidden: true
+  replaces_identity_verification: false
+  replaces_vehicle_or_safety_gates: false
+
+real_capability_gates:
+  real_driver_liveness_verification: false
+  real_biometric_verification: false
+  external_identity_provider: false
+  production_authentication: false
+  real_data_ingestion: false
+  synthetic_only: true
+
+challenge:
+  maximum_active_per_account_device_session: 1
+  ttl_seconds: 300
+  action_count:
+    minimum: 1
+    maximum: 3
+  generated_by_trusted_server_or_provider: true
+  client_action_override_forbidden: true
+  ordered_actions_required: true
+  policy_version_required: true
+  supported_actions:
+    - id: "turn_head_left"
+      user_instruction: "请缓慢向左转头"
+    - id: "turn_head_right"
+      user_instruction: "请缓慢向右转头"
+    - id: "open_mouth"
+      user_instruction: "请张开嘴巴"
+  extensible_actions:
+    examples: ["blink", "nod", "follow_target"]
+    requires_accuracy_review: true
+    requires_accessibility_review: true
+    requires_attack_resistance_review: true
+    requires_device_compatibility_review: true
+
+states:
+  initial: "created"
+  terminal: ["passed", "failed", "expired", "cancelled", "result_unknown"]
+  transitions:
+    - from: "created"
+      to: "in_progress"
+      command: "driver.liveness.start"
+    - from: "in_progress"
+      to: "passed"
+      command: "driver.liveness.provider_result"
+    - from: "in_progress"
+      to: "failed"
+      command: "driver.liveness.provider_result"
+    - from: ["created", "in_progress"]
+      to: "expired"
+      command: "driver.liveness.expire"
+    - from: ["created", "in_progress"]
+      to: "cancelled"
+      command: "driver.liveness.cancel"
+    - from: "in_progress"
+      to: "result_unknown"
+      command: "driver.liveness.provider_result"
+
+authorization:
+  issued_only_after: "passed"
+  ttl_seconds: 300
+  single_use: true
+  bound_to: ["account_id", "device_id", "account_session_id", "challenge_id", "policy_version"]
+  consumed_by: "driver.availability.update.online"
+  revoked_on: ["logout", "device_change", "account_restriction", "challenge_replacement", "online_session_end"]
+  reusable_after_offline: false
+  reusable_for_busy_to_online_same_session: true
+
+online_enforcement:
+  required_transition: "offline_to_online"
+  deny_without_authorization: "DRIVER_LIVENESS_REQUIRED"
+  deny_expired_authorization: "DRIVER_LIVENESS_AUTHORIZATION_EXPIRED"
+  deny_replayed_authorization: "DRIVER_LIVENESS_AUTHORIZATION_REPLAYED"
+  deny_binding_mismatch: "DRIVER_LIVENESS_AUTHORIZATION_MISMATCH"
+  provider_unknown_result_fails_closed: true
+  client_declared_success_forbidden: true
+
+provider_boundary:
+  raw_video_to_business_api_forbidden: true
+  preferred_business_inputs: ["provider_session_reference", "signed_result_token", "signed_callback"]
+  callback_signature_required: true
+  callback_idempotency_required: true
+  callback_time_window_required: true
+  result_query_for_unknown_required: true
+
+data_minimization:
+  business_records:
+    - "challenge_id"
+    - "policy_version"
+    - "action_ids"
+    - "result_category"
+    - "timestamps"
+    - "device_digest"
+    - "provider_request_digest"
+    - "authorization_consumption_state"
+    - "audit_reference"
+  raw_video_storage: false
+  face_image_storage: false
+  biometric_template_storage: false
+  raw_provider_token_logging: false
+
+failure_policy:
+  maximum_consecutive_failures_before_cooldown: 5
+  cooldown_duration_decision: "pending"
+  provider_unavailable: "deny_online"
+  provider_timeout: "deny_online_and_query_result"
+  result_unknown: "deny_online_and_query_result"
+  camera_permission_denied: "remain_offline"
+  user_cancelled: "remain_offline"
+  challenge_expired: "create_new_challenge"
+  permanent_fraud_inference_from_single_failure_forbidden: true
+  appeal_or_assisted_recovery_required: true
+
+audit:
+  classification: "L4"
+  required_events:
+    - "driver_liveness_challenge_created"
+    - "driver_liveness_challenge_started"
+    - "driver_liveness_result_recorded"
+    - "driver_liveness_authorization_issued"
+    - "driver_liveness_authorization_consumed"
+    - "driver_liveness_authorization_revoked"
+    - "driver_online_denied_liveness_required"
+  raw_biometric_data_forbidden: true

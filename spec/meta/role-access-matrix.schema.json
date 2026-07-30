@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pollycar.local/spec/meta/role-access-matrix.schema.json",
-  "title": "运营后台角色权限与授权导航矩阵",
+  "title": "运营后台三级授权模型矩阵",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "decision", "design_approval", "feature_gate", "authorization", "platform_roles", "operator_roles", "navigation", "route_policy", "organization_scope", "field_profiles", "export_profiles", "bulk_actions", "forbidden_role_combinations", "implementation_gate"],
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "decision", "design_approval", "feature_gate", "authorization", "authorization_levels", "organization_scopes", "business_capabilities", "legacy_role_migration", "navigation", "route_policy", "separation_of_duties", "field_profiles", "export_profiles", "bulk_actions", "implementation_gate"],
   "properties": {
-    "spec_version": {"const": "1.0"},
+    "spec_version": {"const": "2.0"},
     "spec_id": {"const": "pollycar.admin.role-access-matrix"},
     "language": {"const": "zh-CN"},
     "production_enabled": {"const": false},
@@ -16,55 +16,31 @@
     "design_approval": {"type": "object"},
     "feature_gate": {"type": "object"},
     "authorization": {"type": "object"},
-    "platform_roles": {
+    "authorization_levels": {
       "type": "array",
-      "minItems": 17,
-      "maxItems": 17,
-      "uniqueItems": true,
-      "items": {"$ref": "#/$defs/role"}
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"type": "object", "required": ["id", "name", "organizations", "maximum_actions"]}
     },
-    "operator_roles": {
+    "organization_scopes": {"type": "object"},
+    "business_capabilities": {
       "type": "array",
-      "minItems": 9,
-      "maxItems": 9,
-      "uniqueItems": true,
-      "items": {"$ref": "#/$defs/role"}
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {"type": "object", "required": ["id", "menus", "minimum_level"]}
     },
+    "legacy_role_migration": {"type": "object", "required": ["runtime_compatibility", "authorization_by_legacy_role_forbidden", "mappings"]},
     "navigation": {
       "type": "array",
       "minItems": 10,
       "maxItems": 10,
-      "uniqueItems": true,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "route_prefix"],
-        "properties": {
-          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-          "route_prefix": {"type": "string", "pattern": "^/admin/[a-z-]+$"}
-        }
-      }
+      "items": {"type": "object", "required": ["id", "route_prefix"]}
     },
     "route_policy": {"type": "object"},
-    "organization_scope": {"type": "object"},
-    "field_profiles": {"type": "object", "minProperties": 9},
-    "export_profiles": {"type": "object", "minProperties": 9},
+    "separation_of_duties": {"type": "object"},
+    "field_profiles": {"type": "object", "minProperties": 6},
+    "export_profiles": {"type": "object", "minProperties": 4},
     "bulk_actions": {"type": "object"},
-    "forbidden_role_combinations": {"type": "array", "minItems": 7},
     "implementation_gate": {"type": "object"}
-  },
-  "$defs": {
-    "role": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "menus", "operation_bundles", "field_profile", "export_profile"],
-      "properties": {
-        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-        "menus": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string"}},
-        "operation_bundles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
-        "field_profile": {"type": "string"},
-        "export_profile": {"type": "string"}
-      }
-    }
   }
 }

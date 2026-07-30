@@ -58,12 +58,12 @@
 
 ### 品牌展示环境
 
-App 使用构建时环境变量控制品牌与内部技术说明：
+App 只从版本化 `PublicConfig` 读取品牌展示环境：
 
-- 默认不设置变量时为 `sandbox`；
-- `EXPO_PUBLIC_BRAND_DEMO=true` 时为 `demo`；
-- `EXPO_PUBLIC_BRAND_PRODUCTION=true` 时为 `production`；
-- 兼容读取 `EXPO_PUBLIC_BRAND_DISPLAY_ENV`，但正式构建应使用上述显式布尔变量，避免构建缓存混用。
+- 本地沙箱构建生成 `sandbox`；
+- 演示构建生成 `demo`；
+- 正式构建必须显式提供 `production` Profile 的 `EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG`；
+- 旧品牌布尔变量和字符串变量已经删除，不再兼容读取。
 
 | 环境 | 环境标识 | 内部技术说明 | 费用、安全与责任披露 |
 | --- | --- | --- | --- |

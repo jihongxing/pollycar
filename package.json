@@ -7,7 +7,10 @@
     "node": ">=22 <23"
   },
   "scripts": {
+    "dev:local": "powershell.exe -NoProfile -File scripts/dev/start-local-sandbox.ps1",
+    "dev:local:restart": "powershell.exe -NoProfile -File scripts/dev/start-local-sandbox.ps1 -Restart",
     "typecheck": "pnpm -r --if-present typecheck",
+    "check:configuration-governance": "powershell.exe -NoProfile -File scripts/test/check-configuration-governance.ps1",
     "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm --filter @pollycar/app build && pnpm --filter @pollycar/admin build && pnpm exec playwright test",
     "test:e2e:a11y": "pnpm --filter @pollycar/app build && pnpm --filter @pollycar/admin build && pnpm exec playwright test tests/e2e/app-accessibility.spec.ts",
@@ -34,6 +37,8 @@
     "build:app:eas:production": "pnpm --filter @pollycar/app eas:production",
     "check:app:production-release": "pnpm --filter @pollycar/app ci:production:gate"
     ,
+    "check:build-config": "node scripts/build/check-build-configuration.mjs"
+    ,
     "infra:shared-preproduction:plan": "node scripts/infra/run-shared-preproduction-iac.mjs plan",
     "infra:shared-preproduction:apply": "node scripts/infra/run-shared-preproduction-iac.mjs apply",
     "check:shared-preproduction:iac": "powershell.exe -NoProfile -File scripts/test/check-shared-preproduction-iac.ps1"
@@ -52,6 +57,7 @@
     "test:postgres:integration": "pnpm --filter @pollycar/server test:postgres-dispatch && pnpm --filter @pollycar/server test:postgres-ledger-prototype && pnpm --filter @pollycar/server test:postgres-ledger-kernel && pnpm --filter @pollycar/server test:postgres-ledger-resilience && pnpm --filter @pollycar/server test:postgres-ledger-templates && pnpm --filter @pollycar/server test:postgres-reconciliation && pnpm --filter @pollycar/server test:postgres-operator-funds"
   },
   "devDependencies": {
+    "@pollycar/configuration": "workspace:*",
     "@axe-core/playwright": "4.10.2",
     "@playwright/test": "1.55.1",
     "@types/node": "22.19.1",

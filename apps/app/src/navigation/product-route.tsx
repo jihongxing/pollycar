@@ -337,8 +337,14 @@ export function ProductRoute({ screen }: Readonly<{ screen: AppScreen }>) {
         orders={orders}
         onToggleOnline={() =>
           void mobility.setAvailability(
-            mobility.availability.state === "offline" ? "online" : "offline",
+            "offline",
           )
+        }
+        onCreateLivenessChallenge={() =>
+          mobility.createDriverLivenessChallenge()
+        }
+        onCompleteLivenessChallenge={(challengeId) =>
+          mobility.completeDriverLivenessAndGoOnline(challengeId)
         }
         navigate={navigateLoose}
       />

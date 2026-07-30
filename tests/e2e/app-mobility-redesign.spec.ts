@@ -183,15 +183,15 @@ test("车主到达目的地必须使用滑动确认并提供无障碍替代操�
 test("消息是一级入口且资金、绑卡和提现保持真实能力关闭", async ({ page }) => {
   await mockMobilityDashboard(page);
   await openAuthenticatedPage(page, "/driver-wallet");
-  await expect(page.getByText("资金服务暂不可用")).toBeVisible();
-  await expect(page.getByText("当前不会产生真实收入，也无法结算、绑卡或提现。")).toBeVisible();
+  await expect(page.getByText("真实结算与提现尚未开放")).toBeVisible();
+  await expect(page.getByText("核对行程费用、待结算记录和银行卡入口。")).toBeVisible();
   await expect(page.getByRole("button", { name: "提现" })).toBeDisabled();
 
   await page.goto("/driver-bank-card");
-  await expect(page.getByText("暂不支持绑定银行卡")).toBeVisible();
+  await expect(page.getByText("请勿填写真实银行卡资料")).toBeVisible();
   await expect(page.getByText(/当前提交不会绑定银行卡/)).toBeVisible();
   await page.goto("/driver-withdraw");
-  await expect(page.getByText("暂不支持提现")).toBeVisible();
+  await expect(page.getByText("真实提现尚未开放")).toBeVisible();
 
   await page.goto("/message-center");
   await expect(page).toHaveURL(/\/message-center$/);

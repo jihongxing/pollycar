@@ -16,6 +16,10 @@ import type {
   AdminAuditInvestigation,
   AdminAuditResourceKind,
   AdminAuditTrailEvent,
+  AdminRecordActionBlocker,
+  AdminRecordActionBlockerCode,
+  AdminRecordNextStep,
+  AdminRecordNextStepKind,
   AdminCaseAction,
   AdminCaseActionCommand,
   AdminCaseActionResult,
@@ -58,6 +62,7 @@ import type {
   AdminGlobalSearchQuery,
   AdminGlobalSearchResponse,
   AdminGlobalSearchResultItem,
+  AdminHighRiskApprovalRecord,
   AdminSafetyCaseAction,
   AdminSafetyInvestigation,
   AdminSupportCase,
@@ -94,7 +99,8 @@ import type {
   AdminOperationsTask,
   AdminOperationsTaskPage,
   AdminOperationsTaskQuery,
-  AdminProductRole,
+  AdminAuthorizationLevel,
+  AdminBusinessCapability,
   AdminProductSession,
   AdminReviewMaterialReason,
   AdminReviewTaskDetail,
@@ -153,6 +159,17 @@ type Selection = Readonly<{
   selectionToken: string;
   email: string;
   expiresAt: number;
+}>;
+
+type AdminAuthenticationSecurityPolicy = Readonly<{
+  adminLoginMaximumAttempts: number;
+  adminAccountLockSeconds: number;
+  adminLoginChallengeTtlSeconds: number;
+  adminWorkIdentitySelectionTtlSeconds: number;
+  adminAccessSessionTtlSeconds: number;
+  adminIdleSessionTtlSeconds: number;
+  adminAbsoluteSessionTtlSeconds: number;
+  adminMfaFreshnessSeconds: number;
 }>;
 
 type SessionRecord = {
@@ -370,35 +387,41 @@ const domainDefinition: Readonly<Record<AdminNavigationDomain, AdminNavigationIt
     ]),
   });
 
-const roleDomains: Readonly<Record<AdminProductRole, readonly AdminNavigationDomain[]>> =
-  Object.freeze({
-    platform_access_administrator: ["workbench", "organization_accounts", "audit_system"],
-    operations_officer: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"],
-    operations_lead: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports", "executive_dashboard"],
-    operator_management_officer: ["workbench", "operator_management", "driver_vehicle"],
-    reviewer: ["workbench", "driver_vehicle"],
-    senior_reviewer: ["workbench", "operator_management", "driver_vehicle"],
-    customer_support: ["workbench", "trip_operations", "support_safety"],
-    support_lead: ["workbench", "trip_operations", "support_safety", "data_reports"],
-    safety_officer: ["workbench", "driver_vehicle", "trip_operations", "support_safety"],
-    safety_lead: ["workbench", "support_safety", "data_reports", "executive_dashboard"],
-    finance_officer: ["workbench", "finance_operations"],
-    finance_lead: ["workbench", "finance_operations", "data_reports", "executive_dashboard"],
-    privacy_compliance: ["workbench", "support_safety", "finance_operations", "data_reports", "executive_dashboard", "audit_system"],
-    data_analyst: ["workbench", "data_reports"],
-    auditor: ["workbench", "organization_accounts", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"],
-    technical_operations: ["workbench", "audit_system"],
-    executive_sponsor: ["workbench", "data_reports", "executive_dashboard"],
-    operator_account_administrator: ["workbench", "organization_accounts", "audit_system"],
-    operator_operations_lead: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"],
-    operator_fleet_officer: ["workbench", "operator_management", "driver_vehicle"],
-    operator_customer_support: ["workbench", "trip_operations", "support_safety"],
-    operator_safety_liaison: ["workbench", "driver_vehicle", "trip_operations", "support_safety"],
-    operator_finance_officer: ["workbench", "finance_operations"],
-    operator_finance_lead: ["workbench", "finance_operations", "data_reports"],
-    operator_auditor: ["workbench", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "data_reports", "audit_system"],
-    operator_executive: ["workbench", "data_reports", "executive_dashboard"],
-  });
+const capabilityDomains: Readonly<
+  Record<AdminBusinessCapability, readonly AdminNavigationDomain[]>
+> = Object.freeze({
+  operations_task: ["workbench"],
+  operator_governance: ["operator_management", "driver_vehicle"],
+  fleet_operation: ["driver_vehicle"],
+  fleet_review: ["driver_vehicle"],
+  trip_operation: ["trip_operations"],
+  support_case: ["trip_operations", "support_safety"],
+  safety_investigation: ["driver_vehicle", "trip_operations", "support_safety"],
+  safety_restoration_review: ["support_safety"],
+  finance_operation: ["finance_operations"],
+  finance_review: ["finance_operations", "data_reports"],
+  privacy_governance: [
+    "support_safety",
+    "finance_operations",
+    "data_reports",
+    "executive_dashboard",
+    "audit_system",
+  ],
+  analytics_read: ["data_reports"],
+  audit_read: [
+    "organization_accounts",
+    "operator_management",
+    "driver_vehicle",
+    "trip_operations",
+    "support_safety",
+    "finance_operations",
+    "data_reports",
+    "audit_system",
+  ],
+  technical_recovery: ["audit_system"],
+  executive_read: ["data_reports", "executive_dashboard"],
+  membership_governance: ["organization_accounts", "audit_system"],
+});
 
 export class AdminAuthenticationService {
   private readonly accounts = new Map<string, AccountFixture>();
@@ -444,6 +467,10 @@ export class AdminAuthenticationService {
   private readonly financeAuditTrails = new Map<
     string,
     AdminFinanceAuditEvent[]
+  >();
+  private readonly highRiskApprovalRecords = new Map<
+    string,
+    AdminHighRiskApprovalRecord
   >();
   private readonly financeViewAuditedAt = new Map<string, number>();
   private readonly executiveOperations = new Map<
@@ -525,6 +552,16 @@ export class AdminAuthenticationService {
     private readonly auditSystemEnabled = false,
     private readonly dataReportsEnabled = false,
     private readonly organizationAccountsEnabled = false,
+    private readonly securityPolicy: AdminAuthenticationSecurityPolicy = {
+      adminLoginMaximumAttempts: 5,
+      adminAccountLockSeconds: 30 * 60,
+      adminLoginChallengeTtlSeconds: 5 * 60,
+      adminWorkIdentitySelectionTtlSeconds: 5 * 60,
+      adminAccessSessionTtlSeconds: 15 * 60,
+      adminIdleSessionTtlSeconds: 30 * 60,
+      adminAbsoluteSessionTtlSeconds: 8 * 60 * 60,
+      adminMfaFreshnessSeconds: 15 * 60,
+    },
   ) {
     for (const account of createAccounts()) this.accounts.set(account.email, account);
     for (const task of this.tasks) {
@@ -574,7 +611,7 @@ export class AdminAuthenticationService {
       invitationToken: token,
       workEmailMasked: "n***@rego.example",
       organizationName: "PollyCar 平台",
-      productRoleName: "平台账号管理员",
+      positionName: "平台账号管理员",
       cityScopes: ["上海"],
       expiresAt: new Date(invitationExpiresAt).toISOString(),
       state: "pending",
@@ -611,16 +648,21 @@ export class AdminAuthenticationService {
     if (account.lockedUntil && account.lockedUntil > now) throw new Error("ADMIN_ACCOUNT_LOCKED");
     if (!safelyCompareAdminCredentials(account.password, password)) {
       account.failedCount += 1;
-      if (account.failedCount >= 5) {
+      if (
+        account.failedCount >=
+        this.securityPolicy.adminLoginMaximumAttempts
+      ) {
         account.failedCount = 0;
-        account.lockedUntil = now + 30 * 60_000;
+        account.lockedUntil =
+          now + this.securityPolicy.adminAccountLockSeconds * 1000;
       }
       throw new Error("ADMIN_CREDENTIAL_INVALID");
     }
     account.failedCount = 0;
     delete account.lockedUntil;
     const challengeId = token("challenge");
-    const expiresAt = now + 5 * 60_000;
+    const expiresAt =
+      now + this.securityPolicy.adminLoginChallengeTtlSeconds * 1000;
     this.challenges.set(challengeId, { challengeId, email, expiresAt });
     return {
       challengeId,
@@ -639,7 +681,9 @@ export class AdminAuthenticationService {
     if (totpCode !== SYNTHETIC_TOTP) throw new Error("ADMIN_MFA_INVALID");
     this.challenges.delete(challengeId);
     const selectionToken = token("selection");
-    const expiresAt = this.now().getTime() + 5 * 60_000;
+    const expiresAt =
+      this.now().getTime() +
+      this.securityPolicy.adminWorkIdentitySelectionTtlSeconds * 1000;
     this.selections.set(selectionToken, {
       selectionToken,
       email: challenge.email,
@@ -685,7 +729,11 @@ export class AdminAuthenticationService {
   ): AdminProductSession {
     const current = this.authenticate(accessToken);
     const now = this.now().getTime();
-    if (current.mfaVerifiedAt + 15 * 60_000 <= now) {
+    if (
+      current.mfaVerifiedAt +
+        this.securityPolicy.adminMfaFreshnessSeconds * 1000 <=
+      now
+    ) {
       throw new Error("ADMIN_AUTH_MFA_FRESHNESS_REQUIRED");
     }
     const account = this.accounts.get(current.accountEmail);
@@ -836,7 +884,7 @@ export class AdminAuthenticationService {
           domain: navigationItem.id,
           kind: "membership",
           title: item.displayName,
-          description: `${item.organizationName} · ${item.productRoleName}`,
+          description: `${item.organizationName} · ${item.positionName}`,
           route: `/admin/organization-accounts/${encodeURIComponent(item.membershipId)}`,
         }));
         hasMore = page.pageInfo.hasNextPage || items.length > limit;
@@ -1126,10 +1174,10 @@ export class AdminAuthenticationService {
       }
       return { ...existing.result, idempotentReplay: true };
     }
-    if (!operationPermissions(session.workIdentity.productRole).includes(command.action)) {
+    if (!operationPermissions(session.workIdentity).includes(command.action)) {
       throw new Error("AUTHORIZATION_DENIED");
     }
-    if (!allowedActionsFor(task, session.workIdentity.productRole).includes(command.action)) {
+    if (!allowedActionsFor(task, session.workIdentity).includes(command.action)) {
       throw new Error("ADMIN_OPERATIONS_TASK_ACTION_INVALID");
     }
     if (task.version !== command.expectedVersion) {
@@ -1144,7 +1192,7 @@ export class AdminAuthenticationService {
       version: task.version + 1,
       updatedAt: occurredAt,
       ...(command.action === "assign"
-        ? { assigneeName: session.workIdentity.productRoleName }
+        ? { assigneeName: session.workIdentity.positionName }
         : {}),
       ...(nextStatus === "completed" ? { completedAt: occurredAt } : {}),
     };
@@ -1154,7 +1202,7 @@ export class AdminAuthenticationService {
       eventId: `audit-${taskId}-${nextTask.version}-${command.action}`,
       action: auditActionFor(command.action),
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt,
       previousStatus: task.status,
       nextStatus,
@@ -1285,7 +1333,7 @@ export class AdminAuthenticationService {
       !lastEvent ||
       lastEvent.action !== "operator_profile_viewed" ||
       lastEvent.actorLabel !== session.workIdentity.organizationName ||
-      lastEvent.actorRole !== session.workIdentity.productRoleName ||
+      lastEvent.actorRole !== session.workIdentity.positionName ||
       new Date(occurredAt).getTime() -
         new Date(lastEvent.occurredAt).getTime() > 1_000
     ) {
@@ -1293,7 +1341,7 @@ export class AdminAuthenticationService {
         eventId: token("operator-audit-view"),
         action: "operator_profile_viewed",
         actorLabel: session.workIdentity.organizationName,
-        actorRole: session.workIdentity.productRoleName,
+        actorRole: session.workIdentity.positionName,
         occurredAt,
       });
     }
@@ -1333,7 +1381,7 @@ export class AdminAuthenticationService {
       }
       return { ...existing.result, idempotentReplay: true };
     }
-    if (!allowedOperatorActionsFor(current, session.workIdentity.productRole).includes(command.action)) {
+    if (!allowedOperatorActionsFor(current, session.workIdentity).includes(command.action)) {
       throw new Error("ADMIN_OPERATOR_ACTION_INVALID");
     }
     if (current.resourceVersion !== command.expectedVersion) {
@@ -1355,7 +1403,7 @@ export class AdminAuthenticationService {
         ? "operator_restricted"
         : "operator_reactivated",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
       previousState: current.lifecycleState,
       nextState: updated.lifecycleState,
@@ -1483,7 +1531,7 @@ export class AdminAuthenticationService {
         eventId: token("driver-audit-view"),
         action: "driver_profile_viewed",
         actorLabel: session.workIdentity.organizationName,
-        actorRole: session.workIdentity.productRoleName,
+        actorRole: session.workIdentity.positionName,
         occurredAt,
       });
       this.driverAuditTrails.set(driverAccountId, auditTrail);
@@ -1499,6 +1547,7 @@ export class AdminAuthenticationService {
           taskById.get(record.reviewTaskId ?? ""),
         ),
       ],
+      ...driverActionSummaryFor(driver, session.workIdentity),
       auditTrail: [...auditTrail],
       synthetic: true,
     };
@@ -1632,7 +1681,7 @@ export class AdminAuthenticationService {
     const task = await adminReviews.getTaskSnapshot(record.reviewTaskId);
     const allowedActions = allowedVehicleActionsFor(
       task,
-      session.workIdentity.productRole,
+      session.workIdentity,
       session.workIdentity.workIdentityId,
     );
     if (!allowedActions.includes(command.action)) {
@@ -1832,7 +1881,7 @@ export class AdminAuthenticationService {
       eventId: token("trip-audit-view"),
       action: "trip_profile_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
     });
     this.tripAuditTrails.set(tripId, auditTrail);
@@ -1889,7 +1938,7 @@ export class AdminAuthenticationService {
       throw new Error("ADMIN_RESOURCE_VERSION_CONFLICT");
     }
     if (
-      !allowedTripActionsFor(task.state, session.workIdentity.productRole)
+      !allowedTripActionsFor(task.state, session.workIdentity)
         .includes(command.action)
     ) {
       throw new Error("ADMIN_TRIP_OPERATION_ACTION_INVALID");
@@ -1920,7 +1969,7 @@ export class AdminAuthenticationService {
         ? "trip_operation_triaged"
         : "trip_domain_action_requested",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
       previousState,
       nextState: updatedTask.state,
@@ -1954,6 +2003,9 @@ export class AdminAuthenticationService {
     const actor = actorFor(session, requestContext);
     const profile = tripCaseManagement.getTrip360(actor, tripId);
     const operationTask = tripCaseManagement.getTripOperationTask(actor, tripId);
+    const actionSummary = operationTask
+      ? tripActionSummaryFor(operationTask.state, session.workIdentity)
+      : tripActionSummaryWithoutTask(session.workIdentity);
     return {
       trip: tripDirectoryItemFor(profile, operationTask),
       profile,
@@ -1967,12 +2019,7 @@ export class AdminAuthenticationService {
           : {}),
       },
       organizationScope: organizationScopeFor(session),
-      allowedActions: operationTask
-        ? allowedTripActionsFor(
-            operationTask.state,
-            session.workIdentity.productRole,
-          )
-        : [],
+      ...actionSummary,
       auditTrail: [...(this.tripAuditTrails.get(tripId) ?? [])],
       directTripMutationAllowed: false,
       synthetic: true,
@@ -2107,7 +2154,7 @@ export class AdminAuthenticationService {
         eventId: token("case-audit-view"),
         action: "case_profile_viewed",
         actorLabel: session.workIdentity.organizationName,
-        actorRole: session.workIdentity.productRoleName,
+        actorRole: session.workIdentity.positionName,
         occurredAt: this.now().toISOString(),
       });
       this.caseViewAuditedAt.set(viewAuditKey, this.now().getTime());
@@ -2282,6 +2329,15 @@ export class AdminAuthenticationService {
       }
     }
     if (!eventAction) throw new Error("ADMIN_CASE_ACTION_INVALID");
+    const approvalRecordId =
+      kind === "safety"
+        ? this.recordSafetyApproval(
+            session,
+            caseId,
+            command.action as AdminSafetyCaseAction,
+            command.note?.trim(),
+          )
+        : undefined;
 
     const updated = this.caseDetailFor(
       session,
@@ -2303,11 +2359,12 @@ export class AdminAuthenticationService {
       eventId: token("case-audit-action"),
       action: eventAction,
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
       previousState,
       nextState,
       ...(command.note?.trim() ? { note: command.note.trim() } : {}),
+      ...(approvalRecordId ? { approvalRecordId } : {}),
     });
     this.caseAuditTrails.set(auditKey, auditTrail);
     const result: AdminCaseActionResult = {
@@ -2343,7 +2400,7 @@ export class AdminAuthenticationService {
         organizationScope: organizationScopeFor(session),
         allowedActions: allowedSupportActionsFor(
           profile.state,
-          session.workIdentity.productRole,
+          session.workIdentity,
         ),
         auditTrail: [
           ...(this.caseAuditTrails.get(caseAuditKey(kind, caseId)) ?? []),
@@ -2358,6 +2415,11 @@ export class AdminAuthenticationService {
     const trip = tripCaseManagement.getTrip360(actor, investigation.tripId);
     const evidenceGrants =
       tripCaseManagement.listEvidenceGrantsForSafetyCase(actor, caseId);
+    const actionSummary = safetyActionSummaryFor(
+      investigation,
+      evidenceGrants,
+      session.workIdentity,
+    );
     return {
       kind,
       case: caseDirectoryItemForSafety(
@@ -2369,11 +2431,8 @@ export class AdminAuthenticationService {
       trip,
       evidenceGrants,
       organizationScope: organizationScopeFor(session),
-      allowedActions: allowedSafetyActionsFor(
-        investigation,
-        evidenceGrants,
-        session.workIdentity.productRole,
-      ),
+      ...actionSummary,
+      approvalRecords: this.approvalRecordsFor("safety_case", caseId),
       auditTrail: [
         ...(this.caseAuditTrails.get(caseAuditKey(kind, caseId)) ?? []),
       ],
@@ -2530,6 +2589,12 @@ export class AdminAuthenticationService {
       command.idempotencyKey,
       financeCommandFor(command, actionResourceId),
     );
+    const approvalRecordId = this.recordFinanceApproval(
+      session,
+      kind,
+      resourceId,
+      command,
+    );
     const updated = this.financeDetailFor(
       session,
       kind,
@@ -2546,11 +2611,12 @@ export class AdminAuthenticationService {
         ? "finance_review_recorded"
         : "finance_operation_submitted",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
       previousState: detail.item.state,
       nextState: updated.item.state,
       reasonCode: command.reasonCode,
+      ...(approvalRecordId ? { approvalRecordId } : {}),
     });
     this.financeAuditTrails.set(auditKey, auditTrail);
     const result: AdminFinanceActionResult = {
@@ -2593,7 +2659,7 @@ export class AdminAuthenticationService {
           eventId: token("finance-audit-view"),
           action: "finance_profile_viewed",
           actorLabel: session.workIdentity.organizationName,
-          actorRole: session.workIdentity.productRoleName,
+          actorRole: session.workIdentity.positionName,
           occurredAt: this.now().toISOString(),
         });
         this.financeAuditTrails.set(auditKey, auditTrail);
@@ -2603,6 +2669,7 @@ export class AdminAuthenticationService {
     const base = {
       item,
       organizationScope: organizationScopeFor(session),
+      approvalRecords: this.approvalRecordsFor("finance_record", resourceId),
       auditTrail: [...(this.financeAuditTrails.get(auditKey) ?? [])],
       directBalanceMutationAllowed: false as const,
       realMoneyMovementAllowed: false as const,
@@ -2618,10 +2685,10 @@ export class AdminAuthenticationService {
           ...base,
           kind,
           record,
-          allowedActions: allowedFinanceActionsFor(
+          ...financeActionSummaryFor(
             kind,
             record,
-            session.workIdentity.productRole,
+            session.workIdentity,
           ),
         };
       }
@@ -2631,10 +2698,10 @@ export class AdminAuthenticationService {
           ...base,
           kind,
           record,
-          allowedActions: allowedFinanceActionsFor(
+          ...financeActionSummaryFor(
             kind,
             record,
-            session.workIdentity.productRole,
+            session.workIdentity,
           ),
         };
       }
@@ -2644,10 +2711,10 @@ export class AdminAuthenticationService {
           ...base,
           kind,
           record,
-          allowedActions: allowedFinanceActionsFor(
+          ...financeActionSummaryFor(
             kind,
             record,
-            session.workIdentity.productRole,
+            session.workIdentity,
           ),
         };
       }
@@ -2656,20 +2723,20 @@ export class AdminAuthenticationService {
           actor,
           resourceId,
         );
-        const allowedActions = allowedFinanceActionsFor(
+        const actionSummary = financeActionSummaryFor(
           kind,
           record,
-          session.workIdentity.productRole,
+          session.workIdentity,
         );
         const actionResourceId = reconciliationActionResourceId(
           record,
-          allowedActions[0],
+          actionSummary.allowedActions[0],
         );
         return {
           ...base,
           kind,
           record,
-          allowedActions,
+          ...actionSummary,
           ...(actionResourceId ? { actionResourceId } : {}),
         };
       }
@@ -2679,10 +2746,10 @@ export class AdminAuthenticationService {
           ...base,
           kind,
           record,
-          allowedActions: allowedFinanceActionsFor(
+          ...financeActionSummaryFor(
             kind,
             record,
-            session.workIdentity.productRole,
+            session.workIdentity,
           ),
         };
       }
@@ -2693,9 +2760,185 @@ export class AdminAuthenticationService {
           kind,
           record,
           allowedActions: [],
+          actionBlockers: [],
+          nextSteps: [recordNextStep("NONE", "查看账本记录")],
         };
       }
     }
+  }
+
+  private approvalRecordsFor(
+    resourceKind: AdminHighRiskApprovalRecord["resourceKind"],
+    resourceId: string,
+  ): readonly AdminHighRiskApprovalRecord[] {
+    return [...this.highRiskApprovalRecords.values()]
+      .filter(
+        (record) =>
+          record.resourceKind === resourceKind &&
+          record.resourceId === resourceId,
+      )
+      .sort(
+        (left, right) =>
+          right.updatedAt.localeCompare(left.updatedAt) ||
+          right.approvalId.localeCompare(left.approvalId),
+      );
+  }
+
+  private recordSafetyApproval(
+    session: SessionRecord,
+    resourceId: string,
+    action: AdminSafetyCaseAction,
+    note?: string,
+  ): string | undefined {
+    if (action === "submit_investigation") {
+      return this.createApprovalRecord(
+        session,
+        "support_safety",
+        "safety_case",
+        resourceId,
+        "review_safety_restoration",
+        note,
+      ).approvalId;
+    }
+    if (action === "request_evidence") {
+      return this.createApprovalRecord(
+        session,
+        "support_safety",
+        "safety_case",
+        resourceId,
+        "approve_evidence",
+        note,
+      ).approvalId;
+    }
+    const requestedAction =
+      action === "restore_access" || action === "uphold_freeze"
+        ? "review_safety_restoration"
+        : action === "approve_evidence" || action === "revoke_evidence"
+          ? "approve_evidence"
+          : undefined;
+    if (!requestedAction) return undefined;
+    const state =
+      action === "uphold_freeze"
+        ? "declined"
+        : action === "revoke_evidence"
+          ? "revoked"
+          : "approved";
+    return this.decideApprovalRecord(
+      session,
+      "support_safety",
+      "safety_case",
+      resourceId,
+      requestedAction,
+      state,
+      note,
+    ).approvalId;
+  }
+
+  private recordFinanceApproval(
+    session: SessionRecord,
+    _kind: AdminFinanceResourceKind,
+    resourceId: string,
+    command: AdminFinanceActionCommand,
+  ): string | undefined {
+    const requestedAction = financeRequestedReviewActionFor(command.action);
+    if (!requestedAction) return undefined;
+    if (!command.action.startsWith("review_")) {
+      return this.createApprovalRecord(
+        session,
+        "finance",
+        "finance_record",
+        resourceId,
+        requestedAction,
+        command.reasonCode,
+      ).approvalId;
+    }
+    return this.decideApprovalRecord(
+      session,
+      "finance",
+      "finance_record",
+      resourceId,
+      requestedAction,
+      "approved",
+      command.reasonCode,
+    ).approvalId;
+  }
+
+  private createApprovalRecord(
+    session: SessionRecord,
+    domain: AdminHighRiskApprovalRecord["domain"],
+    resourceKind: AdminHighRiskApprovalRecord["resourceKind"],
+    resourceId: string,
+    requestedAction: string,
+    note?: string,
+  ): AdminHighRiskApprovalRecord {
+    const occurredAt = this.now().toISOString();
+    const record: AdminHighRiskApprovalRecord = {
+      approvalId: token("approval"),
+      domain,
+      resourceKind,
+      resourceId,
+      organizationType: session.workIdentity.type,
+      organizationId: session.workIdentity.organizationId,
+      organizationName: session.workIdentity.organizationName,
+      requestedAction,
+      state: "pending",
+      requester: approvalActorFor(session, occurredAt),
+      ...(note ? { decisionNote: note } : {}),
+      separationRequired: true,
+      resourceVersion: 1,
+      updatedAt: occurredAt,
+      synthetic: true,
+    };
+    this.highRiskApprovalRecords.set(record.approvalId, record);
+    return record;
+  }
+
+  private decideApprovalRecord(
+    session: SessionRecord,
+    domain: AdminHighRiskApprovalRecord["domain"],
+    resourceKind: AdminHighRiskApprovalRecord["resourceKind"],
+    resourceId: string,
+    requestedAction: string,
+    state: Exclude<AdminHighRiskApprovalRecord["state"], "pending">,
+    note?: string,
+  ): AdminHighRiskApprovalRecord {
+    const pending = [...this.highRiskApprovalRecords.values()]
+      .filter(
+        (record) =>
+          record.domain === domain &&
+          record.resourceKind === resourceKind &&
+          record.resourceId === resourceId &&
+          record.requestedAction === requestedAction &&
+          record.state === "pending",
+      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    const current =
+      pending ??
+      this.createApprovalRecord(
+        {
+          ...session,
+          workIdentity: {
+            ...session.workIdentity,
+            workIdentityId: `legacy-requester:${resourceId}`,
+            positionName: "原经办人",
+          },
+        },
+        domain,
+        resourceKind,
+        resourceId,
+        requestedAction,
+      );
+    const occurredAt = this.now().toISOString();
+    const decided: AdminHighRiskApprovalRecord = {
+      ...current,
+      state,
+      reviewer: approvalActorFor(session, occurredAt),
+      ...(note ? { decisionNote: note } : {}),
+      resourceVersion: current.resourceVersion + 1,
+      updatedAt: occurredAt,
+    };
+    this.highRiskApprovalRecords.set(decided.approvalId, decided);
+    return decided;
   }
 
   public listExecutiveResources(
@@ -2912,7 +3155,7 @@ export class AdminAuthenticationService {
       eventId: token("executive-audit-action"),
       action: executiveAuditActionFor(command.action),
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
       ...(command.reasonCode ? { reasonCode: command.reasonCode } : {}),
     });
@@ -2967,7 +3210,7 @@ export class AdminAuthenticationService {
           eventId: token("executive-audit-view"),
           action: "executive_resource_viewed",
           actorLabel: session.workIdentity.organizationName,
-          actorRole: session.workIdentity.productRoleName,
+          actorRole: session.workIdentity.positionName,
           occurredAt: this.now().toISOString(),
         });
         this.executiveAuditTrails.set(auditKey, auditTrail);
@@ -2994,8 +3237,7 @@ export class AdminAuthenticationService {
           kind,
           record,
           allowedActions:
-            session.workIdentity.productRole === "executive_sponsor" ||
-            session.workIdentity.productRole === "operator_executive"
+            hasCapability(session.workIdentity, "executive_read")
               ? ["record_decision_opinion"]
               : [],
         };
@@ -3008,7 +3250,7 @@ export class AdminAuthenticationService {
           record,
           allowedActions: allowedExecutiveExportActionsFor(
             record,
-            session.workIdentity.productRole,
+            session.workIdentity,
             session.workIdentity.workIdentityId,
           ),
         };
@@ -3059,11 +3301,17 @@ export class AdminAuthenticationService {
         session.workIdentity.type === "platform" ||
         investigation.organizationId === session.workIdentity.organizationId,
     );
+    const approvals = [...this.highRiskApprovalRecords.values()].filter(
+      (approval) =>
+        session.workIdentity.type === "platform" ||
+        approval.organizationId === session.workIdentity.organizationId,
+    );
     const eventItems = events.map(auditEventDirectoryItem);
     const investigationItems = investigations.map(
       auditInvestigationDirectoryItem,
     );
-    const allItems = [...eventItems, ...investigationItems];
+    const approvalItems = approvals.map(auditApprovalDirectoryItem);
+    const allItems = [...eventItems, ...investigationItems, ...approvalItems];
     const search = query.search?.trim().toLocaleLowerCase("zh-CN");
     const filtered = allItems.filter(
       (item) =>
@@ -3121,6 +3369,9 @@ export class AdminAuthenticationService {
         highRiskEvents: events.filter(isHighRiskAuditEvent).length,
         openInvestigations: investigations.filter(
           (investigation) => investigation.state !== "resolved",
+        ).length,
+        pendingApprovals: approvals.filter(
+          (approval) => approval.state === "pending",
         ).length,
         integrityWarnings: 0,
       },
@@ -3403,7 +3654,7 @@ export class AdminAuthenticationService {
       eventId: token("data-report-audit"),
       action: "data_report_refreshed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt,
       previousVersion: current.item.resourceVersion,
       nextVersion,
@@ -3450,7 +3701,8 @@ export class AdminAuthenticationService {
       search: query.search?.trim().toLowerCase() ?? "",
       organizationType: query.organizationType ?? "",
       state: query.state ?? "",
-      productRole: query.productRole ?? "",
+      authorizationLevel: query.authorizationLevel ?? "",
+      capability: query.capability ?? "",
       sort: query.sort ?? "updated_at_desc",
       pageSize,
     }));
@@ -3460,7 +3712,7 @@ export class AdminAuthenticationService {
     if (query.search?.trim()) {
       const search = query.search.trim().toLowerCase();
       rows = rows.filter((item) =>
-        `${item.displayName} ${item.workEmailMasked} ${item.organizationName} ${item.productRoleName}`
+        `${item.displayName} ${item.workEmailMasked} ${item.organizationName} ${item.positionName}`
           .toLowerCase()
           .includes(search),
       );
@@ -3471,8 +3723,13 @@ export class AdminAuthenticationService {
       );
     }
     if (query.state) rows = rows.filter((item) => item.state === query.state);
-    if (query.productRole) {
-      rows = rows.filter((item) => item.productRole === query.productRole);
+    if (query.authorizationLevel) {
+      rows = rows.filter(
+        (item) => item.authorizationLevel === query.authorizationLevel,
+      );
+    }
+    if (query.capability) {
+      rows = rows.filter((item) => item.capabilities.includes(query.capability!));
     }
     rows = [...rows].sort(
       query.sort === "display_name_asc"
@@ -3540,8 +3797,7 @@ export class AdminAuthenticationService {
     this.assertDomainRead(session, "organization_accounts");
     const definition = this.requireVisibleMembership(session, membershipId);
     if (
-      session.workIdentity.productRole !== "platform_access_administrator" &&
-      session.workIdentity.productRole !== "operator_account_administrator"
+      !hasCapability(session.workIdentity, "membership_governance")
     ) {
       throw new Error("ADMIN_MEMBERSHIP_OPERATION_FORBIDDEN");
     }
@@ -3588,8 +3844,8 @@ export class AdminAuthenticationService {
     const event: AdminMembershipAuditEvent = {
       eventId: token("membership-audit"),
       action: eventType,
-      actorLabel: session.workIdentity.productRoleName,
-      actorRole: session.workIdentity.productRole,
+      actorLabel: session.workIdentity.positionName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: this.now().toISOString(),
       previousState,
       nextState,
@@ -3641,8 +3897,8 @@ export class AdminAuthenticationService {
         const event: AdminMembershipAuditEvent = {
           eventId: token("membership-audit"),
           action: "admin_membership_viewed",
-          actorLabel: session.workIdentity.productRoleName,
-          actorRole: session.workIdentity.productRole,
+          actorLabel: session.workIdentity.positionName,
+          actorRole: session.workIdentity.positionName,
           occurredAt: this.now().toISOString(),
         };
         const trail = this.membershipAuditTrails.get(membershipId) ?? [];
@@ -3661,9 +3917,10 @@ export class AdminAuthenticationService {
     }
     return {
       item: this.membershipDirectoryItem(definition),
-      roleBinding: {
-        roleId: definition.workIdentity.productRole,
-        roleName: definition.workIdentity.productRoleName,
+      authorizationBinding: {
+        authorizationLevel: definition.workIdentity.authorizationLevel,
+        capabilities: definition.workIdentity.capabilities,
+        positionName: definition.workIdentity.positionName,
         source: "authoritative_membership",
         mutable: false,
       },
@@ -3700,8 +3957,9 @@ export class AdminAuthenticationService {
       organizationType: definition.workIdentity.type,
       organizationId: definition.workIdentity.organizationId,
       organizationName: definition.workIdentity.organizationName,
-      productRole: definition.workIdentity.productRole,
-      productRoleName: definition.workIdentity.productRoleName,
+      authorizationLevel: definition.workIdentity.authorizationLevel,
+      capabilities: definition.workIdentity.capabilities,
+      positionName: definition.workIdentity.positionName,
       state: this.membershipStates.get(definition.membershipId) ?? "active",
       activeSessionCount: this.activeSessionCount(
         definition.workIdentity.workIdentityId,
@@ -3790,7 +4048,7 @@ export class AdminAuthenticationService {
           eventId: token("data-report-view"),
           action: "data_report_viewed",
           actorLabel: session.workIdentity.organizationName,
-          actorRole: session.workIdentity.productRoleName,
+          actorRole: session.workIdentity.positionName,
           occurredAt: new Date(now).toISOString(),
         });
         this.dataReportAuditTrails.set(reportId, trail);
@@ -3813,7 +4071,7 @@ export class AdminAuthenticationService {
       ),
       allowedActions: allowedDataReportActions(
         definition.domain,
-        session.workIdentity.productRole,
+        session.workIdentity,
       ),
       auditTrail: [...(this.dataReportAuditTrails.get(reportId) ?? [])],
       sourceBoundary: {
@@ -3932,7 +4190,7 @@ export class AdminAuthenticationService {
             : {}),
         },
         allowedActions:
-          session.workIdentity.productRole === "technical_operations" &&
+          hasCapability(session.workIdentity, "technical_recovery") &&
           !linkedInvestigation
             ? ["open_investigation"]
             : [],
@@ -3953,7 +4211,7 @@ export class AdminAuthenticationService {
         },
         synthetic: true,
       };
-    } else {
+    } else if (kind === "investigation") {
       const investigation = this.auditInvestigations.get(resourceId);
       if (
         !investigation ||
@@ -3968,13 +4226,37 @@ export class AdminAuthenticationService {
         record: investigation,
         allowedActions: allowedAuditInvestigationActionsFor(
           investigation,
-          session.workIdentity.productRole,
+          session.workIdentity,
         ),
         auditTrail: [
           ...(this.auditTrails.get(auditTrailKey(kind, resourceId)) ?? []),
         ],
         integrity: {
           canonicalPayloadDigest: digest(JSON.stringify(investigation)),
+          appendOnly: true,
+          rawSensitivePayloadAvailable: false,
+        },
+        synthetic: true,
+      };
+    } else {
+      const approval = this.highRiskApprovalRecords.get(resourceId);
+      if (
+        !approval ||
+        (session.workIdentity.type === "operator" &&
+          approval.organizationId !== session.workIdentity.organizationId)
+      ) {
+        throw new Error("ADMIN_AUDIT_RESOURCE_NOT_FOUND");
+      }
+      detail = {
+        kind,
+        item: auditApprovalDirectoryItem(approval),
+        record: approval,
+        allowedActions: [],
+        auditTrail: [
+          ...(this.auditTrails.get(auditTrailKey(kind, resourceId)) ?? []),
+        ],
+        integrity: {
+          canonicalPayloadDigest: digest(JSON.stringify(approval)),
           appendOnly: true,
           rawSensitivePayloadAvailable: false,
         },
@@ -3992,7 +4274,7 @@ export class AdminAuthenticationService {
           eventId: token("audit-view"),
           action: "audit_resource_viewed",
           actorLabel: session.workIdentity.organizationName,
-          actorRole: session.workIdentity.productRoleName,
+          actorRole: session.workIdentity.positionName,
           occurredAt: new Date(now).toISOString(),
         });
         this.auditTrails.set(trailKey, trail);
@@ -4122,19 +4404,20 @@ export class AdminAuthenticationService {
       }
       auditTrail = [...await adminReviews.listAudit(record.reviewTaskId)];
     }
+    const actionSummary = reviewTask
+      ? vehicleActionSummaryFor(
+          reviewTask,
+          session.workIdentity,
+          session.workIdentity.workIdentityId,
+        )
+      : vehicleActionSummaryWithoutTask(session.workIdentity);
     return {
       vehicle: vehicleDirectoryItemFor(record, state, reviewTask),
       profile,
       driver: driverDirectoryItemFor(record, reviewTask),
       organizationScope: organizationScopeFor(session),
       ...(reviewTask ? { reviewTask } : {}),
-      allowedActions: reviewTask
-        ? allowedVehicleActionsFor(
-            reviewTask,
-            session.workIdentity.productRole,
-            session.workIdentity.workIdentityId,
-          )
-        : [],
+      ...actionSummary,
       auditTrail,
       synthetic: true,
     };
@@ -4159,6 +4442,10 @@ export class AdminAuthenticationService {
     session: SessionRecord,
     task: AdminOperationsTask,
   ): AdminOperationsTaskDetail {
+    const actionSummary = operationsTaskActionSummaryFor(
+      task,
+      session.workIdentity,
+    );
     return {
       task,
       organizationScope: {
@@ -4166,7 +4453,7 @@ export class AdminAuthenticationService {
         organizationName: session.workIdentity.organizationName,
         cityScopes: session.workIdentity.cityScopes,
       },
-      allowedActions: allowedActionsFor(task, session.workIdentity.productRole),
+      ...actionSummary,
       auditTrail: [...(this.taskAuditTrails.get(task.taskId) ?? [])],
       synthetic: true,
     };
@@ -4181,7 +4468,9 @@ export class AdminAuthenticationService {
       record.revoked ||
       record.accessExpiresAt <= now ||
       record.absoluteExpiresAt <= now ||
-      record.lastUsedAt + 30 * 60_000 <= now ||
+      record.lastUsedAt +
+          this.securityPolicy.adminIdleSessionTtlSeconds * 1000 <=
+        now ||
       !this.isWorkIdentityActive(record.workIdentity)
     ) {
       throw new Error("SESSION_EXPIRED");
@@ -4195,7 +4484,9 @@ export class AdminAuthenticationService {
     if (
       record.revoked ||
       record.absoluteExpiresAt <= now ||
-      record.lastUsedAt + 30 * 60_000 <= now
+      record.lastUsedAt +
+          this.securityPolicy.adminIdleSessionTtlSeconds * 1000 <=
+        now
     ) {
       throw new Error("REFRESH_SESSION_EXPIRED");
     }
@@ -4216,8 +4507,10 @@ export class AdminAuthenticationService {
       workIdentity: identity,
       createdAt: now,
       lastUsedAt: now,
-      accessExpiresAt: now + 15 * 60_000,
-      absoluteExpiresAt: now + 8 * 60 * 60_000,
+      accessExpiresAt:
+        now + this.securityPolicy.adminAccessSessionTtlSeconds * 1000,
+      absoluteExpiresAt:
+        now + this.securityPolicy.adminAbsoluteSessionTtlSeconds * 1000,
       mfaVerifiedAt,
       revoked: false,
     };
@@ -4235,16 +4528,18 @@ export class AdminAuthenticationService {
       navigation: this.navigationFor(record),
       accessTokenExpiresAt: new Date(record.accessExpiresAt).toISOString(),
       absoluteExpiresAt: new Date(record.absoluteExpiresAt).toISOString(),
-      idleExpiresAt: new Date(record.lastUsedAt + 30 * 60_000).toISOString(),
+      idleExpiresAt: new Date(
+        record.lastUsedAt +
+          this.securityPolicy.adminIdleSessionTtlSeconds * 1000,
+      ).toISOString(),
       synthetic: true,
     };
   }
 
   private navigationFor(record: SessionRecord): AdminNavigationManifest {
-    const role = record.workIdentity.productRole;
-    const domains = roleDomains[role];
+    const domains = domainsFor(record.workIdentity);
     return {
-      navigationVersion: "2026-07-15.2",
+      navigationVersion: "2026-07-30.1",
       workIdentityId: record.workIdentity.workIdentityId,
       organizationContext: {
         organizationType: record.workIdentity.type,
@@ -4261,7 +4556,8 @@ export class AdminAuthenticationService {
             : "operator_operations",
         fixed: record.workIdentity.type === "operator",
       },
-      roleIds: [role],
+      authorizationLevel: record.workIdentity.authorizationLevel,
+      capabilities: record.workIdentity.capabilities,
       items: domains.map((domain) => {
         const definition = domainDefinition[domain];
         if (
@@ -4361,9 +4657,9 @@ export class AdminAuthenticationService {
         return definition;
       }),
       routePermissions: domains.map((domain) => `${domain}:read`),
-      operationPermissions: operationPermissions(role),
+      operationPermissions: operationPermissions(record.workIdentity),
       fieldProfiles: [record.workIdentity.maximumDataClassification],
-      exportProfiles: exportProfiles(role),
+      exportProfiles: exportProfiles(record.workIdentity),
       scopeDigest: digest(
         `${record.workIdentity.type}:${record.workIdentity.organizationId}`,
       ),
@@ -4477,7 +4773,7 @@ export class AdminAuthenticationService {
     session: SessionRecord,
     domain: AdminNavigationDomain,
   ): void {
-    if (!roleDomains[session.workIdentity.productRole].includes(domain)) {
+    if (!domainsFor(session.workIdentity).includes(domain)) {
       throw new Error("AUTHORIZATION_DENIED");
     }
   }
@@ -4509,7 +4805,15 @@ function createAccounts(): readonly AccountFixture[] {
     "platform",
     "platform-pollycar",
     "PollyCar 平台",
-    "operations_lead",
+    "level_2",
+    [
+      "operations_task",
+      "operator_governance",
+      "fleet_operation",
+      "trip_operation",
+      "analytics_read",
+      "executive_read",
+    ],
     "平台运营负责人",
     "sensitive",
   );
@@ -4518,65 +4822,72 @@ function createAccounts(): readonly AccountFixture[] {
     "operator",
     "operator-huhang",
     "沪行出行服务",
-    "operator_operations_lead",
+    "level_2",
+    [
+      "operations_task",
+      "operator_governance",
+      "fleet_operation",
+      "trip_operation",
+      "analytics_read",
+    ],
     "运营公司运营负责人",
     "sensitive",
   );
   return [
     account("access.admin@rego.example", [
-      identity("synthetic-platform-access-admin-001", "platform", "platform-pollycar", "PollyCar 平台", "platform_access_administrator", "平台账号管理员", "restricted"),
+      identity("synthetic-platform-access-admin-001", "platform", "platform-pollycar", "PollyCar 平台", "level_3", ["membership_governance"], "平台账号管理员", "restricted"),
     ]),
     account("operator.admin@rego.example", [
-      identity("synthetic-operator-account-admin-001", "operator", "operator-huhang", "沪行出行服务", "operator_account_administrator", "运营公司账号管理员", "restricted"),
+      identity("synthetic-operator-account-admin-001", "operator", "operator-huhang", "沪行出行服务", "level_2", ["membership_governance"], "运营公司账号管理员", "restricted"),
     ]),
     account("ops@rego.example", [
       platformOperations,
-      identity("synthetic-operations-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "operations_officer", "平台运营专员", "sensitive"),
-      identity("synthetic-operator-management-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "operator_management_officer", "运营公司管理专员", "sensitive"),
+      identity("synthetic-operations-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "level_1", ["operations_task", "operator_governance", "fleet_operation", "trip_operation", "analytics_read"], "平台运营专员", "sensitive"),
+      identity("synthetic-operator-management-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "level_2", ["operator_governance", "fleet_operation"], "运营公司管理专员", "sensitive"),
     ]),
     account("lin.yun@rego.example", [platformOperations, operatorOperations]),
     account("finance@rego.example", [
-      identity("synthetic-finance-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "finance_officer", "平台财务经办", "restricted"),
-      identity("synthetic-finance-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "finance_lead", "平台财务负责人", "restricted"),
-      identity("synthetic-operator-finance-officer-001", "operator", "operator-huhang", "沪行出行服务", "operator_finance_officer", "运营公司财务经办", "restricted"),
-      identity("synthetic-operator-finance-lead-001", "operator", "operator-huhang", "沪行出行服务", "operator_finance_lead", "运营公司财务负责人", "restricted"),
+      identity("synthetic-finance-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "level_1", ["finance_operation"], "平台财务经办", "restricted"),
+      identity("synthetic-finance-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "level_2", ["finance_operation", "finance_review", "analytics_read", "executive_read"], "平台财务负责人", "restricted"),
+      identity("synthetic-operator-finance-officer-001", "operator", "operator-huhang", "沪行出行服务", "level_1", ["finance_operation"], "运营公司财务经办", "restricted"),
+      identity("synthetic-operator-finance-lead-001", "operator", "operator-huhang", "沪行出行服务", "level_2", ["finance_operation", "finance_review", "analytics_read"], "运营公司财务负责人", "restricted"),
     ]),
     account("support@rego.example", [
-      identity("synthetic-support-001", "platform", "platform-pollycar", "PollyCar 平台", "customer_support", "平台客服", "sensitive"),
-      identity("synthetic-support-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "support_lead", "平台客服负责人", "sensitive"),
-      identity("synthetic-operator-support-001", "operator", "operator-huhang", "沪行出行服务", "operator_customer_support", "运营公司客服", "sensitive"),
+      identity("synthetic-support-001", "platform", "platform-pollycar", "PollyCar 平台", "level_1", ["operations_task", "trip_operation", "support_case"], "平台客服", "sensitive"),
+      identity("synthetic-support-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "level_2", ["operations_task", "trip_operation", "support_case", "analytics_read"], "平台客服负责人", "sensitive"),
+      identity("synthetic-operator-support-001", "operator", "operator-huhang", "沪行出行服务", "level_1", ["operations_task", "trip_operation", "support_case"], "运营公司客服", "sensitive"),
     ]),
     account("review@rego.example", [
-      identity("synthetic-reviewer-001", "platform", "platform-pollycar", "PollyCar 平台", "reviewer", "车辆审核员", "restricted"),
-      identity("synthetic-senior-reviewer-001", "platform", "platform-pollycar", "PollyCar 平台", "senior_reviewer", "高级车辆审核员", "restricted"),
+      identity("synthetic-reviewer-001", "platform", "platform-pollycar", "PollyCar 平台", "level_1", ["fleet_review"], "车辆审核员", "restricted"),
+      identity("synthetic-senior-reviewer-001", "platform", "platform-pollycar", "PollyCar 平台", "level_2", ["operator_governance", "fleet_review"], "高级车辆审核员", "restricted"),
     ]),
     account("fleet@rego.example", [
-      identity("synthetic-operator-fleet-001", "operator", "operator-huhang", "沪行出行服务", "operator_fleet_officer", "运营公司运力专员", "sensitive"),
+      identity("synthetic-operator-fleet-001", "operator", "operator-huhang", "沪行出行服务", "level_1", ["fleet_operation"], "运营公司运力专员", "sensitive"),
     ]),
     account("safety@rego.example", [
-      identity("synthetic-safety-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "safety_officer", "平台安全专员", "restricted"),
-      identity("synthetic-safety-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "safety_lead", "平台安全负责人", "restricted"),
-      identity("synthetic-operator-safety-liaison-001", "operator", "operator-huhang", "沪行出行服务", "operator_safety_liaison", "运营公司安全联络人", "sensitive"),
+      identity("synthetic-safety-officer-001", "platform", "platform-pollycar", "PollyCar 平台", "level_1", ["safety_investigation"], "平台安全专员", "restricted"),
+      identity("synthetic-safety-lead-001", "platform", "platform-pollycar", "PollyCar 平台", "level_2", ["safety_investigation", "safety_restoration_review", "analytics_read", "executive_read"], "平台安全负责人", "restricted"),
+      identity("synthetic-operator-safety-liaison-001", "operator", "operator-huhang", "沪行出行服务", "level_1", ["safety_investigation"], "运营公司安全联络人", "sensitive"),
     ]),
     account("audit@rego.example", [
-      identity("synthetic-auditor-001", "platform", "platform-pollycar", "PollyCar 平台", "auditor", "平台审计", "restricted"),
-      identity("synthetic-operator-auditor-001", "operator", "operator-huhang", "沪行出行服务", "operator_auditor", "运营公司审计", "restricted"),
+      identity("synthetic-auditor-001", "platform", "platform-pollycar", "PollyCar 平台", "level_3", ["audit_read"], "平台审计", "restricted"),
+      identity("synthetic-operator-auditor-001", "operator", "operator-huhang", "沪行出行服务", "level_2", ["audit_read"], "运营公司审计", "restricted"),
     ]),
     account("technical@rego.example", [
-      identity("synthetic-technical-ops-001", "platform", "platform-pollycar", "PollyCar 平台", "technical_operations", "平台技术运维", "restricted"),
+      identity("synthetic-technical-ops-001", "platform", "platform-pollycar", "PollyCar 平台", "level_3", ["technical_recovery"], "平台技术运维", "restricted"),
     ]),
     account("analytics@rego.example", [
-      identity("synthetic-data-analyst-001", "platform", "platform-pollycar", "PollyCar 平台", "data_analyst", "数据分析人员", "sensitive"),
+      identity("synthetic-data-analyst-001", "platform", "platform-pollycar", "PollyCar 平台", "level_1", ["analytics_read"], "数据分析人员", "sensitive"),
     ]),
     account("executive@rego.example", [
-      identity("synthetic-executive-sponsor-001", "platform", "platform-pollycar", "PollyCar 平台", "executive_sponsor", "项目决策人", "sensitive"),
-      identity("synthetic-operator-executive-001", "operator", "operator-huhang", "沪行出行服务", "operator_executive", "运营主体负责人", "sensitive"),
+      identity("synthetic-executive-sponsor-001", "platform", "platform-pollycar", "PollyCar 平台", "level_3", ["executive_read"], "项目决策人", "sensitive"),
+      identity("synthetic-operator-executive-001", "operator", "operator-huhang", "沪行出行服务", "level_2", ["executive_read"], "运营主体负责人", "sensitive"),
     ]),
     account("governance@rego.example", [
-      identity("synthetic-privacy-compliance-001", "platform", "platform-pollycar", "PollyCar 平台", "privacy_compliance", "隐私合规负责人", "restricted"),
+      identity("synthetic-privacy-compliance-001", "platform", "platform-pollycar", "PollyCar 平台", "level_3", ["privacy_governance"], "隐私合规负责人", "restricted"),
     ]),
     account("new.admin@rego.example", [
-      identity("synthetic-platform-ops-001", "platform", "platform-pollycar", "PollyCar 平台", "platform_access_administrator", "平台账号管理员", "sensitive"),
+      identity("synthetic-platform-ops-001", "platform", "platform-pollycar", "PollyCar 平台", "level_3", ["membership_governance"], "平台账号管理员", "sensitive"),
     ], false),
   ];
 }
@@ -4600,18 +4911,23 @@ function identity(
   type: "platform" | "operator",
   organizationId: string,
   organizationName: string,
-  productRole: AdminProductRole,
-  productRoleName: string,
+  authorizationLevel: AdminAuthorizationLevel,
+  capabilities: readonly AdminBusinessCapability[],
+  positionName: string,
   maximumDataClassification: AdminWorkIdentitySummary["maximumDataClassification"],
 ): AdminWorkIdentitySummary {
+  if (type === "operator" && authorizationLevel === "level_3") {
+    throw new Error("ADMIN_OPERATOR_LEVEL_3_FORBIDDEN");
+  }
   return {
     workIdentityId,
     legacyAccessToken: workIdentityId,
     type,
     organizationId,
     organizationName,
-    productRole,
-    productRoleName,
+    authorizationLevel,
+    capabilities,
+    positionName,
     cityScopes: ["上海"],
     maximumDataClassification,
     synthetic: true,
@@ -4651,9 +4967,9 @@ function createTasks(): AdminOperationsTask[] {
 
 function allowedActionsFor(
   task: AdminOperationsTask,
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminOperationsTaskAction[] {
-  const permissions = operationPermissions(role);
+  const permissions = operationPermissions(identity);
   const action = ({
     unassigned: "assign",
     processing: "process",
@@ -4664,11 +4980,102 @@ function allowedActionsFor(
   return action && permissions.includes(action) ? [action] : [];
 }
 
+function operationsTaskActionSummaryFor(
+  task: AdminOperationsTask,
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly AdminOperationsTaskAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const allowedActions = allowedActionsFor(task, identity);
+  if (allowedActions.length > 0) {
+    return {
+      allowedActions,
+      actionBlockers: [],
+      nextSteps: allowedActions.map((action) =>
+        recordNextStep(
+          "EXECUTE_ACTION",
+          action === "assign"
+            ? "分派任务"
+            : action === "process"
+              ? "继续处理任务"
+              : "完成负责人复核",
+          action,
+        ),
+      ),
+    };
+  }
+  if (task.status === "completed") {
+    return {
+      allowedActions,
+      actionBlockers: [
+        recordActionBlocker(
+          "process",
+          "ALREADY_COMPLETED",
+          "任务已经完成，不能再次处理。",
+          recordNextStep("NONE", "查看处理记录"),
+        ),
+      ],
+      nextSteps: [recordNextStep("NONE", "查看处理记录")],
+    };
+  }
+  const expectedAction = ({
+    unassigned: "assign",
+    processing: "process",
+    blocked: "process",
+    waiting_review: "review",
+  } as const)[task.status];
+  if (!hasCapability(identity, "operations_task")) {
+    const nextStep = recordNextStep("CONTACT_OWNER", "联系任务负责人");
+    return {
+      allowedActions,
+      actionBlockers: [
+        recordActionBlocker(
+          expectedAction,
+          "NO_CAPABILITY",
+          "当前工作身份没有运营任务处理能力。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  const nextStep =
+    task.status === "waiting_review"
+      ? recordNextStep("SUBMIT_REVIEW", "等待运营负责人复核")
+      : task.status === "unassigned"
+        ? recordNextStep("WAIT", "等待运营负责人分派")
+        : recordNextStep("WAIT", "等待任务执行员处理");
+  return {
+    allowedActions,
+    actionBlockers: [
+      recordActionBlocker(
+        expectedAction,
+        "REQUIRES_REVIEW",
+        task.status === "waiting_review"
+          ? "该任务需要运营负责人完成复核。"
+          : task.status === "unassigned"
+            ? "该任务需要运营负责人先行分派。"
+            : "该任务当前由执行员继续处理。",
+        nextStep,
+      ),
+    ],
+    nextSteps: [nextStep],
+  };
+}
+
 function allowedOperatorActionsFor(
   operator: AdminOperatorDirectoryItem,
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminOperatorAction[] {
-  if (role !== "operations_lead") return [];
+  if (
+    identity.type !== "platform" ||
+    !hasCapability(identity, "operator_governance") ||
+    !isAtLeast(identity, "level_2")
+  ) {
+    return [];
+  }
   if (operator.lifecycleState === "active") return ["restrict"];
   if (operator.lifecycleState === "restricted") return ["reactivate"];
   return [];
@@ -4728,10 +5135,10 @@ function vehicleDirectoryItemFor(
 
 function allowedVehicleActionsFor(
   task: AdminReviewTaskDetail,
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
   workIdentityId: string,
 ): readonly AdminVehicleReviewAction[] {
-  if (role !== "reviewer" && role !== "senior_reviewer") return [];
+  if (!hasCapability(identity, "fleet_review")) return [];
   if (["available", "released", "expired"].includes(task.status)) {
     return ["claim"];
   }
@@ -4741,10 +5148,9 @@ function allowedVehicleActionsFor(
   ) {
     return [];
   }
-  const actions: AdminVehicleReviewAction[] = [
-    "request_material",
-    "reject",
-  ];
+  const actions: AdminVehicleReviewAction[] = ["request_material"];
+  if (!isAtLeast(identity, "level_2")) return actions;
+  actions.push("reject");
   if (
     task.insuranceExpiryStatus === "complete" &&
     task.authorizationEvidenceStatus === "complete" &&
@@ -4753,6 +5159,221 @@ function allowedVehicleActionsFor(
     actions.push("approve");
   }
   return actions;
+}
+
+function vehicleActionSummaryFor(
+  task: AdminReviewTaskDetail,
+  identity: AdminWorkIdentitySummary,
+  workIdentityId: string,
+): Readonly<{
+  allowedActions: readonly AdminVehicleReviewAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const allowedActions = allowedVehicleActionsFor(
+    task,
+    identity,
+    workIdentityId,
+  );
+  const actionBlockers: AdminRecordActionBlocker[] = [];
+  if (!hasCapability(identity, "fleet_review")) {
+    const nextStep = recordNextStep("CONTACT_OWNER", "联系车辆审核负责人");
+    actionBlockers.push(
+      recordActionBlocker(
+        "claim",
+        "NO_CAPABILITY",
+        "当前工作身份没有车辆审核能力。",
+        nextStep,
+      ),
+    );
+    return { allowedActions, actionBlockers, nextSteps: [nextStep] };
+  }
+  if (["completed", "cancelled"].includes(task.status)) {
+    const nextStep = recordNextStep("NONE", "查看审核记录");
+    actionBlockers.push(
+      recordActionBlocker(
+        "claim",
+        "ALREADY_COMPLETED",
+        "车辆审核任务已经结束。",
+        nextStep,
+      ),
+    );
+    return { allowedActions, actionBlockers, nextSteps: [nextStep] };
+  }
+  if (
+    task.status === "in_progress" &&
+    task.lease?.ownerId !== workIdentityId
+  ) {
+    const nextStep = recordNextStep("WAIT", "等待当前审核人释放任务");
+    actionBlockers.push(
+      recordActionBlocker(
+        "request_material",
+        "LEASE_NOT_OWNED",
+        "该审核任务正在由其他审核人处理。",
+        nextStep,
+      ),
+    );
+    return { allowedActions, actionBlockers, nextSteps: [nextStep] };
+  }
+  if (
+    task.status === "in_progress" &&
+    task.lease?.ownerId === workIdentityId &&
+    !isAtLeast(identity, "level_2")
+  ) {
+    const nextStep = recordNextStep(
+      "SUBMIT_REVIEW",
+      "完成材料处理后提交负责人复核",
+    );
+    actionBlockers.push(
+      recordActionBlocker(
+        "approve",
+        "REQUIRES_REVIEW",
+        "车辆最终通过需要运营负责人复核。",
+        nextStep,
+      ),
+      recordActionBlocker(
+        "reject",
+        "REQUIRES_REVIEW",
+        "车辆最终拒绝需要运营负责人复核。",
+        nextStep,
+      ),
+    );
+  }
+  if (
+    task.status === "in_progress" &&
+    isAtLeast(identity, "level_2") &&
+    !allowedActions.includes("approve")
+  ) {
+    const nextStep = recordNextStep(
+      "REQUEST_MATERIAL",
+      "先补齐车辆审核材料",
+      "request_material",
+    );
+    actionBlockers.push(
+      recordActionBlocker(
+        "approve",
+        "MISSING_MATERIAL",
+        "车辆材料尚未满足通过条件。",
+        nextStep,
+      ),
+    );
+  }
+  const nextSteps =
+    allowedActions.length > 0
+      ? allowedActions.map((action) =>
+          recordNextStep(
+            action === "request_material"
+              ? "REQUEST_MATERIAL"
+              : "EXECUTE_ACTION",
+            vehicleActionStepLabel(action),
+            action,
+          ),
+        )
+      : actionBlockers.map((item) => item.nextStep);
+  return {
+    allowedActions,
+    actionBlockers,
+    nextSteps: uniqueNextSteps(nextSteps),
+  };
+}
+
+function vehicleActionSummaryWithoutTask(
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly AdminVehicleReviewAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const nextStep = hasCapability(identity, "fleet_review")
+    ? recordNextStep("NONE", "当前车辆没有待处理审核任务")
+    : recordNextStep("CONTACT_OWNER", "联系车辆运营负责人");
+  return {
+    allowedActions: [],
+    actionBlockers: [
+      recordActionBlocker(
+        "claim",
+        hasCapability(identity, "fleet_review")
+          ? "INVALID_RECORD_STATE"
+          : "NO_CAPABILITY",
+        hasCapability(identity, "fleet_review")
+          ? "当前车辆没有可认领的审核任务。"
+          : "当前工作身份没有车辆审核能力。",
+        nextStep,
+      ),
+    ],
+    nextSteps: [nextStep],
+  };
+}
+
+function driverActionSummaryFor(
+  driver: AdminDriverDirectoryItem,
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly [];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  if (
+    !hasCapability(identity, "fleet_operation") &&
+    !hasCapability(identity, "fleet_review")
+  ) {
+    const nextStep = recordNextStep("CONTACT_OWNER", "联系车主运营负责人");
+    return {
+      allowedActions: [],
+      actionBlockers: [
+        recordActionBlocker(
+          "manage_driver",
+          "NO_CAPABILITY",
+          "当前工作身份没有车主运营能力。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  if (driver.eligibilityState === "restricted") {
+    const nextStep = recordNextStep(
+      "REQUEST_PLATFORM_REVIEW",
+      identity.type === "operator"
+        ? "提交平台恢复申请"
+        : "进入平台资格复核",
+    );
+    return {
+      allowedActions: [],
+      actionBlockers: [
+        recordActionBlocker(
+          "restore_driver",
+          "REQUIRES_PLATFORM_REVIEW",
+          "车主当前受平台资格限制，不能在本页直接恢复。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  if (driver.reviewAttentionCount > 0) {
+    const nextStep = recordNextStep(
+      "SUBMIT_REVIEW",
+      "处理关联车辆的待审核事项",
+    );
+    return {
+      allowedActions: [],
+      actionBlockers: [
+        recordActionBlocker(
+          "activate_driver",
+          "REQUIRES_REVIEW",
+          "车主仍有关联车辆审核事项未完成。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  return {
+    allowedActions: [],
+    actionBlockers: [],
+    nextSteps: [recordNextStep("NONE", "当前无需处理")],
+  };
 }
 
 function organizationScopeFor(
@@ -4803,9 +5424,12 @@ function tripDirectoryItemFor(
 
 function allowedTripActionsFor(
   state: import("@pollycar/contracts").AdminTripOperationTask["state"],
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminTripOperationAction[] {
-  if (role !== "operations_lead" && role !== "operator_operations_lead") {
+  if (
+    !hasCapability(identity, "trip_operation") ||
+    !isAtLeast(identity, "level_2")
+  ) {
     return [];
   }
   if (state === "detected") return ["triage"];
@@ -4813,6 +5437,148 @@ function allowedTripActionsFor(
     return ["request_domain_action"];
   }
   return [];
+}
+
+function tripActionSummaryFor(
+  state: import("@pollycar/contracts").AdminTripOperationTask["state"],
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly AdminTripOperationAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const allowedActions = allowedTripActionsFor(state, identity);
+  if (allowedActions.length > 0) {
+    return {
+      allowedActions,
+      actionBlockers: [],
+      nextSteps: allowedActions.map((action) =>
+        recordNextStep(
+          "EXECUTE_ACTION",
+          action === "triage" ? "完成异常分诊" : "提交领域处理申请",
+          action,
+        ),
+      ),
+    };
+  }
+  const expectedAction =
+    state === "detected" ? "triage" : "request_domain_action";
+  if (!hasCapability(identity, "trip_operation")) {
+    const nextStep = recordNextStep("CONTACT_OWNER", "联系行程运营负责人");
+    return {
+      allowedActions,
+      actionBlockers: [
+        recordActionBlocker(
+          expectedAction,
+          "NO_CAPABILITY",
+          "当前工作身份没有行程运营能力。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  if (!isAtLeast(identity, "level_2")) {
+    const nextStep = recordNextStep(
+      "SUBMIT_REVIEW",
+      "提交运营负责人处理",
+    );
+    return {
+      allowedActions,
+      actionBlockers: [
+        recordActionBlocker(
+          expectedAction,
+          "REQUIRES_REVIEW",
+          "该行程操作需要运营负责人执行。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  const nextStep = recordNextStep("NONE", "查看行程处理记录");
+  return {
+    allowedActions,
+    actionBlockers: [
+      recordActionBlocker(
+        expectedAction,
+        "INVALID_RECORD_STATE",
+        "当前行程任务状态不允许继续执行该操作。",
+        nextStep,
+      ),
+    ],
+    nextSteps: [nextStep],
+  };
+}
+
+function tripActionSummaryWithoutTask(
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly AdminTripOperationAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const nextStep = hasCapability(identity, "trip_operation")
+    ? recordNextStep("NONE", "当前行程没有待处理运营任务")
+    : recordNextStep("CONTACT_OWNER", "联系行程运营负责人");
+  return {
+    allowedActions: [],
+    actionBlockers: [
+      recordActionBlocker(
+        "triage",
+        hasCapability(identity, "trip_operation")
+          ? "INVALID_RECORD_STATE"
+          : "NO_CAPABILITY",
+        hasCapability(identity, "trip_operation")
+          ? "当前行程没有可处理的运营任务。"
+          : "当前工作身份没有行程运营能力。",
+        nextStep,
+      ),
+    ],
+    nextSteps: [nextStep],
+  };
+}
+
+function recordNextStep(
+  kind: AdminRecordNextStepKind,
+  label: string,
+  action?: string,
+): AdminRecordNextStep {
+  return {
+    kind,
+    label,
+    ...(action ? { action } : {}),
+  };
+}
+
+function recordActionBlocker(
+  action: string,
+  code: AdminRecordActionBlockerCode,
+  reason: string,
+  nextStep: AdminRecordNextStep,
+): AdminRecordActionBlocker {
+  return { action, code, reason, nextStep };
+}
+
+function uniqueNextSteps(
+  steps: readonly AdminRecordNextStep[],
+): readonly AdminRecordNextStep[] {
+  const seen = new Set<string>();
+  return steps.filter((step) => {
+    const key = `${step.kind}:${step.action ?? ""}:${step.label}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function vehicleActionStepLabel(action: AdminVehicleReviewAction): string {
+  return {
+    claim: "认领车辆审核",
+    request_material: "请求补充车辆材料",
+    approve: "确认车辆通过",
+    reject: "确认车辆不通过",
+  }[action];
 }
 
 function tripScopeDigest(session: SessionRecord): string {
@@ -5004,8 +5770,21 @@ function financeOperatorName(operatorId: string): string {
 function allowedFinanceActionsFor(
   kind: AdminFinanceResourceKind,
   record: AdminFinanceDetail["record"],
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminFinanceAction[] {
+  if (
+    !hasCapability(identity, "finance_operation") &&
+    !hasCapability(identity, "finance_review")
+  ) {
+    return [];
+  }
+  const canPrepare =
+    hasCapability(identity, "finance_operation") &&
+    identity.authorizationLevel === "level_1";
+  const canReview =
+    hasCapability(identity, "finance_review") &&
+    isAtLeast(identity, "level_2");
+  const reviewerId = internalUserIdFor(identity);
   switch (kind) {
     case "settlement": {
       const settlement = record as Extract<
@@ -5013,13 +5792,19 @@ function allowedFinanceActionsFor(
         { kind: "settlement" }
       >["record"];
       if (
-        role === "finance_officer" &&
+        canPrepare &&
+        identity.type === "platform" &&
         settlement.state === "eligible" &&
         settlement.blockers.length === 0
       ) {
         return ["prepare_operator_settlement"];
       }
-      if (role === "finance_lead" && settlement.state === "ready") {
+      if (
+        canReview &&
+        identity.type === "platform" &&
+        settlement.state === "ready" &&
+        settlement.preparedBy !== reviewerId
+      ) {
         return ["review_operator_settlement"];
       }
       return [];
@@ -5030,20 +5815,24 @@ function allowedFinanceActionsFor(
         { kind: "payout" }
       >["record"];
       if (
-        role === "operator_finance_officer" &&
+        canPrepare &&
+        identity.type === "operator" &&
         payout.state === "eligible" &&
         payout.blockers.length === 0
       ) {
         return ["prepare_driver_payout"];
       }
       if (
-        role === "operator_finance_lead" &&
-        payout.state === "awaiting_review"
+        canReview &&
+        identity.type === "operator" &&
+        payout.state === "awaiting_review" &&
+        payout.preparedBy !== reviewerId
       ) {
         return ["review_driver_payout"];
       }
       if (
-        role === "operator_finance_lead" &&
+        canReview &&
+        identity.type === "operator" &&
         payout.state === "approved"
       ) {
         return ["request_driver_payout"];
@@ -5055,7 +5844,9 @@ function allowedFinanceActionsFor(
         AdminFinanceDetail,
         { kind: "refund_reversal" }
       >["record"];
-      return role === "finance_officer" && refund.state === "liability_formed"
+      return canPrepare &&
+        identity.type === "platform" &&
+        refund.state === "liability_formed"
         ? ["request_refund", "request_full_reversal"]
         : [];
     }
@@ -5065,17 +5856,18 @@ function allowedFinanceActionsFor(
         { kind: "reconciliation" }
       >["record"];
       if (
-        (role === "finance_officer" ||
-          role === "operator_finance_officer") &&
+        canPrepare &&
         reconciliation.differences.some((item) => item.state === "open")
       ) {
         return ["submit_reconciliation_resolution"];
       }
       if (
-        (role === "finance_lead" || role === "operator_finance_lead") &&
+        canReview &&
         reconciliation.differences.some(
           (item) =>
-            item.state === "awaiting_review" && Boolean(item.evidenceReference),
+            item.state === "awaiting_review" &&
+            Boolean(item.evidenceReference) &&
+            item.resolvedBy !== reviewerId,
         )
       ) {
         return ["review_reconciliation_resolution"];
@@ -5088,7 +5880,8 @@ function allowedFinanceActionsFor(
         { kind: "business_day" }
       >["record"];
       if (
-        role === "finance_officer" &&
+        canPrepare &&
+        identity.type === "platform" &&
         businessDay.state === "ready" &&
         businessDay.allRunsClosed &&
         businessDay.fourSourcesPresent &&
@@ -5098,8 +5891,10 @@ function allowedFinanceActionsFor(
         return ["prepare_business_day_close"];
       }
       if (
-        role === "finance_lead" &&
-        businessDay.state === "awaiting_review"
+        canReview &&
+        identity.type === "platform" &&
+        businessDay.state === "awaiting_review" &&
+        businessDay.preparedBy !== reviewerId
       ) {
         return ["review_business_day_close"];
       }
@@ -5108,6 +5903,153 @@ function allowedFinanceActionsFor(
     case "ledger":
       return [];
   }
+}
+
+function financeActionSummaryFor(
+  kind: AdminFinanceResourceKind,
+  record: AdminFinanceDetail["record"],
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly AdminFinanceAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const allowedActions = allowedFinanceActionsFor(kind, record, identity);
+  const reviewAction = financeReviewActionFor(kind, record);
+  if (reviewAction && financeReviewerConflicts(kind, record, internalUserIdFor(identity))) {
+    const nextStep = recordNextStep(
+      "WAIT",
+      "由其他具备财务复核能力的负责人完成独立复核",
+    );
+    return {
+      allowedActions,
+      actionBlockers: [
+        recordActionBlocker(
+          reviewAction,
+          "REQUIRES_INDEPENDENT_REVIEW",
+          "该记录由当前账号制单，不能由同一人完成复核。",
+          nextStep,
+        ),
+      ],
+      nextSteps: [nextStep],
+    };
+  }
+  if (allowedActions.length > 0) {
+    return {
+      allowedActions,
+      actionBlockers: [],
+      nextSteps: allowedActions.map((action) =>
+        recordNextStep("EXECUTE_ACTION", financeActionStepLabel(action), action)
+      ),
+    };
+  }
+  const nextStep =
+    hasCapability(identity, "finance_operation") ||
+      hasCapability(identity, "finance_review")
+      ? recordNextStep("NONE", "查看财务处理记录")
+      : recordNextStep("CONTACT_OWNER", "联系财务运营负责人");
+  return {
+    allowedActions,
+    actionBlockers: [
+      recordActionBlocker(
+        reviewAction ?? "finance_operation",
+        hasCapability(identity, "finance_operation") ||
+            hasCapability(identity, "finance_review")
+          ? "INVALID_RECORD_STATE"
+          : "NO_CAPABILITY",
+        hasCapability(identity, "finance_operation") ||
+            hasCapability(identity, "finance_review")
+          ? "当前财务记录状态没有可执行操作。"
+          : "当前工作身份没有财务处理能力。",
+        nextStep,
+      ),
+    ],
+    nextSteps: [nextStep],
+  };
+}
+
+function financeReviewActionFor(
+  kind: AdminFinanceResourceKind,
+  record: AdminFinanceDetail["record"],
+): AdminFinanceAction | undefined {
+  if (
+    kind === "settlement" &&
+    (record as Extract<AdminFinanceDetail, { kind: "settlement" }>["record"])
+        .state === "ready"
+  ) {
+    return "review_operator_settlement";
+  }
+  if (
+    kind === "payout" &&
+    (record as Extract<AdminFinanceDetail, { kind: "payout" }>["record"])
+        .state === "awaiting_review"
+  ) {
+    return "review_driver_payout";
+  }
+  if (
+    kind === "reconciliation" &&
+    "differences" in record &&
+    record.differences.some((item) => item.state === "awaiting_review")
+  ) {
+    return "review_reconciliation_resolution";
+  }
+  if (
+    kind === "business_day" &&
+    (record as Extract<AdminFinanceDetail, { kind: "business_day" }>["record"])
+        .state === "awaiting_review"
+  ) {
+    return "review_business_day_close";
+  }
+  return undefined;
+}
+
+function financeRequestedReviewActionFor(
+  action: AdminFinanceAction,
+): AdminFinanceAction | undefined {
+  const actions: Partial<Record<AdminFinanceAction, AdminFinanceAction>> = {
+    prepare_operator_settlement: "review_operator_settlement",
+    review_operator_settlement: "review_operator_settlement",
+    prepare_driver_payout: "review_driver_payout",
+    review_driver_payout: "review_driver_payout",
+    submit_reconciliation_resolution: "review_reconciliation_resolution",
+    review_reconciliation_resolution: "review_reconciliation_resolution",
+    prepare_business_day_close: "review_business_day_close",
+    review_business_day_close: "review_business_day_close",
+  };
+  return actions[action];
+}
+
+function financeReviewerConflicts(
+  kind: AdminFinanceResourceKind,
+  record: AdminFinanceDetail["record"],
+  reviewerId: string,
+): boolean {
+  if ((kind === "settlement" || kind === "payout" || kind === "business_day") &&
+    "preparedBy" in record) {
+    return record.preparedBy === reviewerId;
+  }
+  return kind === "reconciliation" &&
+    "differences" in record &&
+    record.differences.some(
+      (item) =>
+        item.state === "awaiting_review" && item.resolvedBy === reviewerId,
+    );
+}
+
+function financeActionStepLabel(action: AdminFinanceAction): string {
+  return ({
+    prepare_operator_settlement: "提交运营公司结算制单",
+    review_operator_settlement: "完成运营公司结算复核",
+    prepare_driver_payout: "提交车主付款制单",
+    review_driver_payout: "完成车主付款复核",
+    request_driver_payout: "请求执行车主付款",
+    request_refund: "提交退款请求",
+    request_full_reversal: "提交全额冲正请求",
+    submit_reconciliation_resolution: "提交对账差异处理",
+    review_reconciliation_resolution: "完成对账差异复核",
+    prepare_business_day_close: "提交营业日关账",
+    review_business_day_close: "完成营业日关账复核",
+  } as Partial<Record<AdminFinanceAction, string>>)[action] ?? "处理财务记录";
 }
 
 function reconciliationActionResourceId(
@@ -5194,31 +6136,23 @@ const dataReportDefinitions: readonly Readonly<{
 
 function allowedDataReportActions(
   domain: AdminDataReportDomain,
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly ["refresh_report"] | readonly [] {
-  if (role === "data_analyst") return ["refresh_report"];
-  if (domain === "operations" && role === "operations_lead") {
+  if (!hasCapability(identity, "analytics_read")) return [];
+  if (identity.authorizationLevel === "level_1") return ["refresh_report"];
+  if (domain === "operations" && hasCapability(identity, "operations_task")) {
     return ["refresh_report"];
   }
-  if (domain === "finance" && role === "finance_lead") {
-    return ["refresh_report"];
-  }
-  if (domain === "safety_compliance" && role === "safety_lead") {
-    return ["refresh_report"];
-  }
-  if (domain === "audit" && role === "privacy_compliance") {
+  if (domain === "finance" && hasCapability(identity, "finance_review")) {
     return ["refresh_report"];
   }
   if (
-    domain === "operations" &&
-    role === "operator_operations_lead"
+    domain === "safety_compliance" &&
+    hasCapability(identity, "safety_restoration_review")
   ) {
     return ["refresh_report"];
   }
-  if (
-    domain === "finance" &&
-    role === "operator_finance_lead"
-  ) {
+  if (domain === "audit" && hasCapability(identity, "privacy_governance")) {
     return ["refresh_report"];
   }
   return [];
@@ -5236,7 +6170,7 @@ function createMembershipDefinitions(
         membershipId: `membership-${suffix}`,
         internalUserId: `internal-${suffix}`,
         workIdentity,
-        displayName: membershipDisplayName(workIdentity.productRole),
+        displayName: membershipDisplayName(workIdentity.workIdentityId),
         workEmailMasked: maskWorkEmail(account.email),
       });
     }
@@ -5244,32 +6178,32 @@ function createMembershipDefinitions(
   return [...definitions.values()];
 }
 
-function membershipDisplayName(role: AdminProductRole): string {
-  const names: Partial<Record<AdminProductRole, string>> = {
-    platform_access_administrator: "顾衡",
-    operator_account_administrator: "沈宁",
-    operations_lead: "林岚",
-    operator_operations_lead: "周宁",
-    finance_officer: "许澄",
-    finance_lead: "程岩",
-    operator_finance_officer: "方晴",
-    operator_finance_lead: "陆衡",
-    customer_support: "顾言",
-    operator_customer_support: "苏禾",
-    reviewer: "秦阅",
-    senior_reviewer: "闻岚",
-    operator_fleet_officer: "陈舟",
-    safety_officer: "宋安",
-    safety_lead: "韩澄",
-    auditor: "唐审",
-    operator_auditor: "顾谨",
-    technical_operations: "程维",
-    data_analyst: "程析",
-    executive_sponsor: "陆衡",
-    operator_executive: "吴岚",
-    privacy_compliance: "叶清",
+function membershipDisplayName(workIdentityId: string): string {
+  const names: Readonly<Record<string, string>> = {
+    "synthetic-platform-access-admin-001": "顾衡",
+    "synthetic-operator-account-admin-001": "沈宁",
+    "synthetic-platform-ops-001": "林岚",
+    "synthetic-operator-ops-001": "周宁",
+    "synthetic-finance-officer-001": "许澄",
+    "synthetic-finance-lead-001": "程岩",
+    "synthetic-operator-finance-officer-001": "方晴",
+    "synthetic-operator-finance-lead-001": "陆衡",
+    "synthetic-support-001": "顾言",
+    "synthetic-operator-support-001": "苏禾",
+    "synthetic-reviewer-001": "秦阅",
+    "synthetic-senior-reviewer-001": "闻岚",
+    "synthetic-operator-fleet-001": "陈舟",
+    "synthetic-safety-officer-001": "宋安",
+    "synthetic-safety-lead-001": "韩澄",
+    "synthetic-auditor-001": "唐审",
+    "synthetic-operator-auditor-001": "顾谨",
+    "synthetic-technical-ops-001": "程维",
+    "synthetic-data-analyst-001": "程析",
+    "synthetic-executive-sponsor-001": "陆衡",
+    "synthetic-operator-executive-001": "吴岚",
+    "synthetic-privacy-compliance-001": "叶清",
   };
-  return names[role] ?? "内部成员";
+  return names[workIdentityId] ?? "内部成员";
 }
 
 function maskWorkEmail(email: string): string {
@@ -5296,8 +6230,7 @@ function allowedMembershipActions(
     return [];
   }
   if (
-    session.workIdentity.productRole !== "platform_access_administrator" &&
-    session.workIdentity.productRole !== "operator_account_administrator"
+    !hasCapability(session.workIdentity, "membership_governance")
   ) {
     return [];
   }
@@ -5421,32 +6354,40 @@ function executiveDirectoryItemsFor(source: Readonly<{
 
 function allowedExecutiveExportActionsFor(
   record: import("@pollycar/contracts").ExecutiveExportRequest,
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
   workIdentityId: string,
 ): readonly AdminExecutiveAction[] {
-  if (record.state === "awaiting_privacy_review" && role === "privacy_compliance") {
+  if (
+    record.state === "awaiting_privacy_review" &&
+    hasCapability(identity, "privacy_governance")
+  ) {
     return ["privacy_approve_export", "privacy_reject_export"];
   }
   if (record.state === "awaiting_domain_review") {
-    const requiredRole =
-      record.domain === "operations"
-        ? "operations_lead"
-        : record.domain === "finance"
-          ? "finance_lead"
-          : "safety_lead";
-    if (role === requiredRole) {
+    const hasDomainReviewCapability =
+      (record.domain === "operations" &&
+        hasCapability(identity, "operations_task") &&
+        isAtLeast(identity, "level_2")) ||
+      (record.domain === "finance" &&
+        hasCapability(identity, "finance_review")) ||
+      (record.domain === "safety_compliance" &&
+        hasCapability(identity, "safety_restoration_review"));
+    if (hasDomainReviewCapability) {
       return ["domain_approve_export", "domain_reject_export"];
     }
   }
   if (record.state === "approved") {
-    const domainRole =
-      record.domain === "operations"
-        ? "operations_lead"
-        : record.domain === "finance"
-          ? "finance_lead"
-          : "safety_lead";
+    const hasDomainReviewCapability =
+      (record.domain === "operations" &&
+        hasCapability(identity, "operations_task") &&
+        isAtLeast(identity, "level_2")) ||
+      (record.domain === "finance" &&
+        hasCapability(identity, "finance_review")) ||
+      (record.domain === "safety_compliance" &&
+        hasCapability(identity, "safety_restoration_review"));
     return [
-      ...(role === "privacy_compliance" || role === domainRole
+      ...(hasCapability(identity, "privacy_governance") ||
+      hasDomainReviewCapability
         ? (["revoke_export"] as const)
         : []),
       ...(record.requesterWorkIdentityId === workIdentityId
@@ -5509,6 +6450,33 @@ function auditInvestigationDirectoryItem(
     blocking: investigation.state !== "resolved",
     resourceVersion: investigation.resourceVersion,
     occurredAt: investigation.updatedAt,
+    synthetic: true,
+  };
+}
+
+function auditApprovalDirectoryItem(
+  approval: AdminHighRiskApprovalRecord,
+): AdminAuditDirectoryItem {
+  return {
+    resourceId: approval.approvalId,
+    kind: "approval",
+    domain: approval.domain,
+    title:
+      approval.domain === "finance"
+        ? "财务独立复核"
+        : approval.requestedAction === "approve_evidence"
+          ? "证据访问审批"
+          : "安全恢复复核",
+    summary: approval.requestedAction,
+    organizationType: approval.organizationType,
+    organizationId: approval.organizationId,
+    organizationName: approval.organizationName,
+    result: approval.state,
+    actorRole:
+      approval.reviewer?.actorRole ?? approval.requester.actorRole,
+    blocking: approval.state === "pending",
+    resourceVersion: approval.resourceVersion,
+    occurredAt: approval.updatedAt,
     synthetic: true,
   };
 }
@@ -5618,9 +6586,9 @@ function isHighRiskAuditEvent(event: AdminAuditEvent): boolean {
 
 function allowedAuditInvestigationActionsFor(
   investigation: AdminAuditInvestigation,
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminAuditAction[] {
-  if (role !== "technical_operations") return [];
+  if (!hasCapability(identity, "technical_recovery")) return [];
   if (investigation.state === "resolved") return ["reopen_investigation"];
   if (investigation.state === "open") {
     return [
@@ -5694,7 +6662,7 @@ function auditTrailEventFor(
     eventId: token("audit-trail"),
     action: actions[action],
     actorLabel: session.workIdentity.organizationName,
-    actorRole: session.workIdentity.productRoleName,
+    actorRole: session.workIdentity.positionName,
     occurredAt,
     ...(previousState ? { previousState } : {}),
     nextState,
@@ -5910,13 +6878,9 @@ function productCaseText(value: string): string {
 
 function allowedSupportActionsFor(
   state: AdminSupportCase["state"],
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminSupportCaseAction[] {
-  if (
-    role !== "customer_support" &&
-    role !== "operator_customer_support" &&
-    role !== "operations_lead"
-  ) {
+  if (!hasCapability(identity, "support_case")) {
     return [];
   }
   if (state === "closed") return ["reopen"];
@@ -5966,35 +6930,43 @@ function allowedSupportActionsFor(
 function allowedSafetyActionsFor(
   investigation: AdminSafetyInvestigation,
   evidenceGrants: readonly AdminEvidenceGrant[],
-  role: AdminProductRole,
+  identity: AdminWorkIdentitySummary,
 ): readonly AdminSafetyCaseAction[] {
   const actions: AdminSafetyCaseAction[] = [];
+  const internalUserId = internalUserIdFor(identity);
   if (
-    role === "safety_officer" &&
+    hasCapability(identity, "safety_investigation") &&
+    identity.authorizationLevel === "level_1" &&
     investigation.investigationState === "investigating"
   ) {
     actions.push("submit_investigation");
   }
   if (
-    role === "safety_lead" &&
-    investigation.investigationState === "awaiting_independent_review"
+    hasCapability(identity, "safety_restoration_review") &&
+    investigation.investigationState === "awaiting_independent_review" &&
+    internalUserId !== investigation.investigationOwnerInternalUserId &&
+    internalUserId !== investigation.freezeActorInternalUserId
   ) {
     if (!investigation.blockers.some((blocker) => blocker.blocking)) {
       actions.push("restore_access");
     }
     actions.push("uphold_freeze");
   }
-  if (role === "safety_officer" || role === "safety_lead") {
+  if (hasCapability(identity, "safety_investigation")) {
     actions.push("request_evidence");
   }
   if (
-    role === "safety_lead" &&
-    evidenceGrants.some((grant) => grant.state === "requested")
+    hasCapability(identity, "safety_restoration_review") &&
+    evidenceGrants.some(
+      (grant) =>
+        grant.state === "requested" &&
+        grant.requestedByInternalUserId !== internalUserId,
+    )
   ) {
     actions.push("approve_evidence");
   }
   if (
-    role === "safety_lead" &&
+    hasCapability(identity, "safety_restoration_review") &&
     evidenceGrants.some(
       (grant) => grant.state === "approved" || grant.state === "active",
     )
@@ -6002,6 +6974,126 @@ function allowedSafetyActionsFor(
     actions.push("revoke_evidence");
   }
   return actions;
+}
+
+function safetyActionSummaryFor(
+  investigation: AdminSafetyInvestigation,
+  evidenceGrants: readonly AdminEvidenceGrant[],
+  identity: AdminWorkIdentitySummary,
+): Readonly<{
+  allowedActions: readonly AdminSafetyCaseAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}> {
+  const allowedActions = allowedSafetyActionsFor(
+    investigation,
+    evidenceGrants,
+    identity,
+  );
+  const internalUserId = internalUserIdFor(identity);
+  const blockers: AdminRecordActionBlocker[] = [];
+  if (
+    hasCapability(identity, "safety_restoration_review") &&
+    investigation.investigationState === "awaiting_independent_review" &&
+    (
+      internalUserId === investigation.investigationOwnerInternalUserId ||
+      internalUserId === investigation.freezeActorInternalUserId
+    )
+  ) {
+    const nextStep = recordNextStep(
+      "WAIT",
+      "由其他安全复核负责人完成独立复核",
+    );
+    blockers.push(
+      recordActionBlocker(
+        "restore_access",
+        "REQUIRES_INDEPENDENT_REVIEW",
+        "当前账号参与了调查或冻结，不能复核本次安全恢复。",
+        nextStep,
+      ),
+      recordActionBlocker(
+        "uphold_freeze",
+        "REQUIRES_INDEPENDENT_REVIEW",
+        "当前账号参与了调查或冻结，不能作出独立复核结论。",
+        nextStep,
+      ),
+    );
+  } else if (
+    investigation.investigationState === "awaiting_independent_review" &&
+    investigation.blockers.some((blocker) => blocker.blocking)
+  ) {
+    const nextStep = recordNextStep("WAIT", "先处理全部安全阻断项");
+    blockers.push(
+      recordActionBlocker(
+        "restore_access",
+        "RISK_RESTRICTION",
+        "仍有未解除的安全阻断，暂时不能恢复访问。",
+        nextStep,
+      ),
+    );
+  }
+  if (
+    hasCapability(identity, "safety_restoration_review") &&
+    evidenceGrants.some(
+      (grant) =>
+        grant.state === "requested" &&
+        grant.requestedByInternalUserId === internalUserId,
+    )
+  ) {
+    const nextStep = recordNextStep(
+      "WAIT",
+      "由其他安全复核负责人审批证据访问",
+    );
+    blockers.push(
+      recordActionBlocker(
+        "approve_evidence",
+        "REQUIRES_INDEPENDENT_REVIEW",
+        "证据访问申请不能由申请人本人批准。",
+        nextStep,
+      ),
+    );
+  }
+  const allowedSteps = allowedActions.map((action) =>
+    recordNextStep("EXECUTE_ACTION", safetyActionStepLabel(action), action)
+  );
+  const nextSteps = uniqueNextSteps([
+    ...allowedSteps,
+    ...blockers.map((blocker) => blocker.nextStep),
+  ]);
+  return {
+    allowedActions,
+    actionBlockers: blockers,
+    nextSteps: nextSteps.length > 0
+      ? nextSteps
+      : [recordNextStep("NONE", "查看安全处理记录")],
+  };
+}
+
+function safetyActionStepLabel(action: AdminSafetyCaseAction): string {
+  return ({
+    submit_investigation: "提交安全调查结论",
+    restore_access: "批准恢复访问",
+    uphold_freeze: "维持安全冻结",
+    request_evidence: "申请证据访问",
+    approve_evidence: "批准证据访问",
+    revoke_evidence: "撤销证据访问",
+  } as Record<AdminSafetyCaseAction, string>)[action];
+}
+
+function internalUserIdFor(identity: AdminWorkIdentitySummary): string {
+  return identity.workIdentityId.replace(/^synthetic-/, "internal-");
+}
+
+function approvalActorFor(
+  session: SessionRecord,
+  occurredAt: string,
+): AdminHighRiskApprovalRecord["requester"] {
+  return {
+    workIdentityId: session.workIdentity.workIdentityId,
+    actorLabel: session.workIdentity.organizationName,
+    actorRole: session.workIdentity.positionName,
+    occurredAt,
+  };
 }
 
 function supportTargetState(
@@ -6139,7 +7231,7 @@ function operatorDetailFor(
     },
     allowedActions: allowedOperatorActionsFor(
       operator,
-      session.workIdentity.productRole,
+      session.workIdentity,
     ),
     auditTrail: [...auditTrail],
     synthetic: true,
@@ -6166,48 +7258,95 @@ function auditActionFor(
   } as const)[action];
 }
 
-function operationPermissions(role: AdminProductRole): readonly string[] {
-  if (role.includes("auditor") || role === "executive_sponsor" || role === "operator_executive") {
-    return ["read"];
+function operationPermissions(
+  identity: AdminWorkIdentitySummary,
+): readonly string[] {
+  const permissions = new Set<string>(["read"]);
+  if (hasCapability(identity, "operations_task")) {
+    permissions.add(
+      identity.authorizationLevel === "level_1" ? "process" : "assign",
+    );
+    if (isAtLeast(identity, "level_2")) permissions.add("review");
   }
-  if (role === "reviewer" || role === "senior_reviewer") {
-    return [
-      "read",
-      "fleet:claim",
-      "fleet:request_material",
-      "fleet:approve",
-      "fleet:reject",
-    ];
+  if (hasCapability(identity, "fleet_review")) {
+    permissions.add("fleet:claim");
+    permissions.add("fleet:request_material");
+    if (isAtLeast(identity, "level_2")) {
+      permissions.add("fleet:approve");
+      permissions.add("fleet:reject");
+    }
   }
-  if (role === "operator_fleet_officer") return ["read", "fleet:read"];
-  if (role === "operations_lead") {
-    return [
-      "read",
-      "assign",
-      "review",
-      "operator:restrict",
-      "operator:reactivate",
-      "trip:triage",
-      "trip:request_domain_action",
-    ];
+  if (
+    hasCapability(identity, "operator_governance") &&
+    isAtLeast(identity, "level_2")
+  ) {
+    permissions.add("operator:restrict");
+    permissions.add("operator:reactivate");
   }
-  if (role === "operator_operations_lead") {
-    return [
-      "read",
-      "assign",
-      "review",
-      "trip:triage",
-      "trip:request_domain_action",
-    ];
+  if (
+    hasCapability(identity, "trip_operation") &&
+    isAtLeast(identity, "level_2")
+  ) {
+    permissions.add("trip:triage");
+    permissions.add("trip:request_domain_action");
   }
-  if (role.includes("lead")) return ["read", "assign", "review"];
-  return ["read", "process"];
+  return [...permissions];
 }
 
-function exportProfiles(role: AdminProductRole): readonly string[] {
-  if (role.includes("finance") || role.includes("auditor")) return ["controlled"];
-  if (role.includes("lead") || role.includes("executive")) return ["scoped"];
+function exportProfiles(
+  identity: AdminWorkIdentitySummary,
+): readonly string[] {
+  if (
+    hasCapability(identity, "finance_operation") ||
+    hasCapability(identity, "finance_review") ||
+    hasCapability(identity, "audit_read") ||
+    hasCapability(identity, "privacy_governance")
+  ) {
+    return ["controlled"];
+  }
+  if (
+    hasCapability(identity, "analytics_read") ||
+    hasCapability(identity, "executive_read") ||
+    isAtLeast(identity, "level_2")
+  ) {
+    return ["scoped"];
+  }
   return ["none"];
+}
+
+function hasCapability(
+  identity: Pick<AdminWorkIdentitySummary, "capabilities">,
+  capability: AdminBusinessCapability,
+): boolean {
+  return identity.capabilities.includes(capability);
+}
+
+function isAtLeast(
+  identity: Pick<AdminWorkIdentitySummary, "authorizationLevel">,
+  minimum: AdminAuthorizationLevel,
+): boolean {
+  const rank: Readonly<Record<AdminAuthorizationLevel, number>> = {
+    level_1: 1,
+    level_2: 2,
+    level_3: 3,
+  };
+  return rank[identity.authorizationLevel] >= rank[minimum];
+}
+
+function domainsFor(
+  identity: Pick<AdminWorkIdentitySummary, "capabilities" | "type">,
+): readonly AdminNavigationDomain[] {
+  const domains = new Set<AdminNavigationDomain>(["workbench"]);
+  for (const capability of identity.capabilities) {
+    for (const domain of capabilityDomains[capability]) domains.add(domain);
+  }
+  if (
+    identity.type === "operator" &&
+    !hasCapability(identity, "membership_governance")
+  ) {
+    domains.delete("organization_accounts");
+  }
+  return [...domains];
 }
 
 function token(prefix: string): string {

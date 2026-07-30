@@ -1,6 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 export const DEFAULT_JSON_BODY_LIMIT_BYTES = 256 * 1024;
+const requestBodyLimits = new WeakMap<IncomingMessage, number>();
+
+export function bindRequestBodyLimit(
+  request: IncomingMessage,
+  maximumBytes: number,
+): void {
+  if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
+    throw new Error("HTTP_BODY_LIMIT_INVALID");
+  }
+  requestBodyLimits.set(request, maximumBytes);
+}
 
 export async function readJsonObject(
   request: IncomingMessage,
@@ -14,7 +25,9 @@ export async function readJsonObject(
   const tooLargeErrorCode = options.tooLargeErrorCode ?? "PAYLOAD_TOO_LARGE";
   const raw = await readRequestBody(
     request,
-    options.maximumBytes ?? DEFAULT_JSON_BODY_LIMIT_BYTES,
+    options.maximumBytes ??
+      requestBodyLimits.get(request) ??
+      DEFAULT_JSON_BODY_LIMIT_BYTES,
     tooLargeErrorCode,
   );
   if (raw.length === 0) return {};
@@ -32,9 +45,17 @@ export async function readJsonObject(
 
 export async function readRequestText(
   request: IncomingMessage,
-  maximumBytes = DEFAULT_JSON_BODY_LIMIT_BYTES,
+  maximumBytes?: number,
 ): Promise<string> {
-  return (await readRequestBody(request, maximumBytes, "PAYLOAD_TOO_LARGE")).toString("utf8");
+  return (
+    await readRequestBody(
+      request,
+      maximumBytes ??
+        requestBodyLimits.get(request) ??
+        DEFAULT_JSON_BODY_LIMIT_BYTES,
+      "PAYLOAD_TOO_LARGE",
+    )
+  ).toString("utf8");
 }
 
 export function applyCors(

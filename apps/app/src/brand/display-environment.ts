@@ -1,3 +1,5 @@
+import { resolveAppPublicConfig } from "../infrastructure/public-config";
+
 export type BrandDisplayEnvironment = "sandbox" | "demo" | "production";
 
 const internalMarkers = [
@@ -13,12 +15,9 @@ const requiredDisclosureMarkers = [
 ] as const;
 
 export function resolveBrandDisplayEnvironment(
-  value = process.env.EXPO_PUBLIC_BRAND_DISPLAY_ENV,
+  value?: BrandDisplayEnvironment,
 ): BrandDisplayEnvironment {
-  if (process.env.EXPO_PUBLIC_BRAND_PRODUCTION === "true") return "production";
-  if (process.env.EXPO_PUBLIC_BRAND_DEMO === "true") return "demo";
-  if (value === "demo" || value === "production") return value;
-  return "sandbox";
+  return value ?? resolveAppPublicConfig().brandDisplayEnvironment;
 }
 
 export function presentBrandCopy(

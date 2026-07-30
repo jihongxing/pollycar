@@ -35,6 +35,18 @@ export function createDispatchHandler(dependencies: {
             state,
             state === "online" ? requireLocation(body.location) : undefined,
             requireIdempotencyKey(request),
+            state === "online"
+              ? {
+                  accountId: context.accountId,
+                  accountSessionId: context.accountSessionId,
+                  deviceId: requireString(body, "deviceId", 128),
+                  ...optionalStringProperty(
+                    body,
+                    "livenessAuthorizationToken",
+                    512,
+                  ),
+                }
+              : undefined,
           ),
           context.correlationId,
         );
@@ -120,6 +132,39 @@ function requireIdempotencyKey(request: IncomingMessage): string {
   return value;
 }
 
+function requireString(
+  body: Record<string, unknown>,
+  field: string,
+  maximumLength: number,
+): string {
+  const value = body[field];
+  if (
+    typeof value !== "string" ||
+    value.length < 8 ||
+    value.length > maximumLength
+  ) {
+    throw new Error("VALIDATION_FAILED");
+  }
+  return value;
+}
+
+function optionalStringProperty(
+  body: Record<string, unknown>,
+  field: string,
+  maximumLength: number,
+): Readonly<{ livenessAuthorizationToken?: string }> {
+  const value = body[field];
+  if (value === undefined) return {};
+  if (
+    typeof value !== "string" ||
+    value.length < 8 ||
+    value.length > maximumLength
+  ) {
+    throw new Error("VALIDATION_FAILED");
+  }
+  return { livenessAuthorizationToken: value };
+}
+
 async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
   return readJsonObject(request);
 }
@@ -135,7 +180,7 @@ function applyCors(
   response.setHeader("Vary", "Origin");
   response.setHeader(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Idempotency-Key, X-Correlation-Id",
+    "Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Device-Id",
   );
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 }

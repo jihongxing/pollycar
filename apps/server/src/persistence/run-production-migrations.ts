@@ -2,11 +2,11 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Pool } from "pg";
-import { createProductionConfig } from "../config.js";
+import { loadProductionReadinessServerConfig } from "@pollycar/configuration";
 import { runMigrations } from "./migrations.js";
 import { createProductionPoolConnectionString } from "./production-postgres.js";
 
-const config = createProductionConfig();
+const config = loadProductionReadinessServerConfig();
 const databaseCertificateAuthority = await readFile(
   config.persistence.caCertificatePath,
   "utf8",

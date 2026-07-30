@@ -22,7 +22,7 @@ persistence:
     - "require"
     - "verify-full"
   migration_before_readiness_required: true
-  database_url_environment_name: "POLLYCAR_PRODUCTION_DATABASE_URL"
+  database_url_environment_name: "POLLYCAR_DATABASE_URL"
   database_ca_environment_name: "POLLYCAR_PRODUCTION_DATABASE_CA_PATH"
   database_url_log_forbidden: true
 

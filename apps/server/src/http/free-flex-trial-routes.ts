@@ -10,7 +10,7 @@ export function createFreeFlexTrialHandler(dependencies: Readonly<{
 }>) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
-    if (!url.pathname.startsWith("/v1/internal-sandbox/")) return false;
+    if (!isFreeFlexTrialPath(url.pathname)) return false;
     const correlationId =
       typeof request.headers["x-correlation-id"] === "string"
         ? request.headers["x-correlation-id"]
@@ -79,6 +79,14 @@ export function createFreeFlexTrialHandler(dependencies: Readonly<{
       return send(response, mapped.status, mapped.body, correlationId);
     }
   };
+}
+
+function isFreeFlexTrialPath(pathname: string): boolean {
+  return (
+    pathname === "/v1/internal-sandbox/app/free-flex-trial" ||
+    pathname === "/v1/internal-sandbox/app/free-flex-trial/confirmation" ||
+    pathname === "/v1/internal-sandbox/admin/free-flex-trial/approval"
+  );
 }
 
 function applyCors(

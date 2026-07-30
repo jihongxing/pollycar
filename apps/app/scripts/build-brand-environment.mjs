@@ -1,31 +1,33 @@
 import { rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { createAmapClientEnvironment } from "./amap-client-environment.mjs";
+import {
+  assertNoDeprecatedConfigurationEnvironmentVariables,
+  createAppPublicConfig,
+  createLocalSandboxAppEnvironment,
+  createPublicConfigEnvironment,
+  getLocalSandboxProfile,
+  parseAppPublicConfig,
+} from "@pollycar/configuration";
+import { createAmapPublicConfig } from "./amap-client-environment.mjs";
 
 const mode = process.argv[2];
 if (!["sandbox", "demo", "production"].includes(mode)) {
   throw new Error("BUILD_BRAND_ENVIRONMENT_REQUIRED");
 }
 
+const env = createAppBuildEnvironment(mode, process.env);
 const outputDirectory = resolve(`dist-${mode}`);
 
 if (mode === "production") {
   await run(
     process.execPath,
     [resolve("scripts/check-production-release-readiness.mjs")],
-    process.env,
+    env,
   );
 }
 
 await rm(outputDirectory, { recursive: true, force: true });
-
-const env = createAmapClientEnvironment({
-  ...process.env,
-  EXPO_PUBLIC_BRAND_DEMO: mode === "demo" ? "true" : "",
-  EXPO_PUBLIC_BRAND_PRODUCTION: mode === "production" ? "true" : "",
-  EXPO_PUBLIC_BRAND_DISPLAY_ENV: "",
-});
 
 await run(
   process.env.npm_execpath ? process.execPath : process.platform === "win32" ? "pnpm.cmd" : "pnpm",
@@ -40,6 +42,46 @@ if (mode === "production") {
     process.execPath,
     [resolve("scripts/check-production-brand-output.mjs"), outputDirectory],
     env,
+  );
+}
+
+function createAppBuildEnvironment(buildMode, environment) {
+  assertNoDeprecatedConfigurationEnvironmentVariables(environment);
+  if (buildMode === "sandbox") {
+    return createPublicConfigEnvironment(
+      environment,
+      "EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG",
+      parseAppPublicConfig(
+        createLocalSandboxAppEnvironment(environment)
+          .EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG,
+      ),
+    );
+  }
+
+  if (buildMode === "production") {
+    const config = parseAppPublicConfig(
+      environment.EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG,
+    );
+    if (config.profile !== "production") {
+      throw new Error("APP_PUBLIC_CONFIG_PRODUCTION_PROFILE_REQUIRED");
+    }
+    return createPublicConfigEnvironment(
+      environment,
+      "EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG",
+      config,
+    );
+  }
+
+  const profile = getLocalSandboxProfile(environment);
+  return createPublicConfigEnvironment(
+    environment,
+    "EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG",
+    createAppPublicConfig({
+      profile: buildMode,
+      apiBaseUrl: profile.network.apiBaseUrl,
+      brandDisplayEnvironment: buildMode,
+      maps: createAmapPublicConfig(environment),
+    }),
   );
 }
 

@@ -1,12 +1,14 @@
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 import { SyntheticLedgerTemplateService } from "../application/synthetic-ledger-template-service.js";
 import { runMigrations } from "./migrations.js";
 import { PostgresLedgerRepository } from "./postgres-ledger-repository.js";
 import { PostgresTransaction } from "./postgres-transaction.js";
 
-const databaseUrl = process.env.POLLYCAR_LEDGER_TEMPLATES_DATABASE_URL;
+const databaseUrl =
+  loadPostgresIntegrationTestConfig().ledgerTemplatesDatabaseUrl;
 const describePostgres = databaseUrl ? describe.sequential : describe.skip;
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 

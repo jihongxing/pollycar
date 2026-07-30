@@ -3,9 +3,7 @@ import { environmentIndicatorLabel, presentBrandCopy, resolveBrandDisplayEnviron
 
 describe("品牌展示环境", () => {
   it("默认使用完整内部沙箱展示", () => {
-    delete process.env.EXPO_PUBLIC_BRAND_DEMO;
-    delete process.env.EXPO_PUBLIC_BRAND_PRODUCTION;
-    expect(resolveBrandDisplayEnvironment(undefined)).toBe("sandbox");
+    expect(resolveBrandDisplayEnvironment("sandbox")).toBe("sandbox");
     expect(environmentIndicatorLabel("sandbox")).toBe("内部沙箱");
     expect(presentBrandCopy("合成消息由 Server 保存", "sandbox")).toBe("合成消息由 Server 保存");
   });
@@ -15,10 +13,9 @@ describe("品牌展示环境", () => {
     expect(presentBrandCopy("当前内部沙箱只使用合成数据", "demo")).toBe("当前演示环境只使用演示数据");
   });
 
-  it("显式生产变量优先于兼容变量", () => {
-    process.env.EXPO_PUBLIC_BRAND_PRODUCTION = "true";
-    expect(resolveBrandDisplayEnvironment("demo")).toBe("production");
-    delete process.env.EXPO_PUBLIC_BRAND_PRODUCTION;
+  it("只接受公开配置解析后的展示环境", () => {
+    expect(resolveBrandDisplayEnvironment("demo")).toBe("demo");
+    expect(resolveBrandDisplayEnvironment("production")).toBe("production");
   });
 
   it("生产环境隐藏纯内部说明", () => {

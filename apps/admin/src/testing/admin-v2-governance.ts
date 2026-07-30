@@ -1,6 +1,6 @@
 import type {
+  AdminBusinessCapability,
   AdminNavigationDomain,
-  AdminProductRole,
 } from "@pollycar/contracts";
 
 export const adminV2CanonicalShell = "ProductizedAdminShell" as const;
@@ -65,51 +65,31 @@ export type AdminV2TaskMode =
   | "governance_analysis"
   | "decision_management";
 
-export const adminV2RoleTaskModes = Object.freeze({
-  account_governance: [
-    "platform_access_administrator",
-    "operator_account_administrator",
-  ],
+export const adminV2CapabilityTaskModes = Object.freeze({
+  account_governance: ["membership_governance"],
   operations: [
-    "operations_officer",
-    "operations_lead",
-    "operator_management_officer",
-    "operator_operations_lead",
+    "operations_task",
+    "operator_governance",
+    "trip_operation",
   ],
-  admission_review: [
-    "reviewer",
-    "senior_reviewer",
-    "operator_fleet_officer",
-  ],
+  admission_review: ["fleet_operation", "fleet_review"],
   support_safety: [
-    "customer_support",
-    "support_lead",
-    "safety_officer",
-    "safety_lead",
-    "operator_customer_support",
-    "operator_safety_liaison",
+    "support_case",
+    "safety_investigation",
+    "safety_restoration_review",
   ],
-  finance: [
-    "finance_officer",
-    "finance_lead",
-    "operator_finance_officer",
-    "operator_finance_lead",
-  ],
+  finance: ["finance_operation", "finance_review"],
   governance_analysis: [
-    "privacy_compliance",
-    "data_analyst",
-    "auditor",
-    "technical_operations",
-    "operator_auditor",
+    "privacy_governance",
+    "analytics_read",
+    "audit_read",
+    "technical_recovery",
   ],
-  decision_management: [
-    "executive_sponsor",
-    "operator_executive",
-  ],
-} satisfies Readonly<Record<AdminV2TaskMode, readonly AdminProductRole[]>>);
+  decision_management: ["executive_read"],
+} satisfies Readonly<Record<AdminV2TaskMode, readonly AdminBusinessCapability[]>>);
 
-export const adminV2MissingAcceptanceRoles = Object.freeze(
-  [] satisfies readonly AdminProductRole[],
+export const adminV2MissingAcceptanceCapabilities = Object.freeze(
+  [] satisfies readonly AdminBusinessCapability[],
 );
 
 export const adminV2DetailRoutePatterns = Object.freeze([

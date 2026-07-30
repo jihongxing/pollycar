@@ -1266,6 +1266,93 @@ paths:
           $ref: "#/components/responses/ConflictError"
         "422":
           $ref: "#/components/responses/BusinessRuleError"
+  /v1/internal-sandbox/app/driver/liveness/challenges:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: createAppDriverLivenessChallenge
+      summary: 为本次车主上线创建随机活体挑战
+      description: 每次从离线请求上线都必须创建新挑战；同一账户、设备和登录会话中的旧挑战会失效。
+      security:
+        - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [deviceId]
+              properties:
+                deviceId: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        "200":
+          description: 五分钟有效、动作顺序固定的合成活体挑战
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverLivenessChallenge" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
+  /v1/internal-sandbox/app/driver/liveness/challenges/{challenge_id}:
+    get:
+      tags: [InternalSandboxApp]
+      operationId: getAppDriverLivenessChallenge
+      summary: 查询当前活体挑战及供应商结果
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: challenge_id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: 当前挑战状态；结果未知时保持离线
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverLivenessChallenge" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /v1/internal-sandbox/app/driver/liveness/challenges/{challenge_id}/complete:
+    post:
+      tags: [InternalSandboxApp]
+      operationId: completeAppDriverLivenessChallenge
+      summary: 提交合成活体结果并签发一次性上线授权
+      description: 内部沙箱只接受明确标识的合成场景，不接收真实视频、照片或人脸模板。
+      security:
+        - sandboxAuth: []
+      parameters:
+        - name: challenge_id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [syntheticScenario]
+              properties:
+                syntheticScenario:
+                  type: string
+                  enum: [passed, action_mismatch, spoof_suspected, face_not_detected, camera_denied, provider_timeout, provider_unavailable, result_unknown]
+      responses:
+        "200":
+          description: 检测结果；只有 passed 返回短时一次性上线授权
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverLivenessResult" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "422": { $ref: "#/components/responses/BusinessRuleError" }
   /v1/internal-sandbox/app/driver/availability:
     get:
       tags: [InternalSandboxApp]
@@ -1286,6 +1373,7 @@ paths:
       summary: 由车主主动开始或停止接单
       security:
         - sandboxAuth: []
+      parameters: [{ $ref: "#/components/parameters/DeviceId" }]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
@@ -1298,6 +1386,26 @@ paths:
               properties:
                 state: { type: string, enum: [online, offline] }
                 returnOnlineAfterTrip: { type: boolean }
+                deviceId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: 当前安装实例的非生物识别设备标识，仅用于绑定本次上线授权。
+                livenessAuthorizationToken:
+                  type: string
+                  description: 请求进入 online 时必填；必须是当前账户、设备和登录会话下未消费的一次性活体授权。请求进入 offline 时禁止携带。
+              allOf:
+                - if:
+                    properties:
+                      state: { const: online }
+                  then:
+                    required: [deviceId, livenessAuthorizationToken]
+                - if:
+                    properties:
+                      state: { const: offline }
+                  then:
+                    not:
+                      required: [livenessAuthorizationToken]
       responses:
         "200":
           description: 更新后的车主状态
@@ -1305,6 +1413,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DriverAvailabilityView" }
         "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
         "409": { $ref: "#/components/responses/ConflictError" }
         "422": { $ref: "#/components/responses/BusinessRuleError" }
   /v1/internal-sandbox/app/driver/dispatch-presence:
@@ -2362,6 +2471,45 @@ paths:
       responses:
         "200": { description: 幂等处理后的成年资格状态, content: { application/json: { schema: { $ref: "#/components/schemas/AdultEligibilityVerification" } } } }
         "403": { $ref: "#/components/responses/AuthorizationError" }
+  /v1/internal-sandbox/provider-callbacks/driver-liveness:
+    post:
+      tags: [InternalSandboxProvider]
+      operationId: receiveDriverLivenessProviderCallback
+      summary: 接收车主活体供应商签名回调
+      description: 回调必须验签并以 callbackId 幂等处理；未知、超时或失败结果不得签发上线授权。
+      security:
+        - identityProviderSignature: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: X-Provider-Signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [callbackId, challengeId, providerSessionReference, occurredAt, status, policyVersion]
+              properties:
+                callbackId: { type: string }
+                challengeId: { type: string }
+                providerSessionReference: { type: string }
+                occurredAt: { type: string, format: date-time }
+                status: { type: string, enum: [passed, failed, pending, unknown] }
+                policyVersion: { type: string }
+                failureCode: { type: string }
+                requestDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+      responses:
+        "200":
+          description: 幂等处理后的活体检测结果
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverLivenessResult" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
   /v1/internal-sandbox/app/adult-eligibility/provider-result:
     post:
       tags: [InternalSandboxApp]
@@ -3364,6 +3512,15 @@ components:
         minLength: 16
         maxLength: 128
       description: 同一业务动作重试必须使用相同值。
+    DeviceId:
+      name: X-Device-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+      description: 当前安装实例的非生物识别设备标识；服务端只持久化摘要。
     ApplicationId:
       name: application_id
       in: path
@@ -3852,7 +4009,23 @@ components:
       required: [state]
       properties:
         state: { type: string, enum: [online, offline] }
+        deviceId: { type: string, minLength: 8, maxLength: 128 }
+        livenessAuthorizationToken:
+          type: string
+          description: 从离线进入在线时必填且只能消费一次。
         location: { $ref: "#/components/schemas/DriverDispatchLocation" }
+      allOf:
+        - if:
+            properties:
+              state: { const: online }
+          then:
+            required: [deviceId, livenessAuthorizationToken, location]
+        - if:
+            properties:
+              state: { const: offline }
+          then:
+            not:
+              required: [livenessAuthorizationToken]
     DriverDispatchPresenceView:
       type: object
       additionalProperties: false
@@ -3904,12 +4077,62 @@ components:
     DriverAvailabilityView:
       type: object
       additionalProperties: false
-      required: [accountId, state, returnOnlineAfterTrip, updatedAt, productionEnabled, synthetic]
+      required: [accountId, state, returnOnlineAfterTrip, livenessRequiredBeforeNextOnline, updatedAt, productionEnabled, synthetic]
       properties:
         accountId: { type: string, pattern: "^synthetic-" }
         state: { type: string, enum: [offline, online, busy] }
         returnOnlineAfterTrip: { type: boolean }
+        livenessRequiredBeforeNextOnline:
+          type: boolean
+          description: 为 true 时，任何进入 online 的请求都必须先完成新活体挑战。
+        onlineSessionStartedAt: { type: string, format: date-time }
+        livenessPolicyVersion: { type: string }
         updatedAt: { type: string, format: date-time }
+        productionEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    DriverLivenessAction:
+      type: object
+      additionalProperties: false
+      required: [actionId, sequence, instruction, timeoutSeconds]
+      properties:
+        actionId:
+          type: string
+          enum: [turn_head_left, turn_head_right, open_mouth, blink, nod, follow_target]
+        sequence: { type: integer, minimum: 1, maximum: 3 }
+        instruction: { type: string, minLength: 1, maxLength: 100 }
+        timeoutSeconds: { type: integer, minimum: 3, maximum: 30 }
+    DriverLivenessChallenge:
+      type: object
+      additionalProperties: false
+      required: [challengeId, state, policyVersion, actions, createdAt, expiresAt, realBiometricDataEnabled, productionEnabled, synthetic]
+      properties:
+        challengeId: { type: string, pattern: "^synthetic-" }
+        state: { type: string, enum: [created, in_progress, passed, failed, expired, cancelled, result_unknown] }
+        policyVersion: { type: string }
+        actions:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items: { $ref: "#/components/schemas/DriverLivenessAction" }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        resultCategory:
+          type: string
+          enum: [passed, action_mismatch, spoof_suspected, face_not_detected, camera_denied, provider_timeout, provider_unavailable, result_unknown]
+        realBiometricDataEnabled: { type: boolean, const: false }
+        productionEnabled: { type: boolean, const: false }
+        synthetic: { type: boolean, const: true }
+    DriverLivenessResult:
+      type: object
+      additionalProperties: false
+      required: [challenge, authorizationIssued, productionEnabled, synthetic]
+      properties:
+        challenge: { $ref: "#/components/schemas/DriverLivenessChallenge" }
+        authorizationIssued: { type: boolean }
+        livenessAuthorizationToken:
+          type: string
+          description: 仅在挑战通过后返回，五分钟有效且只能用于一次 offline → online。
+        authorizationExpiresAt: { type: string, format: date-time }
         productionEnabled: { type: boolean, const: false }
         synthetic: { type: boolean, const: true }
     TripTiming:

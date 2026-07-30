@@ -71,7 +71,7 @@ export function ProductizedAdminLayout({
         </nav>
         <div className="sidebar-account">
           <strong>{session.workIdentity.organizationName}</strong>
-          <span>{session.workIdentity.productRoleName}</span>
+          <span>{session.workIdentity.positionName}</span>
           <button onClick={() => void onLogout()}>退出登录</button>
         </div>
       </aside>
@@ -198,16 +198,16 @@ function WorkIdentityMenu({
         ref={triggerRef}
         className="work-identity-trigger"
         type="button"
-        aria-label={`切换工作身份，当前${currentIdentity.productRoleName}`}
+        aria-label={`切换工作身份，当前${currentIdentity.positionName}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => open ? closeMenu() : openMenu()}
       >
         <span className="work-identity-avatar">
-          {currentIdentity.productRoleName.slice(0, 1)}
+          {currentIdentity.positionName.slice(0, 1)}
         </span>
         <span>
-          <strong>{currentIdentity.productRoleName}</strong>
+          <strong>{currentIdentity.positionName}</strong>
           <small>
             {currentIdentity.organizationName} · {currentIdentity.cityScopes.join("、")}
           </small>
@@ -219,7 +219,7 @@ function WorkIdentityMenu({
           {selectedIdentity ? (
             <div className="work-identity-confirmation">
               <span className="eyebrow">确认工作范围</span>
-              <h2>切换为{selectedIdentity.productRoleName}</h2>
+              <h2>切换为{selectedIdentity.positionName}</h2>
               <p>
                 本次工作范围为{selectedIdentity.organizationName}
                 · {selectedIdentity.cityScopes.join("、")}。权限和任务将随身份更新，不会合并其他组织范围。
@@ -274,7 +274,7 @@ function WorkIdentityMenu({
                       }}
                     >
                       <span>
-                        <strong>{identity.productRoleName}</strong>
+                        <strong>{identity.positionName}</strong>
                         <small>{identity.organizationName}</small>
                       </span>
                       <span>{current ? "当前身份" : "选择"}</span>

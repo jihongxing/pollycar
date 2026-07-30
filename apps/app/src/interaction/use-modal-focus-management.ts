@@ -1,4 +1,4 @@
-import { type RefObject, useEffect } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { Platform, type View } from "react-native";
 
 type FocusStrategy = "first" | "last";
@@ -14,6 +14,9 @@ export function useModalFocusManagement({
   onEscape: () => void;
   initialFocus?: FocusStrategy;
 }) {
+  const onEscapeRef = useRef(onEscape);
+  onEscapeRef.current = onEscape;
+
   useEffect(() => {
     if (!visible || Platform.OS !== "web" || typeof document === "undefined") return undefined;
 
@@ -49,7 +52,7 @@ export function useModalFocusManagement({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onEscape();
+        onEscapeRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -85,5 +88,5 @@ export function useModalFocusManagement({
       }
       window.requestAnimationFrame(() => previousFocus?.focus());
     };
-  }, [containerRef, initialFocus, onEscape, visible]);
+  }, [containerRef, initialFocus, visible]);
 }

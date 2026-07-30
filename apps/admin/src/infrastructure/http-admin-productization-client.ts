@@ -106,7 +106,7 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
     selectionToken: string,
     workIdentityId: string,
   ): Promise<AdminProductSession> {
-    return this.request("/v1/internal-sandbox/admin/auth/work-identities/select", {
+    return this.requestProductSession("/v1/internal-sandbox/admin/auth/work-identities/select", {
       method: "POST",
       body: JSON.stringify({ selectionToken, workIdentityId }),
     });
@@ -116,7 +116,7 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
     accessToken: string,
     workIdentityId: string,
   ): Promise<AdminProductSession> {
-    return this.request("/v1/internal-sandbox/admin/auth/work-identities/switch", {
+    return this.requestProductSession("/v1/internal-sandbox/admin/auth/work-identities/switch", {
       method: "POST",
       headers: {
         authorization: `Bearer ${accessToken}`,
@@ -127,7 +127,7 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
   }
 
   public refreshSession(refreshToken: string): Promise<AdminProductSession> {
-    return this.request("/v1/internal-sandbox/admin/auth/session/refresh", {
+    return this.requestProductSession("/v1/internal-sandbox/admin/auth/session/refresh", {
       method: "POST",
       body: JSON.stringify({ refreshToken }),
     });
@@ -690,7 +690,10 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
       parameters.set("organization_type", query.organizationType);
     }
     if (query.state) parameters.set("state", query.state);
-    if (query.productRole) parameters.set("product_role", query.productRole);
+    if (query.authorizationLevel) {
+      parameters.set("authorization_level", query.authorizationLevel);
+    }
+    if (query.capability) parameters.set("capability", query.capability);
     if (query.sort) parameters.set("sort", query.sort);
     return this.request(
       `/v1/internal-sandbox/admin/memberships?${parameters}`,
@@ -730,6 +733,17 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
     );
   }
 
+  private async requestProductSession(
+    path: string,
+    init: RequestInit,
+  ): Promise<AdminProductSession> {
+    const value = await this.request<unknown>(path, init);
+    if (!isAdminProductSession(value)) {
+      throw new Error("ADMIN_SESSION_CONTRACT_INVALID");
+    }
+    return value;
+  }
+
   private async request<TResult>(path: string, init: RequestInit = {}): Promise<TResult> {
     let response: Response;
     try {
@@ -752,6 +766,34 @@ export class HttpAdminProductizationClient implements AdminProductizationClient 
     if (response.status === 204) return undefined as TResult;
     return (await response.json()) as TResult;
   }
+}
+
+function isAdminProductSession(value: unknown): value is AdminProductSession {
+  if (!isRecord(value) || !isRecord(value.workIdentity) || !isRecord(value.navigation)) {
+    return false;
+  }
+  return (
+    typeof value.accessToken === "string" &&
+    typeof value.refreshToken === "string" &&
+    typeof value.sessionFamilyId === "string" &&
+    isAuthorizationLevel(value.workIdentity.authorizationLevel) &&
+    Array.isArray(value.workIdentity.capabilities) &&
+    value.workIdentity.capabilities.every((capability) =>
+      typeof capability === "string"
+    ) &&
+    Array.isArray(value.navigation.items) &&
+    Array.isArray(value.navigation.routePermissions)
+  );
+}
+
+function isAuthorizationLevel(
+  value: unknown,
+): value is AdminProductSession["workIdentity"]["authorizationLevel"] {
+  return value === "level_1" || value === "level_2" || value === "level_3";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function fleetQueryParameters(

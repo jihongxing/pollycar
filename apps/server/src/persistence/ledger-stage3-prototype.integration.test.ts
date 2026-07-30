@@ -3,8 +3,10 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool, type PoolClient, type QueryResult } from "pg";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 
-const databaseUrl = process.env.POLLYCAR_LEDGER_PROTOTYPE_DATABASE_URL;
+const databaseUrl =
+  loadPostgresIntegrationTestConfig().ledgerPrototypeDatabaseUrl;
 const describePostgres = databaseUrl ? describe.sequential : describe.skip;
 const migrationPaths = [
   fileURLToPath(new URL("../../migrations/0001_internal_sandbox.sql", import.meta.url)),

@@ -89,6 +89,41 @@ describe("内部账户会话服务", () => {
       "ADULT_ELIGIBILITY_REQUIRED",
     );
   });
+
+  it("创建、退出和离开车主身份都会触发上线会话失效", async () => {
+    const boundaries: string[] = [];
+    const service = new AccountSessionService(
+      new MemoryRepository<AccountSessionRecord>(),
+      new MemoryTransaction(),
+      async () => ({
+        adultEligibilityState: "verified",
+        businessAccessAllowed: true,
+        driverAvailable: true,
+      }),
+      () => new Date("2026-07-30T00:00:00.000Z"),
+      async (_accountId, reason) => {
+        boundaries.push(reason);
+      },
+    );
+    const created = await service.create("synthetic-account-7");
+    await service.switchIdentity(
+      created.token,
+      "driver",
+      "switch-to-driver",
+    );
+    await service.switchIdentity(
+      created.token,
+      "passenger",
+      "switch-to-passenger",
+    );
+    await service.revoke(created.token, "logout-session");
+
+    expect(boundaries).toEqual([
+      "session_created",
+      "identity_switch",
+      "logout",
+    ]);
+  });
 });
 
 function createService(now: () => Date = () => new Date("2026-07-13T00:00:00.000Z")) {

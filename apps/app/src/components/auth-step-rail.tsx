@@ -35,7 +35,7 @@ export function AuthStepRail({
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <AppText size="caption" weight="bold" style={{ color: accent }}>
+        <AppText size="caption" weight="bold">
           认证流程
         </AppText>
         <AppText size="caption" tone="secondary">
@@ -76,7 +76,7 @@ export function AuthStepRail({
                 <AppText
                   size="caption"
                   weight={active ? "bold" : "regular"}
-                  style={active ? { color: accent, textAlign: "center" } : { textAlign: "center" }}
+                  style={{ textAlign: "center" }}
                 >
                   {step}
                 </AppText>

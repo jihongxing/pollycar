@@ -50,6 +50,7 @@ describe("HttpMobilityClient 契约路径", () => {
           accountId: "synthetic-driver",
           state: "online",
           returnOnlineAfterTrip: true,
+          livenessRequiredBeforeNextOnline: false,
           updatedAt: "2026-07-13T12:00:00.000Z",
           productionEnabled: false,
           synthetic: true,
@@ -60,7 +61,11 @@ describe("HttpMobilityClient 契约路径", () => {
     const client = new HttpMobilityClient("http://internal", fetcher as typeof fetch);
 
     const available = await client.listAvailableTrips();
-    await client.setDriverAvailability("online");
+    await client.setDriverAvailability(
+      "online",
+      true,
+      "synthetic-liveness-authorization-token",
+    );
     await client.getFinanceOverview();
     await client.verifyBoarding("synthetic-trip-1", 2, "1234");
 

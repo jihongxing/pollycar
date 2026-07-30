@@ -21,6 +21,7 @@ import {
 } from "../infrastructure/browser-storage";
 import { secureCredentialStore } from "../infrastructure/secure-credential-store";
 import {
+  setCurrentDeviceId,
   setSessionToken,
   subscribeToSessionAuthenticationFailure,
 } from "../infrastructure/session-credentials";
@@ -49,6 +50,7 @@ export function AccountSessionProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [deviceId] = useState(resolveDeviceId);
+  useEffect(() => setCurrentDeviceId(deviceId), [deviceId]);
 
   const acceptAuthentication = async (result: PhoneAuthenticationResult) => {
     setToken(result.accessToken);

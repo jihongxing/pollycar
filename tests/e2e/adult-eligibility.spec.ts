@@ -12,7 +12,7 @@ test("我的实名等待态使用页面级状态并避免重复说明", async ({
 
   await expect(
     page.getByRole("status", {
-      name: "正在确认实名信息。结果更新后会显示下一步，可以稍后回来查看。",
+      name: "当前无需操作。你可以离开页面，稍后回来查看结果。",
     }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "查看最新结果" })).toBeVisible();
@@ -42,13 +42,22 @@ test("我的实名重试态只显示契约允许的恢复行动", async ({ page 
 
 test("我的实名使用目的性文案并保留必要告知", async ({ page }) => {
   await loginThroughPhoneVerification(page, { completeAdultEligibility: false });
-  await expect(page.getByRole("heading", { name: "完成实名后使用行程" })).toBeVisible();
-  await expect(page.getByText("用于确认账户本人和成年条件。")).toBeVisible();
-  await expect(page.getByText(/身份信息和生物识别信息的处理说明/)).toBeVisible();
-  await page.getByRole("button", { name: "了解并继续" }).click();
+  await expect(page.getByRole("heading", { name: "先阅读并同意身份确认说明" })).toBeVisible();
+  await expect(page.getByText("用于确认账户本人和乘车资格")).toBeVisible();
+  await expect(page.getByText("需要完成一次活体或本人验证")).toBeVisible();
+  await expect(page.getByText("了解认证材料的使用和保护范围")).toBeVisible();
+  for (const agreementName of [
+    "实名与成年条件，未阅读",
+    "本人验证说明，未阅读",
+    "信息处理与安全，未阅读",
+  ]) {
+    await page.getByRole("button", { name: agreementName }).click();
+  }
+  await page.getByRole("checkbox", { name: "我已阅读并同意以上内容" }).click();
+  await page.getByRole("button", { name: "同意并继续" }).click();
   await expect(page.getByRole("button", { name: "开始实名确认" })).toBeVisible();
-  await expect(page.getByText("继续完成实名")).toBeVisible();
-  await expect(page.getByLabel("申请进度，第 2 步，共 3 步")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "准备开始身份核验" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "认证流程，第 2 步，共 3 步：核验" })).toBeVisible();
   await expect(page.getByText("强制实名")).toHaveCount(0);
   await expect(page.getByText("不实名不得使用")).toHaveCount(0);
   await expect(page.getByText(/合成结果|反欺诈算法/)).toHaveCount(0);

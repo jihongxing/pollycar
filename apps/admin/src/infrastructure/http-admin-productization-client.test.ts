@@ -13,6 +13,32 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("HttpAdminProductizationClient", () => {
+  it("拒绝旧角色契约，避免登录后进入空白工作台", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
+      accessToken: "legacy-access",
+      refreshToken: "legacy-refresh",
+      sessionFamilyId: "legacy-family",
+      workIdentity: {
+        workIdentityId: "synthetic-operator-ops-001",
+        productRole: "operator_operations_lead",
+      },
+      navigation: {
+        roleIds: ["operator_operations_lead"],
+        items: [],
+        routePermissions: [],
+      },
+    }));
+    const client = new HttpAdminProductizationClient(
+      "http://127.0.0.1:4310",
+      fetcher,
+    );
+
+    await expect(client.selectWorkIdentity(
+      "selection-token",
+      "synthetic-operator-ops-001",
+    )).rejects.toThrow("ADMIN_SESSION_CONTRACT_INVALID");
+  });
+
   it("使用 Bearer 会话调用受控跨域搜索", async () => {
     const result = {
       groups: [],
@@ -52,13 +78,34 @@ describe("HttpAdminProductizationClient", () => {
         type: "platform",
         organizationId: "platform-pollycar",
         organizationName: "PollyCar 平台",
-        productRole: "operations_lead",
-        productRoleName: "平台运营负责人",
+        authorizationLevel: "level_2",
+        capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+        positionName: "平台运营负责人",
         cityScopes: ["上海"],
         maximumDataClassification: "sensitive",
         synthetic: true,
       },
-      navigation: {},
+      navigation: {
+        navigationVersion: "2026-07-30.1",
+        workIdentityId: "synthetic-platform-ops-001",
+        organizationContext: {
+          organizationType: "platform",
+          organizationId: "platform-pollycar",
+          organizationName: "PollyCar 平台",
+          cityScopes: ["上海"],
+          operatorScopes: [],
+          purpose: "platform_operations",
+          fixed: true,
+        },
+        items: [],
+        routePermissions: [],
+        operationPermissions: [],
+        fieldProfiles: [],
+        exportProfiles: [],
+        scopeDigest: "scope-platform",
+        expiresAt: "2026-07-19T18:00:00.000Z",
+        synthetic: true,
+      },
       accessTokenExpiresAt: "2026-07-19T10:30:00.000Z",
       absoluteExpiresAt: "2026-07-19T18:00:00.000Z",
       idleExpiresAt: "2026-07-19T11:00:00.000Z",
@@ -114,6 +161,11 @@ describe("HttpAdminProductizationClient", () => {
           cityScopes: ["shanghai"],
         },
         allowedActions: [],
+        actionBlockers: [],
+        nextSteps: [{
+          kind: "NONE",
+          label: "查看处理记录",
+        }],
         auditTrail: [],
         synthetic: true,
       },

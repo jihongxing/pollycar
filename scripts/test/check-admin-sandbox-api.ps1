@@ -11,6 +11,7 @@ $required = @(
   "apps\server\src\http\error-mapper.ts",
   "apps\server\src\http\request-context.ts",
   "apps\server\src\http\internal-sandbox-server.test.ts",
+  "packages\configuration\src\server-runtime-config.js",
   "apps\admin\src\infrastructure\http-admin-review-client.ts",
   "apps\admin\src\infrastructure\http-admin-review-client.test.ts",
   "apps\app\src\infrastructure\http-vehicle-review-client.ts",
@@ -29,14 +30,31 @@ foreach ($path in $required) {
   }
 }
 
-$config = Get-Content -LiteralPath (Join-Path $repo "apps\server\src\config.ts") -Raw
-$sandboxConfig = [regex]::Match($config, 'export function createInternalSandboxConfig[\s\S]*?\n}\n\nexport function createProductionConfig').Value
+$configProxy = Get-Content -LiteralPath (Join-Path $repo "apps\server\src\config.ts") -Raw
+foreach ($rule in @(
+  "@pollycar/configuration",
+  "createInternalSandboxServerConfig as createInternalSandboxConfig"
+)) {
+  if ($configProxy -notmatch [regex]::Escape($rule)) {
+    throw "内部沙箱 Server 入口未接入统一配置: $rule"
+  }
+}
+$unifiedConfig = Get-Content -LiteralPath (
+  Join-Path $repo "packages\configuration\src\server-runtime-config.js"
+) -Raw
+$sandboxConfig = [regex]::Match(
+  $unifiedConfig,
+  'export function getLocalSandboxServerRuntimeConfig[\s\S]*?(?=/\*\*\r?\n \* Pure internal-sandbox config)'
+).Value + [regex]::Match(
+  $unifiedConfig,
+  'export function createInternalSandboxServerConfig[\s\S]*?(?=/\*\*\r?\n \* @param \{Readonly<Record<string, string \| undefined>>\} environment)'
+).Value
 if (-not $sandboxConfig) {
-  throw "未找到内部沙箱配置边界"
+  throw "未找到统一内部沙箱配置边界"
 }
 $server = (
   Get-Content -LiteralPath (Join-Path $repo "apps\server\src\http\internal-sandbox-server.ts") -Raw
-) + $sandboxConfig
+) + $configProxy + $sandboxConfig
 foreach ($rule in @(
   "127.0.0.1",
   "/v1/internal-sandbox/health",

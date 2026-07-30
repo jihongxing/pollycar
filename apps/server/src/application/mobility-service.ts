@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import type {
   AvailableDriverTripView,
   DriverOrderDetail,
@@ -16,6 +16,10 @@ import type { AuditLog } from "../ports/audit.js";
 import type { Repository, Transaction } from "../ports/storage.js";
 import type { SyntheticTripRecord } from "./synthetic-trip-service.js";
 import type { GoodwillCancellationService } from "./goodwill-cancellation-service.js";
+import type {
+  DriverLivenessBinding,
+  DriverLivenessService,
+} from "./driver-liveness-service.js";
 
 export type DriverAvailabilityState = "offline" | "online" | "busy";
 
@@ -23,6 +27,11 @@ export type DriverAvailabilityRecord = Readonly<{
   accountId: string;
   state: DriverAvailabilityState;
   returnOnlineAfterTrip: boolean;
+  livenessRequiredBeforeNextOnline: boolean;
+  onlineSessionStartedAt?: string;
+  onlineDeviceDigest?: string;
+  onlineAccountSessionDigest?: string;
+  livenessPolicyVersion?: string;
   updatedAt: string;
   processedKeys: readonly string[];
   synthetic: true;
@@ -44,6 +53,11 @@ type DriverEligibility = Readonly<{
   vehicle?: VehiclePublicSummary;
 }> | undefined;
 
+export type DriverOnlineAuthorization = DriverLivenessBinding &
+  Readonly<{
+    livenessAuthorizationToken?: string;
+  }>;
+
 export class MobilityService {
   public constructor(
     private readonly tripRepository: Repository<SyntheticTripRecord>,
@@ -52,6 +66,7 @@ export class MobilityService {
     private readonly transaction: Transaction,
     private readonly audit: AuditLog,
     private readonly driverEligibility: (accountId: string) => Promise<DriverEligibility>,
+    private readonly driverLiveness: DriverLivenessService,
     private readonly now: () => Date,
     private readonly decoratePublicProfile: (
       profile: TripPartyPublicProfile,
@@ -59,9 +74,27 @@ export class MobilityService {
     private readonly goodwillCancellations?: GoodwillCancellationService,
   ) {}
 
-  public async getAvailability(accountId: string) {
+  public async getAvailability(
+    accountId: string,
+    binding?: Omit<DriverLivenessBinding, "accountId">,
+  ) {
     const record = await this.availabilityRepository.get(accountId);
-    return this.availabilityView(record?.value ?? this.defaultAvailability(accountId));
+    const current = record?.value ?? this.defaultAvailability(accountId);
+    if (
+      record &&
+      current.state === "online" &&
+      binding &&
+      !this.matchesOnlineBinding(current, {
+        accountId,
+        ...binding,
+      })
+    ) {
+      await this.forceOffline(accountId, "online_binding_changed");
+      return this.availabilityView(
+        (await this.availabilityRepository.get(accountId))!.value,
+      );
+    }
+    return this.availabilityView(current);
   }
 
   public setAvailability(
@@ -69,6 +102,7 @@ export class MobilityService {
     requestedState: "online" | "offline",
     returnOnlineAfterTrip: boolean,
     idempotencyKey: string,
+    onlineAuthorization?: DriverOnlineAuthorization,
   ) {
     return this.transaction.run(async () => {
       const stored = await this.availabilityRepository.get(accountId);
@@ -78,14 +112,64 @@ export class MobilityService {
       if (requestedState === "online" && !(await this.driverEligibility(accountId))) {
         throw new Error("QUOTA_DRIVER_INELIGIBLE");
       }
+      if (requestedState === "online" && current.state === "offline") {
+        if (!onlineAuthorization) throw new Error("DRIVER_LIVENESS_REQUIRED");
+        await this.driverLiveness.consumeAuthorization(
+          onlineAuthorization,
+          onlineAuthorization.livenessAuthorizationToken,
+          idempotencyKey,
+        );
+      }
+      if (
+        requestedState === "online" &&
+        current.state === "online" &&
+        onlineAuthorization &&
+        !this.matchesOnlineBinding(current, onlineAuthorization)
+      ) {
+        throw new Error("DRIVER_LIVENESS_AUTHORIZATION_MISMATCH");
+      }
+      const updatedAt = this.now().toISOString();
+      const {
+        onlineSessionStartedAt: _onlineSessionStartedAt,
+        onlineDeviceDigest: _onlineDeviceDigest,
+        onlineAccountSessionDigest: _onlineAccountSessionDigest,
+        livenessPolicyVersion: _livenessPolicyVersion,
+        ...availabilityBase
+      } = current;
       const next: DriverAvailabilityRecord = {
-        ...current,
+        ...availabilityBase,
         state: requestedState,
         returnOnlineAfterTrip,
-        updatedAt: this.now().toISOString(),
+        livenessRequiredBeforeNextOnline: requestedState === "offline",
+        ...(requestedState === "online" && current.state === "offline"
+          ? {
+              onlineSessionStartedAt: updatedAt,
+              onlineDeviceDigest: digest(onlineAuthorization!.deviceId),
+              onlineAccountSessionDigest: digest(
+                onlineAuthorization!.accountSessionId,
+              ),
+              livenessPolicyVersion: "driver-liveness-v1",
+            }
+          : requestedState === "online"
+            ? {
+                onlineSessionStartedAt: current.onlineSessionStartedAt!,
+                onlineDeviceDigest: current.onlineDeviceDigest!,
+                onlineAccountSessionDigest:
+                  current.onlineAccountSessionDigest!,
+                livenessPolicyVersion: current.livenessPolicyVersion!,
+              }
+            : {}),
+        updatedAt,
         processedKeys: [...current.processedKeys, idempotencyKey],
       };
       const saved = await this.availabilityRepository.put(accountId, next, stored?.version ?? 0);
+      if (requestedState === "offline") {
+        await this.driverLiveness.revokeOpenAuthorizations(
+          accountId,
+          "online_session_end",
+          idempotencyKey,
+        );
+      }
       await this.appendAudit(accountId, "driver_availability_changed", accountId, requestedState, idempotencyKey);
       return this.availabilityView(saved.value);
     });
@@ -152,15 +236,82 @@ export class MobilityService {
     const stored = await this.availabilityRepository.get(accountId);
     if (!stored) return;
     if (stored.value.processedKeys.includes(idempotencyKey)) return;
+    const returnOnline = stored.value.returnOnlineAfterTrip;
+    const {
+      onlineSessionStartedAt: _onlineSessionStartedAt,
+      onlineDeviceDigest: _onlineDeviceDigest,
+      onlineAccountSessionDigest: _onlineAccountSessionDigest,
+      livenessPolicyVersion: _livenessPolicyVersion,
+      ...availabilityBase
+    } = stored.value;
     await this.availabilityRepository.put(
       accountId,
       {
-        ...stored.value,
-        state: stored.value.returnOnlineAfterTrip ? "online" : "offline",
+        ...availabilityBase,
+        state: returnOnline ? "online" : "offline",
+        livenessRequiredBeforeNextOnline: !returnOnline,
+        ...(returnOnline
+          ? {
+              onlineSessionStartedAt: stored.value.onlineSessionStartedAt!,
+              onlineDeviceDigest: stored.value.onlineDeviceDigest!,
+              onlineAccountSessionDigest:
+                stored.value.onlineAccountSessionDigest!,
+              livenessPolicyVersion: stored.value.livenessPolicyVersion!,
+            }
+          : {}),
         updatedAt: this.now().toISOString(),
         processedKeys: [...stored.value.processedKeys, idempotencyKey],
       },
       stored.version,
+    );
+    if (!returnOnline) {
+      await this.driverLiveness.revokeOpenAuthorizations(
+        accountId,
+        "online_session_end",
+        idempotencyKey,
+      );
+    }
+  }
+
+  public async forceOffline(
+    accountId: string,
+    reason: string,
+  ): Promise<void> {
+    const stored = await this.availabilityRepository.get(accountId);
+    const current = stored?.value ?? this.defaultAvailability(accountId);
+    if (current.state === "offline" && current.livenessRequiredBeforeNextOnline) {
+      return;
+    }
+    const correlationId = `force-offline:${reason}:${this.now().toISOString()}`;
+    const {
+      onlineSessionStartedAt: _onlineSessionStartedAt,
+      onlineDeviceDigest: _onlineDeviceDigest,
+      onlineAccountSessionDigest: _onlineAccountSessionDigest,
+      livenessPolicyVersion: _livenessPolicyVersion,
+      ...availabilityBase
+    } = current;
+    await this.availabilityRepository.put(
+      accountId,
+      {
+        ...availabilityBase,
+        state: "offline",
+        livenessRequiredBeforeNextOnline: true,
+        updatedAt: this.now().toISOString(),
+        processedKeys: [...current.processedKeys, correlationId],
+      },
+      stored?.version ?? 0,
+    );
+    await this.driverLiveness.revokeOpenAuthorizations(
+      accountId,
+      reason,
+      correlationId,
+    );
+    await this.appendAudit(
+      accountId,
+      "driver_availability_changed",
+      accountId,
+      "offline",
+      correlationId,
     );
   }
 
@@ -555,6 +706,7 @@ export class MobilityService {
       accountId,
       state: "offline",
       returnOnlineAfterTrip: true,
+      livenessRequiredBeforeNextOnline: true,
       updatedAt: this.now().toISOString(),
       processedKeys: [],
       synthetic: true,
@@ -566,10 +718,28 @@ export class MobilityService {
       accountId: record.accountId,
       state: record.state,
       returnOnlineAfterTrip: record.returnOnlineAfterTrip,
+      livenessRequiredBeforeNextOnline:
+        record.livenessRequiredBeforeNextOnline,
+      ...(record.onlineSessionStartedAt
+        ? { onlineSessionStartedAt: record.onlineSessionStartedAt }
+        : {}),
+      ...(record.livenessPolicyVersion
+        ? { livenessPolicyVersion: record.livenessPolicyVersion }
+        : {}),
       updatedAt: record.updatedAt,
       productionEnabled: false as const,
       synthetic: true as const,
     };
+  }
+
+  private matchesOnlineBinding(
+    record: DriverAvailabilityRecord,
+    binding: DriverLivenessBinding,
+  ): boolean {
+    return (
+      record.onlineDeviceDigest === digest(binding.deviceId) &&
+      record.onlineAccountSessionDigest === digest(binding.accountSessionId)
+    );
   }
 
   private syntheticPassenger(accountId: string): TripPartyPublicProfile {
@@ -666,4 +836,8 @@ export class MobilityService {
       synthetic: true,
     });
   }
+}
+
+function digest(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }

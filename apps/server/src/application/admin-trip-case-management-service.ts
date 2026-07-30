@@ -717,8 +717,11 @@ export class AdminTripCaseManagementService {
     if (investigation.investigationState !== "awaiting_independent_review") {
       throw new Error("ADMIN_CASE_ACTION_INVALID");
     }
-    if (session.internalUserId === investigation.freezeActorInternalUserId) {
-      throw new Error("AUTHORIZATION_DENIED");
+    if (
+      session.internalUserId === investigation.freezeActorInternalUserId ||
+      session.internalUserId === investigation.investigationOwnerInternalUserId
+    ) {
+      throw new Error("ADMIN_SAFETY_REVIEWER_CONFLICT");
     }
     if (
       command.outcome === "restore_access" &&

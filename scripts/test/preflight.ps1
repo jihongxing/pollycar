@@ -11,6 +11,13 @@ Write-Host "== 治理检查 =="
 Write-Host "== 生产能力门禁对齐检查 =="
 & "$PSScriptRoot\check-feature-gate-alignment.ps1"
 
+Write-Host "== 统一配置治理检查 =="
+& "$PSScriptRoot\check-configuration-governance.ps1"
+Write-Host "== 批次七旧配置入口删除检查 =="
+& "$PSScriptRoot\check-deprecated-configuration-entrypoints.ps1"
+Write-Host "== 统一原生构建、EAS、CI 与供应链配置检查 =="
+& "$PSScriptRoot\check-build-configuration-boundary.ps1"
+
 Write-Host "== 品牌安全检查 =="
 & "$PSScriptRoot\check-brand-safety.ps1"
 
@@ -120,6 +127,7 @@ if (-not $SkipProjectTests) {
     if ($LASTEXITCODE -ne 0) { throw "项目场景测试失败，退出码: $LASTEXITCODE" }
     pnpm build
     if ($LASTEXITCODE -ne 0) { throw "项目构建失败，退出码: $LASTEXITCODE" }
+    & "$PSScriptRoot\check-public-config-boundary.ps1" -RequireBuildOutputs
     if ($FullGovernance) {
       pnpm test:e2e
       if ($LASTEXITCODE -ne 0) { throw "App E2E 与可访问性测试失败，退出码: $LASTEXITCODE" }
@@ -130,3 +138,4 @@ if (-not $SkipProjectTests) {
 }
 
 Write-Host "预检完成。"
+$global:LASTEXITCODE = 0

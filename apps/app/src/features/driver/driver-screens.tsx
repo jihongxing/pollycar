@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
-import type { PassengerCount } from "@pollycar/contracts";
+import type {
+  DriverLivenessChallenge,
+  DriverLivenessResult,
+  PassengerCount,
+} from "@pollycar/contracts";
 
 import {
   AppText,
@@ -53,6 +57,7 @@ import {
   resetIncompleteSlide,
   updateSlideConfirmation,
 } from "./slide-confirm-model";
+import { DriverLivenessFlow } from "./driver-liveness-flow";
 
 type Navigate = (route: string) => void;
 
@@ -62,6 +67,8 @@ export function DriverHomeScreen({
   maxPassengerCount,
   orders,
   onToggleOnline,
+  onCreateLivenessChallenge,
+  onCompleteLivenessChallenge,
   navigate,
 }: {
   requestedOnline: boolean;
@@ -69,9 +76,14 @@ export function DriverHomeScreen({
   maxPassengerCount: PassengerCount;
   orders: readonly DriverOrderDetail[];
   onToggleOnline: () => void;
+  onCreateLivenessChallenge: () => Promise<DriverLivenessChallenge>;
+  onCompleteLivenessChallenge: (
+    challengeId: string,
+  ) => Promise<DriverLivenessResult>;
   navigate: Navigate;
 }) {
   const [pendingAvailability, setPendingAvailability] = useState<"online" | "offline">();
+  const [livenessVisible, setLivenessVisible] = useState(false);
   const transitionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => {
     if (transitionTimer.current) clearTimeout(transitionTimer.current);
@@ -108,13 +120,18 @@ export function DriverHomeScreen({
               : "准备接单";
   const toggleAvailability = () => {
     const next = online ? "offline" : "online";
+    if (next === "online") {
+      setLivenessVisible(true);
+      return;
+    }
     setPendingAvailability(next);
     transitionTimer.current = setTimeout(() => {
       void Promise.resolve(onToggleOnline()).finally(() => setPendingAvailability(undefined));
-    }, next === "online" ? 900 : 0);
+    }, 0);
   };
   return (
-    <MobilityScene
+    <>
+      <MobilityScene
       mode="driver"
       accessibilityLabel="车主离线工作台"
       bottomInset={70}
@@ -255,7 +272,14 @@ export function DriverHomeScreen({
           </AppText>
         </MobilityBottomSheet>
       }
-    />
+      />
+      <DriverLivenessFlow
+        visible={livenessVisible}
+        onClose={() => setLivenessVisible(false)}
+        onCreateChallenge={onCreateLivenessChallenge}
+        onCompleteChallenge={onCompleteLivenessChallenge}
+      />
+    </>
   );
 }
 

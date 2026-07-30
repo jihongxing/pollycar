@@ -2,13 +2,15 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 import type { LedgerPostingCommand } from "../ports/ledger.js";
 import { runMigrations } from "./migrations.js";
 import { PostgresLedgerRepository } from "./postgres-ledger-repository.js";
 import { PostgresTransaction } from "./postgres-transaction.js";
 
-const databaseUrl = process.env.POLLYCAR_LEDGER_RESILIENCE_DATABASE_URL;
-const phase = process.env.POLLYCAR_LEDGER_RESILIENCE_PHASE;
+const postgresTestConfig = loadPostgresIntegrationTestConfig();
+const databaseUrl = postgresTestConfig.ledgerResilienceDatabaseUrl;
+const phase = postgresTestConfig.ledgerResiliencePhase;
 const describeBeforeRestart =
   databaseUrl && phase === "before_restart" ? describe.sequential : describe.skip;
 const describeAfterRestart =

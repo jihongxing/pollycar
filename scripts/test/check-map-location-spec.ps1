@@ -63,10 +63,14 @@ foreach ($required in @(
 
 foreach ($required in @(
   "AMAP_WEB_SERVICE_DISABLED",
-  "POLLYCAR_AMAP_WEB_SERVICE_KEY",
+  "keyReference",
+  "this.secrets.read(this.config.keyReference)",
   "SecretProvider"
 )) {
   if ($amapProvider -notmatch [regex]::Escape($required)) { throw "高德 Web 服务适配器缺少: $required" }
+}
+if ($amapProvider -match [regex]::Escape("POLLYCAR_AMAP_WEB_SERVICE_KEY")) {
+  throw "高德 Web 服务适配器不得读取原始环境密钥名"
 }
 
 foreach ($required in @(

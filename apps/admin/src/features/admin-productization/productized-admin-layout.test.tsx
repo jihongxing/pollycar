@@ -18,16 +18,18 @@ describe("Admin v2 正式产品壳", () => {
       type: "operator",
       organizationId: "operator-huhang",
       organizationName: "沪行出行服务",
-      productRole: "operator_operations_lead",
-      productRoleName: "运营公司运营负责人",
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "运营公司运营负责人",
     });
     const platformIdentity = identity({
       workIdentityId: "platform-operations",
       type: "platform",
       organizationId: "platform-pollycar",
       organizationName: "PollyCar 平台",
-      productRole: "operations_lead",
-      productRoleName: "平台运营负责人",
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "平台运营负责人",
     });
     const onSwitch = vi.fn(async (_workIdentityId: string) => undefined);
 
@@ -93,8 +95,9 @@ describe("Admin v2 正式产品壳", () => {
       type: "operator",
       organizationId: "operator-huhang",
       organizationName: "沪行出行服务",
-      productRole: "operator_operations_lead",
-      productRoleName: "运营公司运营负责人",
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "运营公司运营负责人",
     });
     render(
       <Providers>
@@ -130,16 +133,18 @@ describe("Admin v2 正式产品壳", () => {
       type: "operator",
       organizationId: "operator-huhang",
       organizationName: "沪行出行服务",
-      productRole: "operator_operations_lead",
-      productRoleName: "运营公司运营负责人",
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "运营公司运营负责人",
     });
     const targetIdentity = identity({
       workIdentityId: "platform-operations",
       type: "platform",
       organizationId: "platform-pollycar",
       organizationName: "PollyCar 平台",
-      productRole: "operations_lead",
-      productRoleName: "平台运营负责人",
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "平台运营负责人",
     });
     render(
       <Providers>
@@ -181,8 +186,9 @@ function identity(
     | "type"
     | "organizationId"
     | "organizationName"
-    | "productRole"
-    | "productRoleName"
+    | "authorizationLevel"
+    | "capabilities"
+    | "positionName"
   >,
 ): AdminWorkIdentitySummary {
   return {
@@ -219,7 +225,8 @@ function sessionFor(workIdentity: AdminWorkIdentitySummary): AdminProductSession
         purpose: "platform_operations",
         fixed: false,
       },
-      roleIds: [workIdentity.productRole],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [item],
       routePermissions: ["workbench:read"],
       operationPermissions: ["read"],

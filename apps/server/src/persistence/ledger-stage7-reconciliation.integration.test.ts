@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 import {
   FinancialReconciliationService,
   type ReconciliationFact,
@@ -9,7 +10,8 @@ import { runMigrations } from "./migrations.js";
 import { PostgresReconciliationRepository } from "./postgres-reconciliation-repository.js";
 import { PostgresTransaction } from "./postgres-transaction.js";
 
-const databaseUrl = process.env.POLLYCAR_RECONCILIATION_DATABASE_URL;
+const databaseUrl =
+  loadPostgresIntegrationTestConfig().reconciliationDatabaseUrl;
 const describePostgres = databaseUrl ? describe.sequential : describe.skip;
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 

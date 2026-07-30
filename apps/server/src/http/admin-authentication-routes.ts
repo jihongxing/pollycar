@@ -1159,7 +1159,13 @@ function requireExecutiveAction(value: string): AdminExecutiveAction {
 }
 
 function requireAuditKind(value: string): AdminAuditResourceKind {
-  if (value === "event" || value === "investigation") return value;
+  if (
+    value === "event" ||
+    value === "investigation" ||
+    value === "approval"
+  ) {
+    return value;
+  }
   throw new Error("VALIDATION_FAILED");
 }
 
@@ -1421,7 +1427,10 @@ function parseAuditQuery(url: URL): AdminAuditDirectoryQuery {
   ];
   if (
     (pageSize !== undefined && ![25, 50, 100].includes(pageSize)) ||
-    (kind && kind !== "event" && kind !== "investigation") ||
+    (kind &&
+      kind !== "event" &&
+      kind !== "investigation" &&
+      kind !== "approval") ||
     (domain && !domains.includes(domain)) ||
     (result && !results.includes(result)) ||
     (sort && sort !== "occurred_at_desc" && sort !== "resource_id_asc")
@@ -1484,7 +1493,8 @@ function parseMembershipQuery(url: URL): AdminMembershipDirectoryQuery {
   const pageSize = url.searchParams.get("page_size");
   const organizationType = url.searchParams.get("organization_type");
   const state = url.searchParams.get("state");
-  const productRole = url.searchParams.get("product_role");
+  const authorizationLevel = url.searchParams.get("authorization_level");
+  const capability = url.searchParams.get("capability");
   const sort = url.searchParams.get("sort");
   return {
     ...(pageSize ? { pageSize: Number(pageSize) as 25 | 50 | 100 } : {}),
@@ -1503,11 +1513,19 @@ function parseMembershipQuery(url: URL): AdminMembershipDirectoryQuery {
     ...(state
       ? { state: state as NonNullable<AdminMembershipDirectoryQuery["state"]> }
       : {}),
-    ...(productRole
+    ...(authorizationLevel
       ? {
-          productRole:
-            productRole as NonNullable<
-              AdminMembershipDirectoryQuery["productRole"]
+          authorizationLevel:
+            authorizationLevel as NonNullable<
+              AdminMembershipDirectoryQuery["authorizationLevel"]
+            >,
+        }
+      : {}),
+    ...(capability
+      ? {
+          capability:
+            capability as NonNullable<
+              AdminMembershipDirectoryQuery["capability"]
             >,
         }
       : {}),

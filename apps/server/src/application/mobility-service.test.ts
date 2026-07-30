@@ -7,6 +7,12 @@ import {
   type DriverAvailabilityRecord,
 } from "./mobility-service.js";
 import type { SyntheticTripRecord } from "./synthetic-trip-service.js";
+import {
+  DriverLivenessService,
+  type DriverLivenessAuthorizationRecord,
+  type DriverLivenessChallengeRecord,
+} from "./driver-liveness-service.js";
+import { SyntheticDriverLivenessProvider } from "../adapters/synthetic-driver-liveness-provider.js";
 
 function setup(now = new Date("2026-07-12T10:00:00.000Z")) {
   const trips = new MemoryRepository<SyntheticTripRecord>();
@@ -14,6 +20,16 @@ function setup(now = new Date("2026-07-12T10:00:00.000Z")) {
   const intents = new MemoryRepository<CompletionIntentRecord>();
   const audit = new MemoryAuditLog();
   let clock = now;
+  const liveness = new DriverLivenessService(
+    new MemoryRepository<DriverLivenessChallengeRecord>(),
+    new MemoryRepository<DriverLivenessAuthorizationRecord>(),
+    new MemoryTransaction(),
+    audit,
+    new SyntheticDriverLivenessProvider(),
+    () => clock,
+    "mobility-service-test-secret",
+    () => ["turn_head_left"],
+  );
   const service = new MobilityService(
     trips,
     availability,
@@ -33,6 +49,7 @@ function setup(now = new Date("2026-07-12T10:00:00.000Z")) {
         synthetic: true,
       },
     }),
+    liveness,
     () => clock,
   );
   return {
@@ -41,6 +58,39 @@ function setup(now = new Date("2026-07-12T10:00:00.000Z")) {
     availability,
     intents,
     audit,
+    async goOnline(
+      accountId = "synthetic-driver",
+      idempotencyKey = "availability-online",
+    ) {
+      const binding = {
+        accountId,
+        deviceId: "test-device-driver",
+        accountSessionId: "test-session-driver",
+      };
+      const challenge = await liveness.createChallenge(
+        binding,
+        `${idempotencyKey}:challenge`,
+      );
+      const result = await liveness.completeSynthetic(
+        binding,
+        challenge.challengeId,
+        "passed",
+        `${idempotencyKey}:complete`,
+      );
+      if (!result.livenessAuthorizationToken) {
+        throw new Error("TEST_LIVENESS_TOKEN_REQUIRED");
+      }
+      return service.setAvailability(
+        accountId,
+        "online",
+        true,
+        idempotencyKey,
+        {
+          ...binding,
+          livenessAuthorizationToken: result.livenessAuthorizationToken,
+        },
+      );
+    },
     advance(milliseconds: number) {
       clock = new Date(clock.getTime() + milliseconds);
     },
@@ -75,7 +125,7 @@ describe("MobilityService", () => {
     await seedTrip(context.trips);
 
     expect(await context.service.listAvailableTrips("synthetic-driver")).toEqual([]);
-    await context.service.setAvailability("synthetic-driver", "online", true, "availability-online");
+    await context.goOnline();
 
     const available = await context.service.listAvailableTrips("synthetic-driver");
     expect(available).toHaveLength(1);
@@ -131,6 +181,16 @@ describe("MobilityService", () => {
     const trips = new MemoryRepository<SyntheticTripRecord>();
     const availability = new MemoryRepository<DriverAvailabilityRecord>();
     const audit = new MemoryAuditLog();
+    const liveness = new DriverLivenessService(
+      new MemoryRepository<DriverLivenessChallengeRecord>(),
+      new MemoryRepository<DriverLivenessAuthorizationRecord>(),
+      new MemoryTransaction(),
+      audit,
+      new SyntheticDriverLivenessProvider(),
+      () => new Date("2026-07-12T10:00:00.000Z"),
+      "unqualified-driver-test-secret",
+      () => ["turn_head_left"],
+    );
     const service = new MobilityService(
       trips,
       availability,
@@ -138,6 +198,7 @@ describe("MobilityService", () => {
       new MemoryTransaction(),
       audit,
       async () => undefined,
+      liveness,
       () => new Date("2026-07-12T10:00:00.000Z"),
     );
     await seedTrip(trips);
@@ -181,7 +242,7 @@ describe("MobilityService", () => {
       processedKeys: [],
       synthetic: true,
     }, 0);
-    await context.service.setAvailability("synthetic-driver", "online", true, "online-order");
+    await context.goOnline("synthetic-driver", "online-order");
     const available = await context.service.listAvailableTrips("synthetic-driver");
     expect(available.map((trip) => trip.tripId)).toEqual([
       "synthetic-trip-1",
@@ -308,6 +369,11 @@ describe("MobilityService", () => {
         accountId: "synthetic-driver",
         state: "busy",
         returnOnlineAfterTrip: true,
+        livenessRequiredBeforeNextOnline: false,
+        onlineSessionStartedAt: "2026-07-12T09:00:00.000Z",
+        onlineDeviceDigest: "test-device-digest",
+        onlineAccountSessionDigest: "test-session-digest",
+        livenessPolicyVersion: "driver-liveness-v1",
         updatedAt: "2026-07-12T09:59:00.000Z",
         processedKeys: [],
         synthetic: true,

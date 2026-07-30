@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "scenarios"],
   "properties": {
-    "spec_version": {"const": "1.0"},
+    "spec_version": {"const": "2.0"},
     "spec_id": {"const": "pollycar.tests.admin-role-access-matrix-scenarios"},
     "language": {"const": "zh-CN"},
     "production_enabled": {"const": false},
@@ -23,7 +23,7 @@
         "required": ["id", "category", "title", "actor", "command", "expected", "expected_error"],
         "properties": {
           "id": {"type": "string", "pattern": "^ADMIN-RBAC-[0-9]{3}$"},
-          "category": {"enum": ["feature_gate", "implementation_gate", "role", "role_combination", "navigation", "route", "organization_scope", "operation", "field", "export", "bulk_action"]},
+          "category": {"enum": ["feature_gate", "implementation_gate", "authorization_level", "capability", "separation", "navigation", "route", "organization_scope", "operation", "field", "export", "bulk_action"]},
           "title": {"type": "string", "minLength": 1},
           "actor": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
           "command": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},

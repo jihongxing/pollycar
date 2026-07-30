@@ -16,6 +16,7 @@ describe("生产认证接入准备配置", () => {
       realSmsDeliveryEnabled: false,
       realIdentityVerificationEnabled: false,
       realBiometricVerificationEnabled: false,
+      realDriverLivenessVerificationEnabled: false,
       realAdminAccountsEnabled: false,
       consumerPhone: { status: "unconfigured" },
       adultEligibility: { status: "unconfigured" },

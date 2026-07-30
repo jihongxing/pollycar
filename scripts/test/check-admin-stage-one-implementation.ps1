@@ -77,7 +77,8 @@ $shell = (
   Get-Content -LiteralPath (Join-Path $repo "apps\admin\src\features\admin-stage-one\stage-one-shell.tsx") -Raw
 )
 foreach ($rule in @(
-  "VITE_SYNTHETIC_ADMIN_MULTI_ORGANIZATION",
+  "resolveAdminPublicCapabilities",
+  "multiOrganizationEnabled",
   "平台运营工作台",
   "运营主体工作台",
   "运营主体名录",
@@ -86,6 +87,25 @@ foreach ($rule in @(
   "访问与范围事件"
 )) {
   if ($shell -notmatch [regex]::Escape($rule)) { throw "阶段一 Admin Shell 缺少: $rule" }
+}
+
+$publicCapabilities = Get-Content -LiteralPath (
+  Join-Path $repo "apps\admin\src\infrastructure\admin-public-capabilities.ts"
+) -Raw
+$localProfile = Get-Content -LiteralPath (
+  Join-Path $repo "packages\configuration\src\index.js"
+) -Raw
+foreach ($rule in @(
+  "config.capabilities.multiOrganization",
+  "VITE_POLLYCAR_PUBLIC_CONFIG",
+  "syntheticAdminMultiOrganization"
+)) {
+  if (
+    $publicCapabilities -notmatch [regex]::Escape($rule) -and
+    $localProfile -notmatch [regex]::Escape($rule)
+  ) {
+    throw "阶段一统一配置链路缺少: $rule"
+  }
 }
 
 $serverTests = Get-Content -LiteralPath (Join-Path $repo "apps\server\src\http\admin-access-routes.test.ts") -Raw

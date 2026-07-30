@@ -29,6 +29,7 @@ export interface FeatureGates {
   readonly realDataIngestion: boolean;
   readonly realIdentityVerification: boolean;
   readonly realBiometricVerification: boolean;
+  readonly realDriverLivenessVerification: boolean;
   readonly externalIdentityProvider: boolean;
   readonly realSmsDelivery: boolean;
   readonly realPhoneData: boolean;
@@ -100,6 +101,7 @@ export const defaultFeatureGates: FeatureGates = Object.freeze({
   realDataIngestion: false,
   realIdentityVerification: false,
   realBiometricVerification: false,
+  realDriverLivenessVerification: false,
   externalIdentityProvider: false,
   realSmsDelivery: false,
   realPhoneData: false,
@@ -218,6 +220,17 @@ export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): Feat
     gates.productionEnabled &&
     gates.realDataIngestion &&
     externalIdentityProvider;
+  const realBiometricVerification =
+    gates.realBiometricVerification &&
+    gates.productionEnabled &&
+    gates.realDataIngestion &&
+    realIdentityVerification &&
+    externalIdentityProvider;
+  const productionAuthentication =
+    gates.productionAuthentication &&
+    gates.productionEnabled &&
+    gates.realPhoneData &&
+    gates.realSmsDelivery;
   const externalMapProvider =
     gates.externalMapProvider &&
     gates.productionEnabled &&
@@ -322,11 +335,13 @@ export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): Feat
       gates.realDataIngestion,
     shanghaiPilot: gates.shanghaiPilot && gates.productionEnabled,
     realIdentityVerification,
-    realBiometricVerification:
-      gates.realBiometricVerification &&
+    realBiometricVerification,
+    realDriverLivenessVerification:
+      gates.realDriverLivenessVerification &&
       gates.productionEnabled &&
+      productionAuthentication &&
       gates.realDataIngestion &&
-      realIdentityVerification &&
+      realBiometricVerification &&
       externalIdentityProvider,
     externalIdentityProvider,
     realSmsDelivery:
@@ -337,11 +352,7 @@ export function resolveFeatureGates(overrides: Partial<FeatureGates> = {}): Feat
       gates.realPhoneData &&
       gates.productionEnabled &&
       gates.realDataIngestion,
-    productionAuthentication:
-      gates.productionAuthentication &&
-      gates.productionEnabled &&
-      gates.realPhoneData &&
-      gates.realSmsDelivery,
+    productionAuthentication,
     externalMapProvider,
     realMap,
     realDeviceLocation,

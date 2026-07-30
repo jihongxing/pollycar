@@ -370,3 +370,47 @@ scenarios:
     category: accessibility
     title: "全局搜索支持键盘打开关闭焦点恢复且审计不记录原始搜索词"
     expected: "global_search_accessibility_and_digest_only_audit"
+  - id: "ADMIN-UX-092"
+    category: authorization
+    title: "运营任务、车主、车辆和行程详情统一返回服务端计算的允许操作、阻断原因和下一步"
+    expected: "record_action_guidance_server_authoritative"
+  - id: "ADMIN-UX-093"
+    category: driver_vehicle
+    title: "一级车辆审核员不能批准或拒绝且二级负责人材料不完整时仍不能批准"
+    expected: "vehicle_review_level_and_material_blockers"
+  - id: "ADMIN-UX-094"
+    category: authorization
+    title: "已完成记录、受限车主和无能力身份分别获得完成、平台复核和联系负责人的明确处理建议"
+    expected: "record_blocker_reason_and_next_step_mapping"
+  - id: "ADMIN-UX-095"
+    category: product_language
+    title: "后台仅展示可理解的阻断原因和下一步且不显示内部阻断码或不可执行按钮"
+    expected: "record_action_guidance_product_language"
+  - id: "ADMIN-UX-096"
+    category: support_safety
+    title: "安全恢复复核人与调查负责人或冻结执行人相同时服务端拒绝并返回独立复核建议"
+    expected: "safety_restoration_independent_reviewer"
+  - id: "ADMIN-UX-097"
+    category: support_safety
+    title: "证据访问申请人不能批准本人申请且后台不展示批准按钮"
+    expected: "safety_evidence_requester_approver_separation"
+  - id: "ADMIN-UX-098"
+    category: finance_operations
+    title: "财务制单人不能复核本人提交的结算付款对账或关账记录"
+    expected: "finance_preparer_reviewer_separation"
+  - id: "ADMIN-UX-099"
+    category: product_language
+    title: "安全和财务职责冲突统一展示阻断原因和由其他负责人复核的下一步"
+    expected: "independent_review_guidance_product_language"
+  - id: "ADMIN-UX-100"
+    category: authorization
+    title: "安全恢复证据访问和财务复核统一生成申请人与复核人分离的审批记录"
+    expected: "high_risk_approval_record_separation"
+  - id: "ADMIN-UX-101"
+    category: audit_system
+    title: "审计名录可以按审批记录及等待复核已批准未批准已撤销状态查询"
+    expected: "approval_record_audit_query"
+  - id: "ADMIN-UX-102"
+    category: product_language
+    title: "高风险操作确认在执行前说明影响范围可恢复性复核关系和业务后果"
+    expected: "high_risk_confirmation_review_relation"

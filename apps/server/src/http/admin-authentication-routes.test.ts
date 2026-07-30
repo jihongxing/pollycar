@@ -449,6 +449,11 @@ describe("运营后台产品化认证 HTTP API", () => {
       { headers: { Authorization: `Bearer ${technical.accessToken}` } },
     ));
     expect(list.items.length).toBeGreaterThan(0);
+    const approvalList = await json(await fetch(
+      `${running.url}/v1/internal-sandbox/admin/audit?kind=approval&page_size=25`,
+      { headers: { Authorization: `Bearer ${technical.accessToken}` } },
+    ));
+    expect(approvalList.items).toEqual([]);
     const source = list.items[0];
     const detailUrl =
       `${running.url}/v1/internal-sandbox/admin/audit/event/${source.resourceId}`;

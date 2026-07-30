@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { loginThroughPhoneVerification, openAuthenticatedPage } from "./helpers/authenticated-app";
+import {
+  completeOwnerParticipationConsent,
+  loginThroughPhoneVerification,
+  openAuthenticatedPage,
+} from "./helpers/authenticated-app";
 
 test("默认入口进入叫车首页并可选择三人行程", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -262,7 +266,7 @@ test("车主申请流程使用真实 URL 和浏览器返回", async ({ page }) =
   await expect(page).toHaveURL(/\/owner-apply-intro$/);
   await page.getByRole("button", { name: "开始准备" }).click();
   await expect(page).toHaveURL(/\/owner-profile$/);
-  await page.getByRole("button", { name: "我已了解，继续添加车辆" }).click();
+  await completeOwnerParticipationConsent(page);
   await expect(page).toHaveURL(/\/vehicle-form$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/owner-profile$/);

@@ -61,9 +61,9 @@ foreach ($path in $required) {
 $config = Get-Content -LiteralPath (Join-Path $repo "playwright.config.ts") -Raw
 foreach ($rule in @(
   "output/playwright",
-  "127.0.0.1:4321",
-  "127.0.0.1:8181",
-  "127.0.0.1:4174",
+  "@pollycar/configuration",
+  "getLocalSandboxProfile",
+  "getLocalSandboxProfile(process.env)",
   "workers: 1",
   'trace: "retain-on-failure"',
   "--single"

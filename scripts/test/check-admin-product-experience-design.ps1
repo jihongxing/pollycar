@@ -73,6 +73,8 @@ foreach ($rule in @(
   "auditor_read_only: true",
   "action_reason_required: true",
   "server_authoritative: true",
+  'required_fields: ["allowed_actions", "action_blockers", "next_steps"]',
+  "client_side_action_inference_forbidden: true",
   "client_role_menu_mapping_forbidden: true",
   "authentication_code_forbidden_before_approval: false",
   "navigation_api_forbidden_before_approval: false",
@@ -83,8 +85,8 @@ foreach ($rule in @(
 
 $scenarios = Get-Content -LiteralPath (Join-Path $repo "spec\tests\admin-product-experience-scenarios.yaml") -Raw
 $scenarioCount = ([regex]::Matches($scenarios, '(?m)^\s{2}- id: "ADMIN-UX-[0-9]{3}"\s*$')).Count
-if ($scenarioCount -ne 91) { throw "运营后台产品化验收场景应为 91 项，实际为 $scenarioCount" }
-foreach ($category in @("entry", "identity", "navigation", "shell", "pagination", "language", "responsive", "accessibility", "recovery", "operations_task", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "executive_dashboard", "audit_system", "data_reports")) {
+if ($scenarioCount -ne 102) { throw "运营后台产品化验收场景应为 102 项，实际为 $scenarioCount" }
+foreach ($category in @("entry", "identity", "navigation", "shell", "pagination", "language", "product_language", "responsive", "accessibility", "recovery", "authorization", "operations_task", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "executive_dashboard", "audit_system", "data_reports")) {
   if ($scenarios -notmatch [regex]::Escape("category: $category")) { throw "运营后台产品化场景缺少类别: $category" }
 }
 

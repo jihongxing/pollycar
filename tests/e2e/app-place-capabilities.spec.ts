@@ -8,7 +8,7 @@ test("手动上车点、常用地点和最近搜索可刷新恢复", async ({ pa
   await expect(page.getByText(/上海图书馆 · 上海图书馆/)).toBeVisible();
 
   await page.getByRole("textbox", { name: "搜索目的地" }).fill("虹桥");
-  await page.getByRole("button", { name: "将虹桥站设为家" }).click();
+  await page.getByRole("button", { name: "设为家" }).click();
   await page.reload();
   await expect(page.getByRole("button", { name: /虹桥站/ }).first()).toBeVisible();
 });

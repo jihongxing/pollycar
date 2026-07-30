@@ -14,7 +14,7 @@
         "expo-image-picker",
         {
           "photosPermission": "允许御驾出行访问相册，以便选择并更新账户头像。",
-          "cameraPermission": false,
+          "cameraPermission": "允许御驾出行在车主上线前使用前置摄像头完成本人确认；检测结束后立即关闭，不保存照片或视频。",
           "microphonePermission": false
         }
       ],

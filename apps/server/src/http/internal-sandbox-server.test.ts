@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { getLocalSandboxProfile } from "@pollycar/configuration";
 import type { InternalSandboxHttpServer } from "./internal-sandbox-server.js";
 import { startInternalSandboxHttpServer } from "./internal-sandbox-server.js";
 
@@ -10,13 +11,14 @@ afterEach(async () => {
 
 const headers = {
   Authorization: "Sandbox synthetic-reviewer-001",
-  Origin: "http://127.0.0.1:4173",
+  Origin: getLocalSandboxProfile().network.adminUrl,
   "Content-Type": "application/json",
 };
 const appHeaders = {
   Authorization: "Sandbox synthetic-account-7",
-  Origin: "http://127.0.0.1:8081",
+  Origin: getLocalSandboxProfile().network.appUrl,
   "Content-Type": "application/json",
+  "X-Device-Id": "app-device-http-test",
 };
 
 describe("运营后台内部沙箱 HTTP API", () => {
@@ -93,19 +95,21 @@ describe("运营后台内部沙箱 HTTP API", () => {
   it("浏览器预检不被业务认证门禁拦截", async () => {
     running = await startInternalSandboxHttpServer({ port: 0 });
     const response = await fetch(
-      `${running.url}/v1/internal-sandbox/app/synthetic-trips/dashboard`,
+      `${running.url}/v1/internal-sandbox/app/driver/liveness/challenges`,
       {
         method: "OPTIONS",
         headers: {
           Origin: "http://127.0.0.1:8181",
-          "Access-Control-Request-Method": "GET",
-          "Access-Control-Request-Headers": "authorization,content-type,x-correlation-id",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers":
+            "authorization,content-type,idempotency-key,x-correlation-id,x-device-id",
         },
       },
     );
     expect(response.status).toBe(204);
     expect(response.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:8181");
     expect(response.headers.get("access-control-allow-headers")).toContain("Authorization");
+    expect(response.headers.get("access-control-allow-headers")).toContain("X-Device-Id");
   });
 
   it("Admin 任务详情使用 Bearer 会话并保持组织范围", async () => {
@@ -331,11 +335,16 @@ describe("运营后台内部沙箱 HTTP API", () => {
     expect(detail.allowedActions).toEqual(["claim"]);
     expect(detail.auditTrail.at(-1)?.action).toBe("task_viewed");
 
+    const seniorReviewer = await createAdminSession(
+      running.url,
+      "review@rego.example",
+      "synthetic-senior-reviewer-001",
+    );
     const claimUrl = `${detailUrl}/actions/claim`;
     const claimResponse = await fetch(claimUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${reviewer.accessToken}`,
+        Authorization: `Bearer ${seniorReviewer.accessToken}`,
         "Content-Type": "application/json",
         "Idempotency-Key": "fleet-claim-task-003-http",
       },
@@ -362,7 +371,7 @@ describe("运营后台内部沙箱 HTTP API", () => {
     const approveRequest = {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${reviewer.accessToken}`,
+        Authorization: `Bearer ${seniorReviewer.accessToken}`,
         "Content-Type": "application/json",
         "Idempotency-Key": "fleet-approve-task-003-http",
       },
@@ -842,6 +851,36 @@ describe("运营后台内部沙箱 HTTP API", () => {
       },
       0,
     );
+    const challengeResponse = await fetch(
+      `${running.url}/v1/internal-sandbox/app/driver/liveness/challenges`,
+      {
+        method: "POST",
+        headers: {
+          ...appHeaders,
+          "Idempotency-Key": "dispatch-liveness-create-http",
+        },
+        body: JSON.stringify({ deviceId: "app-device-http-test" }),
+      },
+    );
+    expect(challengeResponse.status).toBe(200);
+    const challenge = (await challengeResponse.json()) as {
+      challengeId: string;
+    };
+    const livenessResponse = await fetch(
+      `${running.url}/v1/internal-sandbox/app/driver/liveness/challenges/${challenge.challengeId}/complete`,
+      {
+        method: "POST",
+        headers: {
+          ...appHeaders,
+          "Idempotency-Key": "dispatch-liveness-complete-http",
+        },
+        body: JSON.stringify({ syntheticScenario: "passed" }),
+      },
+    );
+    expect(livenessResponse.status).toBe(200);
+    const liveness = (await livenessResponse.json()) as {
+      livenessAuthorizationToken: string;
+    };
     const presence = await fetch(
       `${running.url}/v1/internal-sandbox/app/driver/dispatch-presence`,
       {
@@ -849,6 +888,8 @@ describe("运营后台内部沙箱 HTTP API", () => {
         headers: { ...appHeaders, "Idempotency-Key": "dispatch-presence-http" },
         body: JSON.stringify({
           state: "online",
+          deviceId: "app-device-http-test",
+          livenessAuthorizationToken: liveness.livenessAuthorizationToken,
           location: {
             latitude: 31.2304,
             longitude: 121.4737,
@@ -893,6 +934,93 @@ describe("运营后台内部沙箱 HTTP API", () => {
     expect(await accepted.json()).toMatchObject({
       state: "accepted",
       driverAccountId: "synthetic-account-7",
+    });
+  });
+
+  it("上线接口拒绝缺失活体授权和任何原始人脸媒体字段", async () => {
+    const clock = new Date("2026-07-30T00:00:00.000Z");
+    running = await startInternalSandboxHttpServer({
+      port: 0,
+      now: () => clock,
+    });
+    await running.sandbox.vehicleReviewRepository.put(
+      "vehicle-application-7",
+      {
+        applicationId: "vehicle-application-7",
+        accountId: "synthetic-account-7",
+        status: "approved",
+        ownerIdentityAvailable: true,
+        vehicleType: "合成活体测试车辆",
+        maxPassengerCount: 3,
+        insuranceExpiresOn: "2027-08-31",
+        syntheticAttachmentId: "synthetic-liveness-document",
+        requestedMaterialCodes: [],
+        events: [
+          { code: "approved", occurredAt: "2026-07-30T00:00:00.000Z" },
+        ],
+        processedKeys: [],
+        synthetic: true,
+      },
+      0,
+    );
+    const deniedOnline = await fetch(
+      `${running.url}/v1/internal-sandbox/app/driver/dispatch-presence`,
+      {
+        method: "POST",
+        headers: {
+          ...appHeaders,
+          "Idempotency-Key": "liveness-required-http",
+        },
+        body: JSON.stringify({
+          state: "online",
+          deviceId: "app-device-http-test",
+          location: {
+            latitude: 31.2304,
+            longitude: 121.4737,
+            coordinateSystem: "gcj02",
+            accuracyMeters: 20,
+            capturedAt: "2026-07-30T00:00:00.000Z",
+            synthetic: true,
+          },
+        }),
+      },
+    );
+    expect(deniedOnline.status).toBe(403);
+    expect(await deniedOnline.json()).toMatchObject({
+      error: { code: "DRIVER_LIVENESS_REQUIRED" },
+    });
+
+    const challengeResponse = await fetch(
+      `${running.url}/v1/internal-sandbox/app/driver/liveness/challenges`,
+      {
+        method: "POST",
+        headers: {
+          ...appHeaders,
+          "Idempotency-Key": "liveness-sensitive-create-http",
+        },
+        body: JSON.stringify({ deviceId: "app-device-http-test" }),
+      },
+    );
+    const challenge = (await challengeResponse.json()) as {
+      challengeId: string;
+    };
+    const sensitivePayload = await fetch(
+      `${running.url}/v1/internal-sandbox/app/driver/liveness/challenges/${challenge.challengeId}/complete`,
+      {
+        method: "POST",
+        headers: {
+          ...appHeaders,
+          "Idempotency-Key": "liveness-sensitive-complete-http",
+        },
+        body: JSON.stringify({
+          syntheticScenario: "passed",
+          video: "data:video/mp4;base64,forbidden",
+        }),
+      },
+    );
+    expect(sensitivePayload.status).toBe(403);
+    expect(await sensitivePayload.json()).toMatchObject({
+      error: { code: "REAL_BIOMETRIC_DATA_FORBIDDEN" },
     });
   });
 

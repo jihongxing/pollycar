@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+env:
+  POLLYCAR_BUILD_NODE_VERSION: "22"
+  POLLYCAR_BUILD_PNPM_VERSION: "10.22.0"
+  POLLYCAR_BUILD_JAVA_VERSION: "17"
+  POLLYCAR_BUILD_EAS_CLI_VERSION: "21.4.0"
+
 jobs:
   postgres:
     runs-on: ubuntu-latest
@@ -23,6 +29,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
         ports: ["5432:5432"]
     env:
+      POLLYCAR_POSTGRES_TEST_IMAGE: postgres:17-alpine
       POLLYCAR_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_dispatch
       POLLYCAR_LEDGER_PROTOTYPE_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ledger_prototype
       POLLYCAR_LEDGER_KERNEL_DATABASE_URL: postgresql://pollycar:pollycar@127.0.0.1:5432/pollycar_ledger_kernel
@@ -40,6 +47,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm check:build-config postgres-ci
       - run: |
           for database in pollycar_dispatch pollycar_ledger_prototype pollycar_ledger_kernel pollycar_ledger_resilience pollycar_ledger_templates pollycar_reconciliation pollycar_operator_funds; do
             PGPASSWORD=pollycar createdb --host=127.0.0.1 --username=pollycar "$database"
@@ -51,6 +59,9 @@ jobs:
 
   android-release:
     runs-on: ubuntu-latest
+    env:
+      POLLYCAR_NATIVE_PLATFORM: android
+      POLLYCAR_NATIVE_RELEASE_UNSIGNED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -65,11 +76,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm check:build-config native-ci
       - run: chmod +x apps/app/android/gradlew
       - run: cd apps/app/android && ./gradlew assembleRelease
 
   ios-release:
     runs-on: macos-latest
+    env:
+      POLLYCAR_NATIVE_PLATFORM: ios
+      POLLYCAR_NATIVE_RELEASE_UNSIGNED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -80,6 +95,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm check:build-config native-ci
       - run: cd apps/app && pnpm exec expo prebuild --platform ios --no-install
       - run: cd apps/app/ios && pod install
       - run: |

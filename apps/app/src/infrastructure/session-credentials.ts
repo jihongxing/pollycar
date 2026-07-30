@@ -1,4 +1,5 @@
 let sessionToken: string | undefined;
+let currentDeviceId = "app-device-synthetic-default";
 const authenticationFailureListeners = new Set<() => void>();
 
 export function setSessionToken(token: string | undefined): void {
@@ -7,6 +8,14 @@ export function setSessionToken(token: string | undefined): void {
 
 export function authorizationHeader(): string {
   return sessionToken ? `Session ${sessionToken}` : "Sandbox synthetic-account-7";
+}
+
+export function setCurrentDeviceId(deviceId: string): void {
+  currentDeviceId = deviceId;
+}
+
+export function deviceIdHeader(): string {
+  return currentDeviceId;
 }
 
 export function reportSessionAuthenticationFailure(errorCode: string): void {

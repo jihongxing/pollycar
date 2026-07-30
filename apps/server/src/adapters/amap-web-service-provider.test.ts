@@ -2,10 +2,24 @@ import { describe, expect, it, vi } from "vitest";
 import { AmapWebServiceProvider } from "./amap-web-service-provider.js";
 
 describe("AmapWebServiceProvider", () => {
+  const disabledConfig = {
+    enabled: false,
+    apiBaseUrl: "https://restapi.amap.com",
+  } as const;
+  const enabledConfig = {
+    enabled: true,
+    apiBaseUrl: "https://restapi.amap.com",
+    keyReference: "vault://pollycar/amap-web-service",
+  } as const;
+
   it("默认关闭时不读取密钥也不发送网络请求", async () => {
     const read = vi.fn(async () => "secret");
     const fetcher = vi.fn();
-    const provider = new AmapWebServiceProvider(false, { read }, fetcher as typeof fetch);
+    const provider = new AmapWebServiceProvider(
+      disabledConfig,
+      { read },
+      fetcher as typeof fetch,
+    );
     await expect(provider.searchPlaces({ query: "虹桥", limit: 10 }))
       .rejects.toThrow("AMAP_WEB_SERVICE_DISABLED");
     expect(read).not.toHaveBeenCalled();
@@ -14,10 +28,16 @@ describe("AmapWebServiceProvider", () => {
 
   it("启用时只从 Server 密钥提供器读取 Key", async () => {
     const read = vi.fn(async () => undefined);
-    const provider = new AmapWebServiceProvider(true, { read }, vi.fn() as unknown as typeof fetch);
+    const provider = new AmapWebServiceProvider(
+      enabledConfig,
+      { read },
+      vi.fn() as unknown as typeof fetch,
+    );
     await expect(provider.searchPlaces({ query: "虹桥", limit: 10 }))
       .rejects.toThrow("AMAP_WEB_SERVICE_KEY_MISSING");
-    expect(read).toHaveBeenCalledWith("POLLYCAR_AMAP_WEB_SERVICE_KEY");
+    expect(read).toHaveBeenCalledWith(
+      "vault://pollycar/amap-web-service",
+    );
   });
 
   it("解析地点搜索响应并只返回高德坐标", async () => {
@@ -37,7 +57,7 @@ describe("AmapWebServiceProvider", () => {
       ],
     }), { status: 200 }));
     const provider = new AmapWebServiceProvider(
-      true,
+      enabledConfig,
       { read: async () => "server-secret" },
       fetcher as typeof fetch,
       () => new Date("2026-07-17T00:00:00.000Z"),
@@ -113,7 +133,7 @@ describe("AmapWebServiceProvider", () => {
         },
       }), { status: 200 }));
     const provider = new AmapWebServiceProvider(
-      true,
+      enabledConfig,
       { read: async () => "server-secret" },
       fetcher as typeof fetch,
       () => new Date("2026-07-17T00:00:00.000Z"),
@@ -159,7 +179,7 @@ describe("AmapWebServiceProvider", () => {
 
   it("供应商业务失败或响应结构未知时失败关闭", async () => {
     const failed = new AmapWebServiceProvider(
-      true,
+      enabledConfig,
       { read: async () => "server-secret" },
       vi.fn(async () => new Response(JSON.stringify({
         status: "0",
@@ -170,7 +190,7 @@ describe("AmapWebServiceProvider", () => {
       .rejects.toThrow("MAP_PROVIDER_UNAVAILABLE");
 
     const unsupported = new AmapWebServiceProvider(
-      true,
+      enabledConfig,
       { read: async () => "server-secret" },
       vi.fn(async () => new Response(JSON.stringify({
         status: "1",

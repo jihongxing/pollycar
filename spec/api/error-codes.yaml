@@ -1444,6 +1444,69 @@ errors:
     disclosure: "public"
     audit: "strict"
     client_action: "stop"
+  - id: "DRIVER_LIVENESS_REQUIRED"
+    http_status: 403
+    message: "上线接单前需要完成人脸活体检测"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "start_driver_liveness"
+  - id: "DRIVER_LIVENESS_CHALLENGE_NOT_FOUND"
+    http_status: 404
+    message: "未找到本次活体检测"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "restart_driver_liveness"
+  - id: "DRIVER_LIVENESS_CHALLENGE_EXPIRED"
+    http_status: 409
+    message: "本次活体检测已过期，请重新检测"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "restart_driver_liveness"
+  - id: "DRIVER_LIVENESS_AUTHORIZATION_EXPIRED"
+    http_status: 409
+    message: "本次活体检测已失效，请重新检测"
+    retryable: false
+    disclosure: "public"
+    audit: "strict"
+    client_action: "restart_driver_liveness"
+  - id: "DRIVER_LIVENESS_AUTHORIZATION_REPLAYED"
+    http_status: 409
+    message: "本次活体检测已使用，请重新检测"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "restart_driver_liveness"
+  - id: "DRIVER_LIVENESS_AUTHORIZATION_MISMATCH"
+    http_status: 403
+    message: "本次活体检测与当前设备或登录状态不一致"
+    retryable: false
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "restart_driver_liveness"
+  - id: "DRIVER_LIVENESS_RESULT_UNKNOWN"
+    http_status: 503
+    message: "活体检测结果仍在确认中，请稍后重试"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "refresh_result"
+  - id: "DRIVER_LIVENESS_PROVIDER_TIMEOUT"
+    http_status: 504
+    message: "活体检测服务响应超时，请重新检测"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "restart_driver_liveness"
+  - id: "DRIVER_LIVENESS_PROVIDER_UNAVAILABLE"
+    http_status: 503
+    message: "活体检测服务暂时不可用，请稍后重试"
+    retryable: true
+    disclosure: "generic"
+    audit: "strict"
+    client_action: "retry_later"
   - id: "MAP_COORDINATE_SYSTEM_REQUIRED"
     http_status: 422
     message: "位置坐标缺少坐标系"

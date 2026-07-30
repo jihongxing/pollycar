@@ -3,34 +3,86 @@ import type {
   AdminDataClassification,
   AdminOrganizationContext,
 } from "./admin-access.js";
+import type {
+  AdminAuthorizationLevel,
+  AdminBusinessCapability,
+} from "./admin-authorization.js";
 
-export type AdminProductRole =
-  | "platform_access_administrator"
-  | "operations_officer"
-  | "operations_lead"
-  | "operator_management_officer"
-  | "reviewer"
-  | "senior_reviewer"
-  | "customer_support"
-  | "support_lead"
-  | "safety_officer"
-  | "safety_lead"
-  | "finance_officer"
-  | "finance_lead"
-  | "privacy_compliance"
-  | "data_analyst"
-  | "auditor"
-  | "technical_operations"
-  | "executive_sponsor"
-  | "operator_account_administrator"
-  | "operator_operations_lead"
-  | "operator_fleet_officer"
-  | "operator_customer_support"
-  | "operator_safety_liaison"
-  | "operator_finance_officer"
-  | "operator_finance_lead"
-  | "operator_auditor"
-  | "operator_executive";
+export type AdminRecordActionBlockerCode =
+  | "NO_CAPABILITY"
+  | "WRONG_ORGANIZATION_SCOPE"
+  | "WRONG_CITY_SCOPE"
+  | "INVALID_RECORD_STATE"
+  | "REQUIRES_REVIEW"
+  | "REQUIRES_PLATFORM_REVIEW"
+  | "REQUIRES_INDEPENDENT_REVIEW"
+  | "MISSING_MATERIAL"
+  | "LEASE_NOT_OWNED"
+  | "ALREADY_COMPLETED"
+  | "RISK_RESTRICTION";
+
+export type AdminRecordNextStepKind =
+  | "EXECUTE_ACTION"
+  | "REQUEST_MATERIAL"
+  | "SUBMIT_REVIEW"
+  | "REQUEST_PLATFORM_REVIEW"
+  | "WAIT"
+  | "CONTACT_OWNER"
+  | "NONE";
+
+export type AdminRecordNextStep = Readonly<{
+  kind: AdminRecordNextStepKind;
+  label: string;
+  action?: string;
+}>;
+
+export type AdminRecordActionBlocker = Readonly<{
+  action: string;
+  code: AdminRecordActionBlockerCode;
+  reason: string;
+  nextStep: AdminRecordNextStep;
+}>;
+
+export type AdminRecordActionSummary = Readonly<{
+  allowedActions: readonly string[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+}>;
+
+export type AdminHighRiskApprovalState =
+  | "pending"
+  | "approved"
+  | "declined"
+  | "revoked";
+
+export type AdminHighRiskApprovalRecord = Readonly<{
+  approvalId: string;
+  domain: "support_safety" | "finance";
+  resourceKind: "safety_case" | "finance_record";
+  resourceId: string;
+  organizationType: "platform" | "operator";
+  organizationId: string;
+  organizationName: string;
+  requestedAction: string;
+  state: AdminHighRiskApprovalState;
+  requester: Readonly<{
+    workIdentityId: string;
+    actorLabel: string;
+    actorRole: string;
+    occurredAt: string;
+  }>;
+  reviewer?: Readonly<{
+    workIdentityId: string;
+    actorLabel: string;
+    actorRole: string;
+    occurredAt: string;
+  }>;
+  decisionNote?: string;
+  separationRequired: true;
+  resourceVersion: number;
+  updatedAt: string;
+  synthetic: true;
+}>;
 
 export type AdminNavigationDomain =
   | "workbench"
@@ -62,7 +114,8 @@ export type AdminNavigationManifest = Readonly<{
   navigationVersion: string;
   workIdentityId: string;
   organizationContext: AdminOrganizationContext;
-  roleIds: readonly AdminProductRole[];
+  authorizationLevel: AdminAuthorizationLevel;
+  capabilities: readonly AdminBusinessCapability[];
   items: readonly AdminNavigationItem[];
   routePermissions: readonly string[];
   operationPermissions: readonly string[];
@@ -120,8 +173,9 @@ export type AdminWorkIdentitySummary = Readonly<{
   type: "platform" | "operator";
   organizationId: string;
   organizationName: string;
-  productRole: AdminProductRole;
-  productRoleName: string;
+  authorizationLevel: AdminAuthorizationLevel;
+  capabilities: readonly AdminBusinessCapability[];
+  positionName: string;
   cityScopes: readonly string[];
   recentUsedAt?: string;
   maximumDataClassification: AdminDataClassification;
@@ -158,7 +212,7 @@ export type AdminInvitationSummary = Readonly<{
   invitationToken: string;
   workEmailMasked: string;
   organizationName: string;
-  productRoleName: string;
+  positionName: string;
   cityScopes: readonly string[];
   expiresAt: string;
   state: "pending";
@@ -214,6 +268,8 @@ export type AdminOperationsTaskDetail = Readonly<{
     cityScopes: readonly string[];
   }>;
   allowedActions: readonly AdminOperationsTaskAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
   auditTrail: readonly Readonly<{
     eventId: string;
     action:
@@ -380,6 +436,9 @@ export type AdminDriverDetail = Readonly<{
     cityScopes: readonly string[];
   }>;
   linkedVehicles: readonly AdminVehicleDirectoryItem[];
+  allowedActions: readonly [];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
   auditTrail: readonly Readonly<{
     eventId: string;
     action: "driver_profile_viewed";
@@ -449,6 +508,8 @@ export type AdminVehicleDetail = Readonly<{
   }>;
   reviewTask?: AdminReviewTaskDetail;
   allowedActions: readonly AdminVehicleReviewAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
   auditTrail: readonly AdminReviewAuditEntry[];
   synthetic: true;
 }>;
@@ -533,6 +594,8 @@ export type AdminTripDetail = Readonly<{
     cityScopes: readonly string[];
   }>;
   allowedActions: readonly AdminTripOperationAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
   auditTrail: readonly Readonly<{
     eventId: string;
     action:
@@ -649,6 +712,7 @@ export type AdminCaseAuditEvent = Readonly<{
   previousState?: string;
   nextState?: string;
   note?: string;
+  approvalRecordId?: string;
 }>;
 
 export type AdminSupportCaseDetail = Readonly<{
@@ -678,6 +742,9 @@ export type AdminProductizedSafetyCaseDetail = Readonly<{
     cityScopes: readonly string[];
   }>;
   allowedActions: readonly AdminSafetyCaseAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+  approvalRecords: readonly AdminHighRiskApprovalRecord[];
   auditTrail: readonly AdminCaseAuditEvent[];
   synthetic: true;
 }>;
@@ -777,6 +844,7 @@ export type AdminFinanceAuditEvent = Readonly<{
   previousState?: string;
   nextState?: string;
   reasonCode?: string;
+  approvalRecordId?: string;
 }>;
 
 type AdminFinanceDetailBase<
@@ -792,6 +860,9 @@ type AdminFinanceDetailBase<
     cityScopes: readonly string[];
   }>;
   allowedActions: readonly AdminFinanceAction[];
+  actionBlockers: readonly AdminRecordActionBlocker[];
+  nextSteps: readonly AdminRecordNextStep[];
+  approvalRecords: readonly AdminHighRiskApprovalRecord[];
   auditTrail: readonly AdminFinanceAuditEvent[];
   directBalanceMutationAllowed: false;
   realMoneyMovementAllowed: false;
@@ -1016,7 +1087,10 @@ export type AdminExecutiveActionResult = Readonly<{
   synthetic: true;
 }>;
 
-export type AdminAuditResourceKind = "event" | "investigation";
+export type AdminAuditResourceKind =
+  | "event"
+  | "investigation"
+  | "approval";
 
 export type AdminAuditDomain =
   | "authentication"
@@ -1050,7 +1124,10 @@ export type AdminAuditDirectoryItem = Readonly<{
   organizationType: AdminAuditEvent["organizationType"];
   organizationId: string;
   organizationName: string;
-  result: AdminAuditEvent["result"] | AdminAuditInvestigationState;
+  result:
+    | AdminAuditEvent["result"]
+    | AdminAuditInvestigationState
+    | AdminHighRiskApprovalState;
   actorRole?: string;
   correlationId?: string;
   blocking: boolean;
@@ -1076,6 +1153,7 @@ export type AdminAuditDirectoryPage = Readonly<{
     deniedEvents: number;
     highRiskEvents: number;
     openInvestigations: number;
+    pendingApprovals: number;
     integrityWarnings: number;
   }>;
   items: readonly AdminAuditDirectoryItem[];
@@ -1157,9 +1235,15 @@ export type AdminAuditInvestigationDetail = AdminAuditDetailBase<
   AdminAuditInvestigation
 >;
 
+export type AdminAuditApprovalDetail = AdminAuditDetailBase<
+  "approval",
+  AdminHighRiskApprovalRecord
+>;
+
 export type AdminAuditDetail =
   | AdminAuditEventDetail
-  | AdminAuditInvestigationDetail;
+  | AdminAuditInvestigationDetail
+  | AdminAuditApprovalDetail;
 
 export type AdminAuditActionCommand = Readonly<{
   action: AdminAuditAction;
@@ -1293,8 +1377,9 @@ export type AdminMembershipDirectoryItem = Readonly<{
   organizationType: "platform" | "operator";
   organizationId: string;
   organizationName: string;
-  productRole: AdminProductRole;
-  productRoleName: string;
+  authorizationLevel: AdminAuthorizationLevel;
+  capabilities: readonly AdminBusinessCapability[];
+  positionName: string;
   state: AdminMembershipState;
   activeSessionCount: number;
   resourceVersion: number;
@@ -1309,7 +1394,8 @@ export type AdminMembershipDirectoryQuery = Readonly<{
   search?: string;
   organizationType?: "platform" | "operator";
   state?: AdminMembershipState;
-  productRole?: AdminProductRole;
+  authorizationLevel?: AdminAuthorizationLevel;
+  capability?: AdminBusinessCapability;
   sort?: "updated_at_desc" | "display_name_asc";
 }>;
 
@@ -1344,9 +1430,10 @@ export type AdminMembershipAuditEvent = Readonly<{
 
 export type AdminMembershipDetail = Readonly<{
   item: AdminMembershipDirectoryItem;
-  roleBinding: Readonly<{
-    roleId: AdminProductRole;
-    roleName: string;
+  authorizationBinding: Readonly<{
+    authorizationLevel: AdminAuthorizationLevel;
+    capabilities: readonly AdminBusinessCapability[];
+    positionName: string;
     source: "authoritative_membership";
     mutable: false;
   }>;

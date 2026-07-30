@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { SyntheticAdminReviewClient } from "../infrastructure/synthetic-admin-review-client";
 import { HttpAdminReviewClient } from "../infrastructure/http-admin-review-client";
 import { resolveAdminApiBaseUrl } from "../infrastructure/api-base-url";
+import { resolveAdminPublicConfig } from "../infrastructure/public-config";
 
 const ClientContext = createContext<AdminReviewClient | undefined>(undefined);
 
@@ -10,7 +11,7 @@ export function ReviewTaskProvider({ children, client }: Readonly<{ children: Re
   const value = useMemo(
     () =>
       client ??
-      (import.meta.env.MODE === "test"
+      (resolveAdminPublicConfig().profile === "test"
         ? new SyntheticAdminReviewClient()
         : new HttpAdminReviewClient(resolveAdminApiBaseUrl())),
     [client],

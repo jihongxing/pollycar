@@ -5,6 +5,8 @@ $policyPath = Join-Path $repo "apps\app\plugins\amap-build-policy.cjs"
 $pluginPath = Join-Path $repo "apps\app\plugins\with-pollycar-map-module.cjs"
 $nativeModulePath = Join-Path $repo "apps\app\src\native\map-native-module.ts"
 $webLoaderPath = Join-Path $repo "apps\app\src\native\web-amap-loader.ts"
+$publicConfigPath = Join-Path $repo "apps\app\src\infrastructure\public-config.ts"
+$amapPublicConfigPath = Join-Path $repo "apps\app\scripts\amap-client-environment.mjs"
 $mapPickerPath = Join-Path $repo "apps\app\src\components\mobility\map-point-picker.tsx"
 $androidModulePath = Join-Path $repo "apps\app\modules\pollycar-map\android\src\main\java\expo\modules\pollycarmap\PollyCarMapModule.kt"
 $iosModulePath = Join-Path $repo "apps\app\modules\pollycar-map\ios\PollyCarMapModule.swift"
@@ -15,6 +17,8 @@ foreach ($path in @(
   $pluginPath,
   $nativeModulePath,
   $webLoaderPath,
+  $publicConfigPath,
+  $amapPublicConfigPath,
   $mapPickerPath,
   $androidModulePath,
   $iosModulePath,
@@ -69,18 +73,7 @@ assert.throws(
   () => resolveAmapBuildPolicy(productionConfig, {
     EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY: "browser-key",
   }),
-  /AMAP_WEB_PRODUCTION_APPROVAL_REQUIRED/,
-);
-
-assert.deepEqual(
-  resolveAmapBuildPolicy(productionConfig, {
-    POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED: "true",
-    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED: "true",
-    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY: "browser-key",
-    EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE: "browser-security-code",
-    EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE: "approval-1",
-  }),
-  { enabled: false, androidEnabled: false, iosEnabled: false },
+  /AMAP_KEY_PUBLIC_ENV_FORBIDDEN/,
 );
 
 const androidPolicy = resolveAmapBuildPolicy(productionConfig, {
@@ -123,6 +116,8 @@ finally {
 $plugin = Get-Content -LiteralPath $pluginPath -Raw
 $nativeModule = Get-Content -LiteralPath $nativeModulePath -Raw
 $webLoader = Get-Content -LiteralPath $webLoaderPath -Raw
+$publicConfig = Get-Content -LiteralPath $publicConfigPath -Raw
+$amapPublicConfig = Get-Content -LiteralPath $amapPublicConfigPath -Raw
 $mapPicker = Get-Content -LiteralPath $mapPickerPath -Raw
 $androidModule = Get-Content -LiteralPath $androidModulePath -Raw
 $iosModule = Get-Content -LiteralPath $iosModulePath -Raw
@@ -161,14 +156,36 @@ foreach ($required in @(
 }
 
 foreach ($required in @(
-  "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED",
-  "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY",
-  "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE",
+  "AppPublicConfig",
+  "config.maps.web.enabled",
+  "config.maps.web.apiKey",
+  "config.maps.web.securityCode",
   "_AMapSecurityConfig",
   "https://webapi.amap.com/maps?v=2.0"
 )) {
   if ($webLoader -notmatch [regex]::Escape($required)) {
     throw "高德 Web JS API 受控加载缺少: $required"
+  }
+}
+
+foreach ($required in @(
+  "@pollycar/configuration/public",
+  "EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG"
+)) {
+  if ($publicConfig -notmatch [regex]::Escape($required)) {
+    throw "App 公开地图配置入口缺少: $required"
+  }
+}
+
+foreach ($required in @(
+  "createAmapPublicConfig",
+  "POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED",
+  "POLLYCAR_AMAP_APPROVAL_REFERENCE",
+  "POLLYCAR_AMAP_WEB_JS_API_KEY",
+  "POLLYCAR_AMAP_WEB_JS_SECURITY_CODE"
+)) {
+  if ($amapPublicConfig -notmatch [regex]::Escape($required)) {
+    throw "高德 Web 公开快照生成器缺少: $required"
   }
 }
 

@@ -10,6 +10,7 @@ export type RequestContext = Readonly<{
 export type AppRequestContext = Readonly<{
   correlationId: string;
   accountId: string;
+  accountSessionId: string;
   activeIdentity: "passenger" | "driver";
   synthetic: true;
 }>;
@@ -35,6 +36,7 @@ export function createRequestContext(request: IncomingMessage): RequestContext {
 export async function createAppRequestContext(
   request: IncomingMessage,
   authenticateSession?: (token: string) => Promise<Readonly<{
+    sessionId: string;
     accountId: string;
     activeIdentity: "passenger" | "driver";
     businessAccessAllowed: boolean;
@@ -53,6 +55,10 @@ export async function createAppRequestContext(
     return {
       correlationId: correlationId(request),
       accountId: verifiedAccountId,
+      accountSessionId:
+        typeof request.headers["x-verified-session-id"] === "string"
+          ? request.headers["x-verified-session-id"]
+          : `verified-session-${verifiedAccountId}`,
       activeIdentity:
         request.headers["x-verified-active-identity"] === "driver"
           ? "driver"
@@ -71,6 +77,7 @@ export async function createAppRequestContext(
     return {
       correlationId: correlationId(request),
       accountId: session.accountId,
+      accountSessionId: session.sessionId,
       activeIdentity: session.activeIdentity,
       synthetic: true,
     };
@@ -91,6 +98,12 @@ export async function createAppRequestContext(
         : authorization === "Sandbox synthetic-unverified-9"
           ? "synthetic-unverified-9"
         : "synthetic-account-7",
+    accountSessionId:
+      authorization === "Sandbox synthetic-passenger-8"
+        ? "legacy-session-synthetic-passenger-8"
+        : authorization === "Sandbox synthetic-unverified-9"
+          ? "legacy-session-synthetic-unverified-9"
+          : "legacy-session-synthetic-account-7",
     activeIdentity:
       request.headers["x-verified-active-identity"] === "passenger"
         ? "passenger"

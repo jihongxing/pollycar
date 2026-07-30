@@ -1,5 +1,9 @@
 ﻿import { expect, test } from "@playwright/test";
-import { openAuthenticatedPage } from "./helpers/authenticated-app";
+import {
+  completeOwnerParticipationConsent,
+  completeVehicleMaterialChecklist,
+  openAuthenticatedPage,
+} from "./helpers/authenticated-app";
 import type { Page } from "@playwright/test";
 import {
   mockMobilityDashboard,
@@ -199,9 +203,10 @@ test("车辆提交需要确认并防止重复提交", async ({ page }) => {
   });
   await openAuthenticatedPage(page, "/owner-apply-intro");
   await page.getByRole("button", { name: "开始准备" }).click();
-  await page.getByRole("button", { name: "我已了解，继续添加车辆" }).click();
+  await completeOwnerParticipationConsent(page);
   await page.getByRole("textbox", { name: "保险有效期" }).fill("2027-08-31");
   await page.getByRole("textbox", { name: "保险有效期" }).blur();
+  await completeVehicleMaterialChecklist(page);
   await page.goto("/submission-review");
   const submitTrigger = page.getByRole("button", { name: "提交车辆审核" });
   await submitTrigger.click();
@@ -419,11 +424,11 @@ test("审核页面支持直接深链和刷新恢复", async ({ page }) => {
     });
   });
   await openAuthenticatedPage(page, "/review-pending");
-  await expect(page.getByText("资料正在审核")).toBeVisible();
-  await expect(page.getByText("当前无需重复提交。你可以离开页面，状态变化后再继续处理。")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "平台正在审核车辆资料" })).toBeVisible();
+  await expect(page.getByText("当前无需重复提交。")).toBeVisible();
   await expect(page).toHaveURL(/\/review-pending$/);
   await page.reload();
-  await expect(page.getByText("资料正在审核")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "平台正在审核车辆资料" })).toBeVisible();
 });
 
 test("车辆草稿刷新后恢复且浏览器返回保留输入", async ({ page }) => {
@@ -471,7 +476,7 @@ test("车辆草稿刷新后恢复且浏览器返回保留输入", async ({ page 
 test("车辆表单实时校验、格式化并保护未同步修改", async ({ page }) => {
   await page.addInitScript(() => localStorage.removeItem("pollycar.vehicle-form.draft"));
   await openAuthenticatedPage(page, "/owner-profile");
-  await page.getByRole("button", { name: "我已了解，继续添加车辆" }).click();
+  await completeOwnerParticipationConsent(page);
   const vehicleType = page.getByRole("textbox", { name: "车辆类型" });
   const insuranceDate = page.getByRole("textbox", { name: "保险有效期" });
 
@@ -485,6 +490,7 @@ test("车辆表单实时校验、格式化并保护未同步修改", async ({ pa
   await insuranceDate.fill("2028-01-31");
   await vehicleType.blur();
   await expect(vehicleType).toHaveValue("示例 SUV");
+  await completeVehicleMaterialChecklist(page);
   await expect(page.getByRole("button", { name: "保存并继续" })).toBeEnabled();
 
   await page.goBack();
@@ -509,6 +515,7 @@ test("车辆草稿同步失败后保留输入和本地恢复能力", async ({ pa
   await page.getByRole("textbox", { name: "车辆类型" }).fill("示例恢复车辆");
   await page.getByRole("tab", { name: "3 人" }).click();
   await page.getByRole("textbox", { name: "保险有效期" }).fill("2028-01-31");
+  await completeVehicleMaterialChecklist(page);
   await page.getByRole("button", { name: "保存并继续" }).click();
   await expect(page.getByText("服务暂不可用")).toBeVisible();
   await expect(page).toHaveURL(/\/vehicle-form$/);

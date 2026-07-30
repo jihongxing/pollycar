@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AdminAccessService } from "./admin-access-service.js";
 import { AdminAuthenticationService } from "./admin-authentication-service.js";
+import { AdminReviewTaskService } from "./admin-review-task-service.js";
 import {
   AdminOperatorManagementService,
   InMemorySyntheticPrimaryOperatorRelationshipGateway,
@@ -8,6 +9,17 @@ import {
 import { AdminFinanceOperationsService } from "./admin-finance-operations-service.js";
 import { AdminTripCaseManagementService } from "./admin-trip-case-management-service.js";
 import { ExecutiveDashboardQueryService } from "./executive-dashboard-query-service.js";
+import { MemoryAuditLog } from "../adapters/memory-audit.js";
+import {
+  MemoryLogger,
+  MemoryMetrics,
+  MemoryTracer,
+} from "../adapters/memory-observability.js";
+import { MemoryReviewTaskRepository } from "../adapters/memory-review-task-repository.js";
+import type {
+  ReviewTaskRecord,
+  VehicleReviewDecisionExecutor,
+} from "../ports/review-tasks.js";
 
 describe("运营后台合成认证与授权导航", () => {
   it("成员管理员暂停成员后撤销现有会话并可恢复", () => {
@@ -139,19 +151,200 @@ describe("运营后台合成认证与授权导航", () => {
   it("发布前验收补齐运营专员、主体管理、客服负责人和运营公司安全联络身份", () => {
     const service = new AdminAuthenticationService(true, true);
     const samples = [
-      ["ops@rego.example", "synthetic-operations-officer-001", "operations_officer"],
-      ["ops@rego.example", "synthetic-operator-management-officer-001", "operator_management_officer"],
-      ["support@rego.example", "synthetic-support-lead-001", "support_lead"],
-      ["safety@rego.example", "synthetic-operator-safety-liaison-001", "operator_safety_liaison"],
+      ["ops@rego.example", "synthetic-operations-officer-001", "level_1", "operations_task"],
+      ["ops@rego.example", "synthetic-operator-management-officer-001", "level_2", "operator_governance"],
+      ["support@rego.example", "synthetic-support-lead-001", "level_2", "support_case"],
+      ["safety@rego.example", "synthetic-operator-safety-liaison-001", "level_1", "safety_investigation"],
     ] as const;
 
-    for (const [email, workIdentityId, productRole] of samples) {
+    for (const [email, workIdentityId, authorizationLevel, capability] of samples) {
       const session = login(service, email, workIdentityId);
-      expect(session.workIdentity.productRole).toBe(productRole);
+      expect(session.workIdentity.authorizationLevel).toBe(authorizationLevel);
+      expect(session.workIdentity.capabilities).toContain(capability);
       expect(session.navigation.items.some(
         (navigationItem) => navigationItem.availability === "available",
       )).toBe(true);
     }
+  });
+
+  it("统一授权模型只签发层级与能力，运营公司不可能获得三级", () => {
+    const service = new AdminAuthenticationService(true, true);
+    const platform = login(
+      service,
+      "ops@rego.example",
+      "synthetic-platform-ops-001",
+    );
+    const operator = login(
+      service,
+      "lin.yun@rego.example",
+      "synthetic-operator-ops-001",
+    );
+    const reviewer = login(
+      service,
+      "review@rego.example",
+      "synthetic-reviewer-001",
+    );
+
+    expect(platform.workIdentity).toMatchObject({
+      authorizationLevel: "level_2",
+      capabilities: expect.arrayContaining([
+        "operations_task",
+        "operator_governance",
+      ]),
+    });
+    expect(platform.workIdentity).not.toHaveProperty("productRole");
+    expect(platform.navigation).toMatchObject({
+      authorizationLevel: "level_2",
+      capabilities: platform.workIdentity.capabilities,
+    });
+    expect(operator.workIdentity.authorizationLevel).not.toBe("level_3");
+    expect(operator.navigation.items.some(
+      (item) => item.id === "organization_accounts",
+    )).toBe(false);
+    expect(reviewer.navigation.operationPermissions).toContain("fleet:claim");
+    expect(reviewer.navigation.operationPermissions).toContain(
+      "fleet:request_material",
+    );
+    expect(reviewer.navigation.operationPermissions).not.toContain(
+      "fleet:approve",
+    );
+    expect(reviewer.navigation.operationPermissions).not.toContain(
+      "fleet:reject",
+    );
+  });
+
+  it("四类记录统一返回允许操作、阻断原因和下一步", async () => {
+    const fleet = createFleetProductServices("synthetic-reviewer-001");
+    const operatorFleet = login(
+      fleet.authentication,
+      "fleet@rego.example",
+      "synthetic-operator-fleet-001",
+    );
+    const restrictedDriver = await fleet.authentication.getDriver(
+      operatorFleet.accessToken,
+      "driver-synthetic-104",
+      fleet.operatorManagement,
+      fleet.adminReviews,
+      requestContext,
+    );
+    expect(restrictedDriver.allowedActions).toEqual([]);
+    expect(restrictedDriver.actionBlockers).toEqual([
+      expect.objectContaining({ code: "REQUIRES_PLATFORM_REVIEW" }),
+    ]);
+    expect(restrictedDriver.nextSteps).toEqual([
+      expect.objectContaining({
+        kind: "REQUEST_PLATFORM_REVIEW",
+        label: "提交平台恢复申请",
+      }),
+    ]);
+
+    const levelOne = login(
+      fleet.authentication,
+      "review@rego.example",
+      "synthetic-reviewer-001",
+    );
+    const levelOneVehicle = await fleet.authentication.getVehicle(
+      levelOne.accessToken,
+      "vehicle-synthetic-204",
+      fleet.operatorManagement,
+      fleet.adminReviews,
+      requestContext,
+    );
+    expect(levelOneVehicle.allowedActions).toEqual(["request_material"]);
+    expect(levelOneVehicle.allowedActions).not.toContain("approve");
+    expect(levelOneVehicle.allowedActions).not.toContain("reject");
+    expect(levelOneVehicle.actionBlockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "approve", code: "REQUIRES_REVIEW" }),
+      expect.objectContaining({ action: "reject", code: "REQUIRES_REVIEW" }),
+    ]));
+    expect(levelOneVehicle.nextSteps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "REQUEST_MATERIAL",
+        action: "request_material",
+      }),
+    ]));
+
+    const cases = createCaseProductServices();
+    const operationsLead = login(
+      cases.authentication,
+      "ops@rego.example",
+      "synthetic-platform-ops-001",
+    );
+    const trip = cases.authentication.getTrip(
+      operationsLead.accessToken,
+      "trip-synthetic-8466",
+      cases.tripCaseManagement,
+      requestContext,
+    );
+    expect(trip.allowedActions).toEqual(["triage"]);
+    expect(trip.actionBlockers).toEqual([]);
+    expect(trip.nextSteps).toEqual([
+      expect.objectContaining({
+        kind: "EXECUTE_ACTION",
+        action: "triage",
+      }),
+    ]);
+  });
+
+  it("二级车辆审核负责人在材料不完整时不能批准", async () => {
+    const fleet = createFleetProductServices("synthetic-senior-reviewer-001");
+    const lead = login(
+      fleet.authentication,
+      "review@rego.example",
+      "synthetic-senior-reviewer-001",
+    );
+    const detail = await fleet.authentication.getVehicle(
+      lead.accessToken,
+      "vehicle-synthetic-204",
+      fleet.operatorManagement,
+      fleet.adminReviews,
+      requestContext,
+    );
+    expect(detail.allowedActions).toEqual(["request_material", "reject"]);
+    expect(detail.actionBlockers).toEqual([
+      expect.objectContaining({
+        action: "approve",
+        code: "MISSING_MATERIAL",
+      }),
+    ]);
+    expect(detail.nextSteps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "REQUEST_MATERIAL",
+        action: "request_material",
+      }),
+    ]));
+  });
+
+  it("已完成运营任务只提供查看处理记录的下一步", () => {
+    const service = new AdminAuthenticationService(true, true);
+    const platform = login(
+      service,
+      "ops@rego.example",
+      "synthetic-platform-ops-001",
+    );
+    const reviewTask = service
+      .listOperationsTasks(platform.accessToken, {
+        status: "waiting_review",
+        pageSize: 100,
+      })
+      .items[0]!;
+    const result = service.performOperationsTaskAction(
+      platform.accessToken,
+      reviewTask.taskId,
+      {
+        action: "review",
+        expectedVersion: reviewTask.version,
+        idempotencyKey: "complete-operations-task-001",
+      },
+    );
+    const detail = result.detail;
+    expect(detail.allowedActions).toEqual([]);
+    expect(detail.actionBlockers).toEqual([
+      expect.objectContaining({ code: "ALREADY_COMPLETED" }),
+    ]);
+    expect(detail.nextSteps).toEqual([
+      expect.objectContaining({ kind: "NONE", label: "查看处理记录" }),
+    ]);
   });
 
   it("发布前验收角色导航与冻结权限矩阵保持一致", () => {
@@ -169,7 +362,7 @@ describe("运营后台合成认证与授权导航", () => {
       ["support@rego.example", "synthetic-support-001", ["workbench", "trip_operations", "support_safety"]],
       ["support@rego.example", "synthetic-support-lead-001", ["workbench", "trip_operations", "support_safety", "data_reports"]],
       ["safety@rego.example", "synthetic-safety-officer-001", ["workbench", "driver_vehicle", "trip_operations", "support_safety"]],
-      ["safety@rego.example", "synthetic-safety-lead-001", ["workbench", "support_safety", "data_reports", "executive_dashboard"]],
+      ["safety@rego.example", "synthetic-safety-lead-001", ["workbench", "driver_vehicle", "trip_operations", "support_safety", "data_reports", "executive_dashboard"]],
       ["finance@rego.example", "synthetic-finance-officer-001", ["workbench", "finance_operations"]],
       ["finance@rego.example", "synthetic-finance-lead-001", ["workbench", "finance_operations", "data_reports", "executive_dashboard"]],
       ["governance@rego.example", "synthetic-privacy-compliance-001", ["workbench", "support_safety", "finance_operations", "data_reports", "executive_dashboard", "audit_system"]],
@@ -179,7 +372,7 @@ describe("运营后台合成认证与授权导航", () => {
       ["executive@rego.example", "synthetic-executive-sponsor-001", ["workbench", "data_reports", "executive_dashboard"]],
       ["operator.admin@rego.example", "synthetic-operator-account-admin-001", ["workbench", "organization_accounts", "audit_system"]],
       ["lin.yun@rego.example", "synthetic-operator-ops-001", ["workbench", "operator_management", "driver_vehicle", "trip_operations", "data_reports"]],
-      ["fleet@rego.example", "synthetic-operator-fleet-001", ["workbench", "operator_management", "driver_vehicle"]],
+      ["fleet@rego.example", "synthetic-operator-fleet-001", ["workbench", "driver_vehicle"]],
       ["support@rego.example", "synthetic-operator-support-001", ["workbench", "trip_operations", "support_safety"]],
       ["safety@rego.example", "synthetic-operator-safety-liaison-001", ["workbench", "driver_vehicle", "trip_operations", "support_safety"]],
       ["finance@rego.example", "synthetic-operator-finance-officer-001", ["workbench", "finance_operations"]],
@@ -794,6 +987,12 @@ describe("运营后台合成认证与授权导航", () => {
       kind: "safety",
       investigation: { investigationState: "awaiting_independent_review" },
       allowedActions: ["request_evidence"],
+      nextSteps: expect.arrayContaining([
+        expect.objectContaining({
+          action: "request_evidence",
+          kind: "EXECUTE_ACTION",
+        }),
+      ]),
     });
 
     const leadDetail = authentication.getCase(
@@ -803,8 +1002,16 @@ describe("运营后台合成认证与授权导航", () => {
       tripCaseManagement,
       requestContext,
     );
+    expect(leadDetail.kind).toBe("safety");
+    if (leadDetail.kind !== "safety") throw new Error("expected safety detail");
     expect(leadDetail.allowedActions).not.toContain("restore_access");
     expect(leadDetail.allowedActions).toContain("uphold_freeze");
+    expect(leadDetail.actionBlockers).toEqual([
+      expect.objectContaining({
+        action: "restore_access",
+        code: "RISK_RESTRICTION",
+      }),
+    ]);
     const upheld = authentication.performCaseAction(
       lead.accessToken,
       "safety",
@@ -916,7 +1123,7 @@ describe("运营后台合成认证与授权导航", () => {
   });
 
   it("财务结算完成经办、独立复核、幂等结果和追加式审计", () => {
-    const { authentication, financeOperations } =
+    const { authentication, financeOperations, access } =
       createFinanceProductServices();
     const officer = login(
       authentication,
@@ -955,13 +1162,54 @@ describe("运营后台合成认证与授权导航", () => {
       detail: {
         item: { state: "ready", resourceVersion: 2 },
         allowedActions: [],
+        actionBlockers: [
+          expect.objectContaining({
+            action: "review_operator_settlement",
+            code: "REQUIRES_INDEPENDENT_REVIEW",
+          }),
+        ],
+        nextSteps: [
+          expect.objectContaining({ kind: "WAIT" }),
+        ],
       },
     });
     expect(prepared.detail.auditTrail.at(-1)).toMatchObject({
       action: "finance_operation_submitted",
       previousState: "eligible",
       nextState: "ready",
+      approvalRecordId: prepared.detail.approvalRecords[0]?.approvalId,
     });
+    expect(prepared.detail.approvalRecords).toEqual([
+      expect.objectContaining({
+        domain: "finance",
+        resourceKind: "finance_record",
+        requestedAction: "review_operator_settlement",
+        state: "pending",
+        requester: expect.objectContaining({
+          workIdentityId: "synthetic-finance-officer-001",
+        }),
+      }),
+    ]);
+    const auditor = login(
+      authentication,
+      "audit@rego.example",
+      "synthetic-auditor-001",
+    );
+    const approvalPage = authentication.listAuditResources(
+      auditor.accessToken,
+      { kind: "approval", result: "pending" },
+      access,
+      requestContext,
+    );
+    expect(approvalPage.summary.pendingApprovals).toBe(1);
+    expect(approvalPage.items).toEqual([
+      expect.objectContaining({
+        kind: "approval",
+        domain: "finance",
+        result: "pending",
+        resourceId: prepared.detail.approvalRecords[0]?.approvalId,
+      }),
+    ]);
     const replay = authentication.performFinanceAction(
       officer.accessToken,
       "settlement",
@@ -986,6 +1234,7 @@ describe("运营后台合成认证与授权导航", () => {
       requestContext,
     );
     expect(reviewDetail.allowedActions).toEqual(["review_operator_settlement"]);
+    expect(reviewDetail.actionBlockers).toEqual([]);
     const reviewed = authentication.performFinanceAction(
       lead.accessToken,
       "settlement",
@@ -1007,7 +1256,17 @@ describe("运营后台合成认证与授权导航", () => {
       action: "finance_review_recorded",
       previousState: "ready",
       nextState: "succeeded",
+      approvalRecordId: reviewed.detail.approvalRecords[0]?.approvalId,
     });
+    expect(reviewed.detail.approvalRecords).toEqual([
+      expect.objectContaining({
+        requestedAction: "review_operator_settlement",
+        state: "approved",
+        reviewer: expect.objectContaining({
+          workIdentityId: "synthetic-finance-lead-001",
+        }),
+      }),
+    ]);
   });
 
   it("刷新令牌轮换后重放会撤销会话族", () => {
@@ -1484,6 +1743,7 @@ function createCaseProductServices() {
   const now = () => new Date("2026-07-16T08:00:00.000Z");
   const access = new AdminAccessService(true, true, true, true, now);
   return {
+    access,
     authentication: new AdminAuthenticationService(
       true,
       true,
@@ -1502,6 +1762,59 @@ function createCaseProductServices() {
   };
 }
 
+function createFleetProductServices(leaseOwnerId: string) {
+  const now = () => new Date("2026-07-16T08:00:00.000Z");
+  const access = new AdminAccessService(true, true, true, true, now);
+  const reviewTask: ReviewTaskRecord = {
+    taskId: "task-001",
+    applicationId: "application-001",
+    accountReference: "合成账户 · 001",
+    status: "in_progress",
+    submittedAt: "2026-07-15T08:00:00.000Z",
+    vehicleCategory: "舒适型五座轿车",
+    insuranceExpiryStatus: "incomplete",
+    authorizationEvidenceStatus: "complete",
+    attachmentValidationStatus: "valid",
+    taskVersion: 2,
+    vehicleReviewVersion: 1,
+    ownerId: leaseOwnerId,
+    claimedAt: "2026-07-16T07:30:00.000Z",
+    leaseExpiresAt: "2026-07-16T08:30:00.000Z",
+    synthetic: true,
+  };
+  const vehicleReviews: VehicleReviewDecisionExecutor = {
+    requestMaterial: async ({ expectedVehicleReviewVersion }) => ({
+      vehicleReviewVersion: expectedVehicleReviewVersion + 1,
+    }),
+    approve: async ({ expectedVersion }) => ({ version: expectedVersion + 1 }),
+    reject: async ({ expectedVersion }) => ({ version: expectedVersion + 1 }),
+  };
+  return {
+    authentication: new AdminAuthenticationService(
+      true,
+      true,
+      now,
+      true,
+      true,
+    ),
+    operatorManagement: new AdminOperatorManagementService(
+      true,
+      access,
+      new InMemorySyntheticPrimaryOperatorRelationshipGateway(),
+      now,
+    ),
+    adminReviews: new AdminReviewTaskService(
+      new MemoryReviewTaskRepository([reviewTask]),
+      vehicleReviews,
+      new MemoryAuditLog(),
+      new MemoryLogger(),
+      new MemoryMetrics(),
+      new MemoryTracer(),
+      now,
+    ),
+  };
+}
+
 function createFinanceProductServices() {
   const now = () => new Date("2026-07-16T09:00:00.000Z");
   const access = new AdminAccessService(
@@ -1513,6 +1826,7 @@ function createFinanceProductServices() {
     now,
   );
   return {
+    access,
     authentication: new AdminAuthenticationService(
       true,
       true,
@@ -1521,6 +1835,9 @@ function createFinanceProductServices() {
       false,
       false,
       false,
+      true,
+      false,
+      undefined,
       true,
     ),
     financeOperations: new AdminFinanceOperationsService(true, access),

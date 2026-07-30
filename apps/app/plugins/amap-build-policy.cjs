@@ -14,21 +14,8 @@ function requireValue(environment, name) {
 function assertSecretBoundary(environment) {
   for (const name of Object.keys(environment)) {
     const isAmapPublicKey = /^EXPO_PUBLIC_.*AMAP.*KEY/i.test(name);
-    const isApprovedWebJsKey =
-      name === "EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY";
-    if (isAmapPublicKey && !isApprovedWebJsKey && environment[name]) {
+    if (isAmapPublicKey && environment[name]) {
       throw new Error("AMAP_KEY_PUBLIC_ENV_FORBIDDEN");
-    }
-  }
-
-  if (environment.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_API_KEY) {
-    if (
-      environment.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_ENABLED !== "true" ||
-      environment.POLLYCAR_AMAP_EXTERNAL_APPROVAL_GRANTED !== "true" ||
-      !environment.EXPO_PUBLIC_POLLYCAR_AMAP_WEB_JS_SECURITY_CODE?.trim() ||
-      !environment.EXPO_PUBLIC_POLLYCAR_AMAP_APPROVAL_REFERENCE?.trim()
-    ) {
-      throw new Error("AMAP_WEB_PRODUCTION_APPROVAL_REQUIRED");
     }
   }
 }

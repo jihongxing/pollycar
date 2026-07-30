@@ -102,6 +102,45 @@ describe("产品化运营后台", () => {
     expect(screen.queryByRole("button", { name: "分派任务" })).not.toBeInTheDocument();
   });
 
+  it("不可执行记录展示具体阻断原因和下一步且不展示无效按钮", async () => {
+    const user = userEvent.setup();
+    const client = fixtureClient();
+    client.getOperationsTask = async () => ({
+      ...fixtureTaskDetail(),
+      task: {
+        ...fixtureTaskDetail().task,
+        status: "completed",
+      },
+      allowedActions: [],
+      actionBlockers: [{
+        action: "process",
+        code: "ALREADY_COMPLETED",
+        reason: "任务已经完成，不能再次处理。",
+        nextStep: {
+          kind: "NONE",
+          label: "查看处理记录",
+        },
+      }],
+      nextSteps: [{
+        kind: "NONE",
+        label: "查看处理记录",
+      }],
+    });
+
+    render(<Providers><ProductizedAdminShell client={client} /></Providers>);
+    await login(user);
+    await user.click(await screen.findByRole("button", {
+      name: /车辆资格跟进 1/,
+    }));
+
+    expect(await screen.findByText("任务已经完成，不能再次处理。"))
+      .toBeInTheDocument();
+    expect(screen.getByText("查看处理记录")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "分派任务" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByText("ALREADY_COMPLETED")).not.toBeInTheDocument();
+  });
+
   it("运营公司名录进入详情并恢复搜索条件", async () => {
     const user = userEvent.setup();
     const client = fixtureClient();
@@ -499,6 +538,9 @@ describe("产品化运营后台", () => {
     });
     expect(within(dialog).getByRole("button", { name: "返回检查" }))
       .toHaveFocus();
+    expect(within(dialog).getByText(
+      /必须由其他具备财务复核能力的负责人处理/,
+    )).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "主菜单" }))
       .toHaveAttribute("inert");
     await user.click(within(dialog).getByRole("button", {
@@ -695,6 +737,7 @@ describe("产品化运营后台", () => {
           deniedEvents: 1,
           highRiskEvents: 1,
           openInvestigations: 0,
+          pendingApprovals: 0,
           integrityWarnings: 0,
         },
         items: [eventDetail.item],
@@ -793,7 +836,7 @@ describe("产品化运营后台", () => {
                 eventId: "data-report-refresh-001",
                 action: "data_report_refreshed",
                 actorLabel: session.workIdentity.organizationName,
-                actorRole: session.workIdentity.productRoleName,
+                actorRole: session.workIdentity.positionName,
                 occurredAt: "2026-07-16T12:05:00.000Z",
                 previousVersion: 1,
                 nextVersion: 2,
@@ -904,6 +947,27 @@ function fixtureClient(
           updatedAt: "2026-07-15T09:30:00.000Z",
         },
         allowedActions: [],
+        approvalRecords: [{
+          approvalId: "approval-finance-1",
+          domain: "finance",
+          resourceKind: "finance_record",
+          resourceId: "settlement-synthetic-184",
+          organizationType: session.workIdentity.type,
+          organizationId: session.workIdentity.organizationId,
+          organizationName: session.workIdentity.organizationName,
+          requestedAction: "review_operator_settlement",
+          state: "pending",
+          requester: {
+            workIdentityId: session.workIdentity.workIdentityId,
+            actorLabel: session.workIdentity.organizationName,
+            actorRole: session.workIdentity.positionName,
+            occurredAt: "2026-07-16T08:15:00.000Z",
+          },
+          separationRequired: true,
+          resourceVersion: 1,
+          updatedAt: "2026-07-16T08:15:00.000Z",
+          synthetic: true,
+        }],
         auditTrail: [
           ...fixtureTaskDetail().auditTrail,
           {
@@ -966,7 +1030,7 @@ function fixtureClient(
               ? "operator_restricted"
               : "operator_reactivated",
             actorLabel: session.workIdentity.organizationName,
-            actorRole: session.workIdentity.productRoleName,
+            actorRole: session.workIdentity.positionName,
             occurredAt: "2026-07-15T10:30:00.000Z",
             previousState:
               command.action === "restrict" ? "active" : "restricted",
@@ -1027,7 +1091,7 @@ function fixtureClient(
             eventId: "trip-audit-action-1",
             action: "trip_domain_action_requested",
             actorLabel: session.workIdentity.organizationName,
-            actorRole: session.workIdentity.productRoleName,
+            actorRole: session.workIdentity.positionName,
             occurredAt: "2026-07-15T10:30:00.000Z",
             previousState: "coordinating",
             nextState: "awaiting_authoritative_result",
@@ -1083,7 +1147,7 @@ function fixtureClient(
             eventId: "case-audit-action-1",
             action: "support_case_state_changed",
             actorLabel: session.workIdentity.organizationName,
-            actorRole: session.workIdentity.productRoleName,
+            actorRole: session.workIdentity.positionName,
             occurredAt: "2026-07-16T08:15:00.000Z",
             previousState: "investigating",
             nextState: "resolved",
@@ -1139,7 +1203,7 @@ function fixtureClient(
             eventId: "finance-audit-action-1",
             action: "finance_operation_submitted",
             actorLabel: session.workIdentity.organizationName,
-            actorRole: session.workIdentity.productRoleName,
+            actorRole: session.workIdentity.positionName,
             occurredAt: "2026-07-16T08:15:00.000Z",
             previousState: "eligible",
             nextState: "ready",
@@ -1224,14 +1288,16 @@ function fixtureOperatorDetail(
       cityScopes: session.workIdentity.cityScopes,
     },
     allowedActions:
-      session.workIdentity.productRole === "operations_lead"
+      session.workIdentity.type === "platform" &&
+      session.workIdentity.authorizationLevel === "level_2" &&
+      session.workIdentity.capabilities.includes("operator_governance")
         ? ["restrict"]
         : [],
     auditTrail: [{
       eventId: "operator-audit-view-1",
       action: "operator_profile_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-15T10:00:00.000Z",
     }],
     synthetic: true,
@@ -1259,6 +1325,12 @@ function fixtureTaskDetail(): AdminOperationsTaskDetail {
       cityScopes: ["上海"],
     },
     allowedActions: ["assign"],
+    actionBlockers: [],
+    nextSteps: [{
+      kind: "EXECUTE_ACTION",
+      label: "分派任务",
+      action: "assign",
+    }],
     auditTrail: [{
       eventId: "audit-OPS-0001-created",
       action: "task_created",
@@ -1276,8 +1348,9 @@ function fixtureSession(): AdminProductSession {
     type: "operator" as const,
     organizationId: "operator-huhang",
     organizationName: "沪行出行服务",
-    productRole: "operator_operations_lead" as const,
-    productRoleName: "运营公司运营负责人",
+    authorizationLevel: "level_2" as const,
+    capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"] as const,
+    positionName: "运营公司运营负责人",
     cityScopes: ["上海"],
     maximumDataClassification: "sensitive" as const,
     synthetic: true as const,
@@ -1299,7 +1372,8 @@ function fixtureSession(): AdminProductSession {
         purpose: "operator_operations",
         fixed: true,
       },
-      roleIds: ["operator_operations_lead"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [
         { id: "workbench", label: "工作台", route: "/admin/workbench", availability: "available", children: [] },
         { id: "operator_management", label: "运营公司", route: "/admin/operators", availability: "available", children: [] },
@@ -1331,8 +1405,9 @@ function fixtureExecutiveSession(): AdminProductSession {
     type: "platform" as const,
     organizationId: "platform-pollycar",
     organizationName: "PollyCar 平台",
-    productRole: "executive_sponsor" as const,
-    productRoleName: "项目决策人",
+    authorizationLevel: "level_3" as const,
+    capabilities: ["executive_read"] as const,
+    positionName: "项目决策人",
   };
   return {
     ...base,
@@ -1353,7 +1428,8 @@ function fixtureExecutiveSession(): AdminProductSession {
         purpose: "platform_operations",
         fixed: false,
       },
-      roleIds: ["executive_sponsor"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [
         {
           id: "workbench",
@@ -1418,7 +1494,7 @@ function fixtureExecutiveDetail(
       eventId: "executive-audit-view-1",
       action: "executive_resource_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-16T10:00:00.000Z",
     }],
     directBusinessApprovalAllowed: false,
@@ -1437,8 +1513,9 @@ function fixtureAuditSession(): AdminProductSession {
     type: "platform" as const,
     organizationId: "platform-pollycar",
     organizationName: "PollyCar 平台",
-    productRole: "technical_operations" as const,
-    productRoleName: "平台技术运维",
+    authorizationLevel: "level_3" as const,
+    capabilities: ["technical_recovery"] as const,
+    positionName: "平台技术运维",
   };
   return {
     ...base,
@@ -1455,7 +1532,8 @@ function fixtureAuditSession(): AdminProductSession {
         purpose: "platform_operations",
         fixed: false,
       },
-      roleIds: ["technical_operations"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [
         {
           id: "workbench",
@@ -1486,8 +1564,9 @@ function fixtureDataReportSession(): AdminProductSession {
     type: "platform" as const,
     organizationId: "platform-pollycar",
     organizationName: "PollyCar 平台",
-    productRole: "data_analyst" as const,
-    productRoleName: "数据分析人员",
+    authorizationLevel: "level_1" as const,
+    capabilities: ["analytics_read"] as const,
+    positionName: "数据分析人员",
   };
   return {
     ...base,
@@ -1504,7 +1583,8 @@ function fixtureDataReportSession(): AdminProductSession {
         purpose: "platform_operations",
         fixed: false,
       },
-      roleIds: ["data_analyst"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [
         {
           id: "workbench",
@@ -1577,7 +1657,7 @@ function fixtureDataReportDetail(
       eventId: "data-report-view-001",
       action: "data_report_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-16T12:00:00.000Z",
     }],
     sourceBoundary: {
@@ -1636,7 +1716,7 @@ function fixtureAuditEventDetail(
       eventId: "audit-view-001",
       action: "audit_resource_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-16T11:00:00.000Z",
     }],
     integrity: {
@@ -1693,7 +1773,7 @@ function fixtureAuditInvestigationDetail(
       eventId: "audit-trail-open-001",
       action: "audit_investigation_opened",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-16T11:01:00.000Z",
       nextState: "open",
       note: "access_pattern_review",
@@ -1766,11 +1846,18 @@ function fixtureFinanceDetail(
       cityScopes: session.workIdentity.cityScopes,
     },
     allowedActions: ["prepare_operator_settlement"],
+    actionBlockers: [],
+    nextSteps: [{
+      kind: "EXECUTE_ACTION",
+      label: "提交运营公司结算制单",
+      action: "prepare_operator_settlement",
+    }],
+    approvalRecords: [],
     auditTrail: [{
       eventId: "finance-audit-view-1",
       action: "finance_profile_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-16T08:00:00.000Z",
     }],
     directBalanceMutationAllowed: false,
@@ -1810,11 +1897,17 @@ function fixtureDriverDetail(
       cityScopes: session.workIdentity.cityScopes,
     },
     linkedVehicles: [vehicleDetail.vehicle],
+    allowedActions: [],
+    actionBlockers: [],
+    nextSteps: [{
+      kind: "NONE",
+      label: "当前无需处理",
+    }],
     auditTrail: [{
       eventId: "driver-view-1",
       action: "driver_profile_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-19T08:00:00.000Z",
     }],
     synthetic: true,
@@ -1830,8 +1923,9 @@ function fixtureFleetSession(): AdminProductSession {
     type: "platform" as const,
     organizationId: "platform-pollycar",
     organizationName: "PollyCar 平台",
-    productRole: "reviewer" as const,
-    productRoleName: "车辆审核员",
+    authorizationLevel: "level_1" as const,
+    capabilities: ["fleet_review"] as const,
+    positionName: "车辆审核员",
   };
   return {
     ...base,
@@ -1852,7 +1946,8 @@ function fixtureFleetSession(): AdminProductSession {
         purpose: "platform_operations",
         fixed: false,
       },
-      roleIds: ["reviewer"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: base.navigation.items.map((item) => {
         if (item.id !== "driver_vehicle") return item;
         const { unavailableReason: _unavailableReason, ...available } = item;
@@ -1901,8 +1996,9 @@ function fixtureCaseSession(): AdminProductSession {
     ...base.workIdentity,
     workIdentityId: "synthetic-support-001",
     legacyAccessToken: "synthetic-support-001",
-    productRole: "customer_support" as const,
-    productRoleName: "平台客服",
+    authorizationLevel: "level_1" as const,
+    capabilities: ["operations_task", "trip_operation", "support_case"] as const,
+    positionName: "平台客服",
   };
   return {
     ...base,
@@ -1910,7 +2006,8 @@ function fixtureCaseSession(): AdminProductSession {
     navigation: {
       ...base.navigation,
       workIdentityId: workIdentity.workIdentityId,
-      roleIds: ["customer_support"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: base.navigation.items.map((item) => {
         if (item.id !== "support_safety") return item;
         const { unavailableReason: _unavailableReason, ...available } = item;
@@ -1933,8 +2030,9 @@ function fixtureFinanceSession(): AdminProductSession {
     ...base.workIdentity,
     workIdentityId: "synthetic-finance-officer-001",
     legacyAccessToken: "synthetic-finance-officer-001",
-    productRole: "finance_officer" as const,
-    productRoleName: "平台财务经办",
+    authorizationLevel: "level_1" as const,
+    capabilities: ["finance_operation"] as const,
+    positionName: "平台财务经办",
   };
   return {
     ...base,
@@ -1942,7 +2040,8 @@ function fixtureFinanceSession(): AdminProductSession {
     navigation: {
       ...base.navigation,
       workIdentityId: workIdentity.workIdentityId,
-      roleIds: ["finance_officer"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [
         ...base.navigation.items,
         {
@@ -1971,8 +2070,9 @@ function fixtureMembershipSession(): AdminProductSession {
     ...base.workIdentity,
     workIdentityId: "synthetic-platform-access-admin-001",
     legacyAccessToken: "synthetic-platform-access-admin-001",
-    productRole: "platform_access_administrator" as const,
-    productRoleName: "平台账号管理员",
+    authorizationLevel: "level_3" as const,
+    capabilities: ["membership_governance"] as const,
+    positionName: "平台账号管理员",
   };
   return {
     ...base,
@@ -1980,7 +2080,8 @@ function fixtureMembershipSession(): AdminProductSession {
     navigation: {
       ...base.navigation,
       workIdentityId: workIdentity.workIdentityId,
-      roleIds: ["platform_access_administrator"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       items: [
         ...base.navigation.items,
         {
@@ -2018,17 +2119,19 @@ function fixtureMembershipDetail(
       organizationType: "platform",
       organizationId: "platform-pollycar",
       organizationName: "PollyCar 平台",
-      productRole: "operations_lead",
-      productRoleName: "平台运营负责人",
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "平台运营负责人",
       state: suspended ? "suspended" : "active",
       activeSessionCount: suspended ? 0 : 2,
       resourceVersion: suspended ? 2 : 1,
       updatedAt: "2026-07-19T08:00:00.000Z",
       synthetic: true,
     },
-    roleBinding: {
-      roleId: "operations_lead",
-      roleName: "平台运营负责人",
+    authorizationBinding: {
+      authorizationLevel: "level_2",
+      capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"],
+      positionName: "平台运营负责人",
       source: "authoritative_membership",
       mutable: false,
     },
@@ -2046,7 +2149,7 @@ function fixtureMembershipDetail(
         ? "admin_membership_suspended"
         : "admin_membership_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-19T08:00:00.000Z",
       ...(suspended
         ? {
@@ -2137,7 +2240,7 @@ function fixtureCaseDetail(
       eventId: "case-audit-view-1",
       action: "case_profile_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-16T08:00:00.000Z",
     }],
     synthetic: true,
@@ -2206,11 +2309,17 @@ function fixtureTripDetail(
       cityScopes: session.workIdentity.cityScopes,
     },
     allowedActions: ["request_domain_action"],
+    actionBlockers: [],
+    nextSteps: [{
+      kind: "EXECUTE_ACTION",
+      label: "提交领域处理申请",
+      action: "request_domain_action",
+    }],
     auditTrail: [{
       eventId: "trip-audit-view-1",
       action: "trip_profile_viewed",
       actorLabel: session.workIdentity.organizationName,
-      actorRole: session.workIdentity.productRoleName,
+      actorRole: session.workIdentity.positionName,
       occurredAt: "2026-07-15T10:00:00.000Z",
     }],
     directTripMutationAllowed: false,
@@ -2314,6 +2423,30 @@ function fixtureVehicleDetail(
     allowedActions: claimed
       ? ["request_material", "reject", "approve"]
       : ["claim"],
+    actionBlockers: [],
+    nextSteps: claimed
+      ? [
+          {
+            kind: "REQUEST_MATERIAL",
+            label: "要求补充车辆审核材料",
+            action: "request_material",
+          },
+          {
+            kind: "EXECUTE_ACTION",
+            label: "批准车辆",
+            action: "approve",
+          },
+          {
+            kind: "EXECUTE_ACTION",
+            label: "拒绝车辆",
+            action: "reject",
+          },
+        ]
+      : [{
+          kind: "EXECUTE_ACTION",
+          label: "认领审核任务",
+          action: "claim",
+        }],
     auditTrail: claimed
       ? [{
           id: "audit-task-003-2-task_claimed-succeeded",
@@ -2340,8 +2473,9 @@ function fixturePlatformSession(): AdminProductSession {
     type: "platform" as const,
     organizationId: "platform-pollycar",
     organizationName: "PollyCar 平台",
-    productRole: "operations_lead" as const,
-    productRoleName: "平台运营负责人",
+    authorizationLevel: "level_2" as const,
+    capabilities: ["operations_task", "operator_governance", "fleet_operation", "trip_operation"] as const,
+    positionName: "平台运营负责人",
   };
   return {
     ...base,
@@ -2358,7 +2492,8 @@ function fixturePlatformSession(): AdminProductSession {
         purpose: "platform_operations",
         fixed: false,
       },
-      roleIds: ["operations_lead"],
+      authorizationLevel: workIdentity.authorizationLevel,
+      capabilities: workIdentity.capabilities,
       operationPermissions: [
         "read",
         "assign",

@@ -22,7 +22,7 @@
         "properties": {
           "id": {"type": "string", "pattern": "^MOB-[0-9]{3}$"},
           "name": {"type": "string", "minLength": 1},
-          "category": {"enum": ["account_session", "driver_availability", "dispatch_offer", "trip_fulfillment", "trip_scheduling", "trip_cancellation", "trip_completion", "driver_orders", "driver_finance", "trip_chat", "message_center", "trust_profile", "trip_rating", "fairness_monitoring", "data_lifecycle", "map_place_search", "map_reverse_geocode", "map_route", "vehicle_location_stream", "map_data_lifecycle"]},
+          "category": {"enum": ["account_session", "driver_liveness_verification", "driver_availability", "dispatch_offer", "trip_fulfillment", "trip_scheduling", "trip_cancellation", "trip_completion", "driver_orders", "driver_finance", "trip_chat", "message_center", "trust_profile", "trip_rating", "fairness_monitoring", "data_lifecycle", "map_place_search", "map_reverse_geocode", "map_route", "vehicle_location_stream", "map_data_lifecycle"]},
           "initial_state": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
           "actor": {"enum": ["passenger", "driver"]},
           "command": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},

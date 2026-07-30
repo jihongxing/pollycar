@@ -13,6 +13,7 @@ real_phone_data_enabled: false
 real_sms_delivery_enabled: false
 real_identity_verification_enabled: false
 real_biometric_verification_enabled: false
+real_driver_liveness_verification_enabled: false
 real_admin_accounts_enabled: false
 
 separation:
@@ -57,6 +58,25 @@ adult_eligibility:
   manual_review_required: true
   appeal_required: true
   raw_identity_data_in_business_payload_forbidden: true
+
+driver_liveness:
+  every_offline_to_online_requires_new_challenge: true
+  reusable_after_offline: false
+  challenge_and_authorization_single_use: true
+  server_or_provider_generated_actions_required: true
+  minimum_supported_actions: ["turn_head_left", "turn_head_right", "open_mouth"]
+  extensible_action_policy_required: true
+  provider_selected: false
+  enterprise_contract_ready: false
+  test_environment_ready: false
+  biometric_processing_approved: false
+  data_residency_approved: false
+  retention_and_deletion_approved: false
+  callback_signature_required: true
+  unknown_result_query_required: true
+  raw_video_to_business_api_forbidden: true
+  raw_biometric_data_in_business_logs_forbidden: true
+  accessibility_and_manual_recovery_required: true
 
 admin_workforce:
   strategy_decision: "pending"

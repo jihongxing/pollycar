@@ -4,7 +4,7 @@
   "title": "运营后台产品化高保真体验契约",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "review_document", "design_approval", "required_contracts", "required_feature_gates", "entry_views", "navigation_manifest", "information_architecture", "pagination", "domain_page_foundation", "operations_task_closure", "operator_management_closure", "driver_vehicle_closure", "trip_operations_closure", "support_safety_closure", "finance_operations_closure", "executive_dashboard_closure", "audit_system_closure", "data_reports_closure", "product_language", "prototype", "implementation_gate"],
+  "required": ["spec_version", "spec_id", "language", "production_enabled", "status", "source_document", "review_document", "design_approval", "required_contracts", "required_feature_gates", "entry_views", "navigation_manifest", "information_architecture", "pagination", "domain_page_foundation", "record_action_guidance", "high_risk_approval_records", "high_risk_confirmation", "operations_task_closure", "operator_management_closure", "driver_vehicle_closure", "trip_operations_closure", "support_safety_closure", "finance_operations_closure", "executive_dashboard_closure", "audit_system_closure", "data_reports_closure", "product_language", "prototype", "implementation_gate"],
   "properties": {
     "spec_version": {"const": "1.0"},
     "spec_id": {"const": "pollycar.admin.product-experience"},
@@ -21,6 +21,9 @@
     "information_architecture": {"type": "object"},
     "pagination": {"type": "object"},
     "domain_page_foundation": {"type": "object"},
+    "record_action_guidance": {"type": "object"},
+    "high_risk_approval_records": {"type": "object"},
+    "high_risk_confirmation": {"type": "object"},
     "operations_task_closure": {"type": "object"},
     "operator_management_closure": {"type": "object"},
     "driver_vehicle_closure": {"type": "object"},

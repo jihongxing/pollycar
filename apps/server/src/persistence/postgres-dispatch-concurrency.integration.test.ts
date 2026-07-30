@@ -1,4 +1,5 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { loadPostgresIntegrationTestConfig } from "@pollycar/configuration";
 import { Pool } from "pg";
 import { MemoryAuditLog } from "../adapters/memory-audit.js";
 import {
@@ -8,7 +9,8 @@ import {
 import { PostgresSyntheticTripRepository } from "./postgres-synthetic-trip-repository.js";
 import { PostgresTransaction } from "./postgres-transaction.js";
 
-const databaseUrl = process.env.POLLYCAR_DATABASE_URL;
+const databaseUrl =
+  loadPostgresIntegrationTestConfig().dispatchDatabaseUrl;
 const describePostgres = databaseUrl ? describe : describe.skip;
 const testPrefix = `dispatch-integration-${Date.now()}`;
 const now = new Date("2026-07-13T12:00:00.000Z");
@@ -209,4 +211,3 @@ function rejectedMessages(results: readonly PromiseSettledResult<unknown>[]): re
     .filter((reason): reason is Error => reason instanceof Error)
     .map((reason) => reason.message);
 }
-

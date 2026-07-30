@@ -15,7 +15,7 @@
     "scenarios": {
       "type": "array",
       "minItems": 91,
-      "maxItems": 91,
+      "maxItems": 102,
       "uniqueItems": true,
       "items": {
         "type": "object",
@@ -23,7 +23,7 @@
         "required": ["id", "category", "title", "expected"],
         "properties": {
           "id": {"type": "string", "pattern": "^ADMIN-UX-[0-9]{3}$"},
-          "category": {"enum": ["entry", "identity", "navigation", "shell", "pagination", "language", "responsive", "accessibility", "recovery", "operations_task", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "executive_dashboard", "audit_system", "data_reports"]},
+          "category": {"enum": ["entry", "identity", "navigation", "shell", "pagination", "language", "product_language", "responsive", "accessibility", "recovery", "authorization", "operations_task", "operator_management", "driver_vehicle", "trip_operations", "support_safety", "finance_operations", "executive_dashboard", "audit_system", "data_reports"]},
           "title": {"type": "string", "minLength": 1},
           "expected": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
         }

@@ -1,10 +1,23 @@
 import { spawn } from "node:child_process";
-import { createAmapClientEnvironment } from "./amap-client-environment.mjs";
+import {
+  assertNoDeprecatedConfigurationEnvironmentVariables,
+  createLocalSandboxAppEnvironment,
+  createPublicConfigEnvironment,
+  parseAppPublicConfig,
+} from "@pollycar/configuration";
 
 const args = process.argv.slice(2);
 if (args.length === 0) throw new Error("EXPO_COMMAND_REQUIRED");
 
-const environment = createAmapClientEnvironment(process.env);
+assertNoDeprecatedConfigurationEnvironmentVariables(process.env);
+const localEnvironment = createLocalSandboxAppEnvironment(process.env);
+const environment = createPublicConfigEnvironment(
+  process.env,
+  "EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG",
+  parseAppPublicConfig(
+    localEnvironment.EXPO_PUBLIC_POLLYCAR_PUBLIC_CONFIG,
+  ),
+);
 const command = process.env.npm_execpath
   ? process.execPath
   : process.platform === "win32"

@@ -67,7 +67,7 @@ test("消息中心以行程为主体展示完整聊天并区分系统通知", as
     .getByRole("button", { name: /车辆审核，你的车辆资料审核已通过/ })
     .click();
   await expect(page).toHaveURL(/\/vehicle-settings$/);
-  await page.getByRole("button", { name: "返回消息" }).click();
+  await page.getByRole("button", { name: "返回" }).click();
   await expect(page).toHaveURL(/\/message-center$/);
 
   await page.reload();

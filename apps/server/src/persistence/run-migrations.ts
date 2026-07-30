@@ -1,16 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { loadSandboxMigrationConfig } from "@pollycar/configuration";
 import { Pool } from "pg";
 import { runMigrations } from "./migrations.js";
 
-const connectionString = process.env.POLLYCAR_DATABASE_URL;
-if (!connectionString) throw new Error("POLLYCAR_DATABASE_URL_REQUIRED");
-if (!connectionString.includes("localhost") && !connectionString.includes("127.0.0.1")) {
-  throw new Error("INTERNAL_SANDBOX_DATABASE_MUST_BE_LOCAL");
-}
+const config = loadSandboxMigrationConfig();
 
 const pool = new Pool({
-  connectionString,
+  connectionString: config.databaseUrl,
   application_name: "pollycar-internal-sandbox-migrations",
   max: 1,
 });

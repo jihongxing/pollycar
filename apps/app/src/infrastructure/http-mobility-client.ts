@@ -1,22 +1,30 @@
-﻿import { authorizationHeader } from "./session-credentials";
 import type {
-  AvailableDriverTripView,
   ApiErrorResponse,
+  AvailableDriverTripView,
+  DriverDispatchOffersView,
+  DriverLivenessChallenge,
+  DriverLivenessResult,
   DriverOrderDetail,
   DriverOrderState,
   DriverOrderSummary,
-  DriverDispatchOffersView,
   DriverWalletView,
   PickupVerification,
   SyntheticTripView,
   TripCancellationEligibility,
   TripCancellationRequest,
 } from "@pollycar/contracts";
+import {
+  authorizationHeader,
+  deviceIdHeader,
+} from "./session-credentials";
 
 export type DriverAvailabilityView = Readonly<{
   accountId: string;
   state: "offline" | "online" | "busy";
   returnOnlineAfterTrip: boolean;
+  livenessRequiredBeforeNextOnline: boolean;
+  onlineSessionStartedAt?: string;
+  livenessPolicyVersion?: string;
   updatedAt: string;
   productionEnabled: false;
   synthetic: true;
@@ -42,16 +50,49 @@ export class HttpMobilityClient {
     return this.request("/v1/internal-sandbox/app/driver/availability");
   }
 
+  public createDriverLivenessChallenge(): Promise<DriverLivenessChallenge> {
+    return this.write(
+      "/v1/internal-sandbox/app/driver/liveness/challenges",
+      `driver-liveness-create-${createCorrelationId()}`,
+      { deviceId: deviceIdHeader() },
+    );
+  }
+
+  public getDriverLivenessChallenge(
+    challengeId: string,
+  ): Promise<DriverLivenessChallenge> {
+    return this.request(
+      `/v1/internal-sandbox/app/driver/liveness/challenges/${encodeURIComponent(challengeId)}`,
+    );
+  }
+
+  public completeDriverLivenessChallenge(
+    challengeId: string,
+    syntheticScenario: "passed" | "camera_denied" | "result_unknown",
+  ): Promise<DriverLivenessResult> {
+    return this.write(
+      `/v1/internal-sandbox/app/driver/liveness/challenges/${encodeURIComponent(challengeId)}/complete`,
+      `driver-liveness-complete-${challengeId}-${createCorrelationId()}`,
+      { syntheticScenario },
+    );
+  }
+
   public async setDriverAvailability(
     state: "online" | "offline",
     returnOnlineAfterTrip = true,
+    livenessAuthorizationToken?: string,
   ): Promise<DriverAvailabilityView> {
+    if (state === "online" && !livenessAuthorizationToken) {
+      throw new Error("DRIVER_LIVENESS_REQUIRED");
+    }
     const correlationId = createCorrelationId();
     await this.write(
       "/v1/internal-sandbox/app/driver/dispatch-presence",
       `driver-dispatch-presence-${state}-${correlationId}`,
       {
         state,
+        deviceId: deviceIdHeader(),
+        ...(state === "online" ? { livenessAuthorizationToken } : {}),
         ...(state === "online"
           ? {
               location: {
@@ -64,19 +105,24 @@ export class HttpMobilityClient {
               },
             }
           : {}),
+        returnOnlineAfterTrip,
       },
     );
     return this.getDriverAvailability();
   }
 
-  public async listAvailableTrips(): Promise<readonly AvailableDriverTripView[]> {
+  public async listAvailableTrips(): Promise<
+    readonly AvailableDriverTripView[]
+  > {
     const response = await this.request<DriverDispatchOffersView>(
       "/v1/internal-sandbox/app/driver/offers",
     );
     return response.offers.map((offer) => offer.trip);
   }
 
-  public listDriverOrders(state?: DriverOrderState): Promise<readonly DriverOrderSummary[]> {
+  public listDriverOrders(
+    state?: DriverOrderState,
+  ): Promise<readonly DriverOrderSummary[]> {
     const query = state ? `?state=${encodeURIComponent(state)}` : "";
     return this.request(`/v1/internal-sandbox/app/driver/orders${query}`);
   }
@@ -88,10 +134,14 @@ export class HttpMobilityClient {
   }
 
   public getFinanceOverview(): Promise<DriverWalletView> {
-    return this.request("/v1/internal-sandbox/app/driver/finance/overview");
+    return this.request(
+      "/v1/internal-sandbox/app/driver/finance/overview",
+    );
   }
 
-  public getCancellationEligibility(tripId: string): Promise<TripCancellationEligibility> {
+  public getCancellationEligibility(
+    tripId: string,
+  ): Promise<TripCancellationEligibility> {
     return this.request(
       `/v1/internal-sandbox/app/synthetic-trips/${encodeURIComponent(tripId)}/cancellation-eligibility`,
     );
@@ -115,12 +165,26 @@ export class HttpMobilityClient {
     );
   }
 
-  public markDriverEnRoute(tripId: string, expectedVersion: number): Promise<SyntheticTripView> {
-    return this.tripAction(tripId, "driver-en-route", expectedVersion);
+  public markDriverEnRoute(
+    tripId: string,
+    expectedVersion: number,
+  ): Promise<SyntheticTripView> {
+    return this.tripAction(
+      tripId,
+      "driver-en-route",
+      expectedVersion,
+    );
   }
 
-  public markDriverArrived(tripId: string, expectedVersion: number): Promise<SyntheticTripView> {
-    return this.tripAction(tripId, "driver-arrived", expectedVersion);
+  public markDriverArrived(
+    tripId: string,
+    expectedVersion: number,
+  ): Promise<SyntheticTripView> {
+    return this.tripAction(
+      tripId,
+      "driver-arrived",
+      expectedVersion,
+    );
   }
 
   public verifyBoarding(
@@ -128,14 +192,20 @@ export class HttpMobilityClient {
     expectedVersion: number,
     code: string,
   ): Promise<SyntheticTripView> {
-    return this.tripAction(tripId, "verify-boarding", expectedVersion, { code });
+    return this.tripAction(tripId, "verify-boarding", expectedVersion, {
+      code,
+    });
   }
 
   public createCompletionIntent(
     tripId: string,
     expectedVersion: number,
   ): Promise<CompletionIntent> {
-    return this.tripAction(tripId, "completion-intents", expectedVersion);
+    return this.tripAction(
+      tripId,
+      "completion-intents",
+      expectedVersion,
+    );
   }
 
   public completeWithIntent(
@@ -143,9 +213,12 @@ export class HttpMobilityClient {
     expectedVersion: number,
     completionIntentToken: string,
   ): Promise<SyntheticTripView> {
-    return this.tripAction(tripId, "complete-with-intent", expectedVersion, {
-      completionIntentToken,
-    });
+    return this.tripAction(
+      tripId,
+      "complete-with-intent",
+      expectedVersion,
+      { completionIntentToken },
+    );
   }
 
   private tripAction<TResult = SyntheticTripView>(
@@ -178,7 +251,10 @@ export class HttpMobilityClient {
     }
   }
 
-  private async request<TResult>(path: string, init: RequestInit = {}): Promise<TResult> {
+  private async request<TResult>(
+    path: string,
+    init: RequestInit = {},
+  ): Promise<TResult> {
     let response: Response;
     try {
       response = await this.fetcher(`${this.baseUrl}${path}`, {
@@ -187,6 +263,7 @@ export class HttpMobilityClient {
           Authorization: authorizationHeader(),
           "Content-Type": "application/json",
           "X-Correlation-Id": createCorrelationId(),
+          "X-Device-Id": deviceIdHeader(),
           ...init.headers,
         },
       });
@@ -203,8 +280,8 @@ export class HttpMobilityClient {
 }
 
 function createCorrelationId(): string {
-  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+  return typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
-

@@ -11,7 +11,7 @@ export function createSafetyCaseHandler(dependencies: Readonly<{
 }>) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
-    if (!url.pathname.startsWith("/v1/internal-sandbox/")) return false;
+    if (!isSafetyCasePath(url.pathname)) return false;
     const correlationId =
       typeof request.headers["x-correlation-id"] === "string"
         ? request.headers["x-correlation-id"]
@@ -104,6 +104,20 @@ export function createSafetyCaseHandler(dependencies: Readonly<{
       return send(response, mapped.status, mapped.body, correlationId);
     }
   };
+}
+
+function isSafetyCasePath(pathname: string): boolean {
+  return (
+    /^\/v1\/internal-sandbox\/app\/synthetic-trips\/[^/]+\/safety(?:\/(?:messages|reports))?$/.test(
+      pathname,
+    ) ||
+    /^\/v1\/internal-sandbox\/app\/safety-cases\/[^/]+\/appeal$/.test(
+      pathname,
+    ) ||
+    /^\/v1\/internal-sandbox\/safety\/cases\/[^/]+\/resolution$/.test(
+      pathname,
+    )
+  );
 }
 
 function applyCors(request: IncomingMessage, response: ServerResponse, allowedOrigins: readonly string[]) {

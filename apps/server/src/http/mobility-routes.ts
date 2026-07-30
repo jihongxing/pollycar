@@ -22,7 +22,15 @@ export function createMobilityHandler(dependencies: {
 
       if (url.pathname === "/v1/internal-sandbox/app/driver/availability") {
         if (request.method === "GET") {
-          return send(response, 200, await dependencies.service.getAvailability(context.accountId), context.correlationId);
+          return send(
+            response,
+            200,
+            await dependencies.service.getAvailability(context.accountId, {
+              accountSessionId: context.accountSessionId,
+              deviceId: requireDeviceId(request),
+            }),
+            context.correlationId,
+          );
         }
         if (request.method === "POST") {
           const body = await readJson(request);
@@ -36,6 +44,18 @@ export function createMobilityHandler(dependencies: {
               state,
               body.returnOnlineAfterTrip !== false,
               requireIdempotencyKey(request),
+              state === "online"
+                ? {
+                    accountId: context.accountId,
+                    accountSessionId: context.accountSessionId,
+                    deviceId: requireString(body, "deviceId", 128),
+                    ...optionalStringProperty(
+                      body,
+                      "livenessAuthorizationToken",
+                      512,
+                    ),
+                  }
+                : undefined,
             ),
             context.correlationId,
           );
@@ -181,7 +201,10 @@ function applyCors(request: IncomingMessage, response: ServerResponse, allowedOr
   if (origin && !allowedOrigins.includes(origin)) throw new Error("AUTHORIZATION_DENIED");
   if (origin) response.setHeader("Access-Control-Allow-Origin", origin);
   response.setHeader("Vary", "Origin");
-  response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key, X-Correlation-Id");
+  response.setHeader(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Device-Id",
+  );
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 }
 
@@ -208,6 +231,31 @@ function requireIdempotencyKey(request: IncomingMessage) {
   const value = request.headers["idempotency-key"];
   if (typeof value !== "string" || value.length < 8 || value.length > 128) throw new Error("VALIDATION_FAILED");
   return value;
+}
+
+function requireDeviceId(request: IncomingMessage): string {
+  const value = request.headers["x-device-id"];
+  if (typeof value !== "string" || value.length < 8 || value.length > 128) {
+    throw new Error("VALIDATION_FAILED");
+  }
+  return value;
+}
+
+function optionalStringProperty(
+  body: Record<string, unknown>,
+  field: string,
+  maximumLength: number,
+): Readonly<{ livenessAuthorizationToken?: string }> {
+  const value = body[field];
+  if (value === undefined) return {};
+  if (
+    typeof value !== "string" ||
+    value.length < 8 ||
+    value.length > maximumLength
+  ) {
+    throw new Error("VALIDATION_FAILED");
+  }
+  return { livenessAuthorizationToken: value };
 }
 
 function requireString(body: Record<string, unknown>, field: string, maxLength: number) {

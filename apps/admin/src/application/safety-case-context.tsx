@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { HttpAdminSafetyClient } from "../infrastructure/http-admin-safety-client";
 import { SyntheticAdminSafetyClient } from "../infrastructure/synthetic-admin-safety-client";
 import { resolveAdminApiBaseUrl } from "../infrastructure/api-base-url";
+import { resolveAdminPublicConfig } from "../infrastructure/public-config";
 
 const SafetyClientContext = createContext<AdminSafetyCaseClient | undefined>(undefined);
 
@@ -13,7 +14,7 @@ export function SafetyCaseProvider({
   const value = useMemo(
     () =>
       client ??
-      (import.meta.env.MODE === "test"
+      (resolveAdminPublicConfig().profile === "test"
         ? new SyntheticAdminSafetyClient()
         : new HttpAdminSafetyClient(resolveAdminApiBaseUrl())),
     [client],

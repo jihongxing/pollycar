@@ -14,6 +14,8 @@ source_documents:
   - "spec/tests/admin-finance-operations-scenarios.yaml"
   - "spec/tests/admin-executive-dashboard-scenarios.yaml"
   - "spec/tests/admin-product-experience-scenarios.yaml"
+  - "spec/tests/mobility-scenarios.yaml"
+  - "spec/domain/driver-liveness-verification.yaml"
 
 operations:
   - operation_id: "getAdminAccessSession"
@@ -1359,10 +1361,54 @@ operations:
     allowed_errors: ["AUTHENTICATION_REQUIRED", "INTERNAL_UNEXPECTED_ERROR"]
     acceptance_scenarios: ["ADMIN-112"]
 
+  - operation_id: "createAppDriverLivenessChallenge"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/driver/liveness/challenges"
+    authorization_action: "driver_liveness.challenge.create"
+    actors: ["driver"]
+    request_classification: "L2"
+    response_classification: "L4"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_LIVENESS_PROVIDER_UNAVAILABLE", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-041"]
+  - operation_id: "getAppDriverLivenessChallenge"
+    method: "GET"
+    path: "/v1/internal-sandbox/app/driver/liveness/challenges/{challenge_id}"
+    authorization_action: "driver_liveness.challenge.read"
+    actors: ["driver"]
+    request_classification: "L0"
+    response_classification: "L4"
+    idempotency_required: false
+    audit: "strict"
+    allowed_errors: ["AUTHENTICATION_REQUIRED", "DRIVER_LIVENESS_CHALLENGE_NOT_FOUND", "DRIVER_LIVENESS_RESULT_UNKNOWN", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-041", "MOB-045"]
+  - operation_id: "completeAppDriverLivenessChallenge"
+    method: "POST"
+    path: "/v1/internal-sandbox/app/driver/liveness/challenges/{challenge_id}/complete"
+    authorization_action: "driver_liveness.challenge.complete"
+    actors: ["driver"]
+    request_classification: "L4"
+    response_classification: "L4"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_LIVENESS_CHALLENGE_NOT_FOUND", "DRIVER_LIVENESS_CHALLENGE_EXPIRED", "DRIVER_LIVENESS_RESULT_UNKNOWN", "DRIVER_LIVENESS_PROVIDER_TIMEOUT", "DRIVER_LIVENESS_PROVIDER_UNAVAILABLE", "REAL_BIOMETRIC_DATA_FORBIDDEN", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-043", "MOB-045"]
+  - operation_id: "receiveDriverLivenessProviderCallback"
+    method: "POST"
+    path: "/v1/internal-sandbox/provider-callbacks/driver-liveness"
+    authorization_action: "driver_liveness.provider_callback.receive"
+    actors: ["identity_provider"]
+    request_classification: "L4"
+    response_classification: "L4"
+    idempotency_required: true
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHORIZATION_DENIED", "DRIVER_LIVENESS_CHALLENGE_NOT_FOUND", "DRIVER_LIVENESS_CHALLENGE_EXPIRED", "DRIVER_LIVENESS_RESULT_UNKNOWN", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-043", "MOB-045"]
   - operation_id: "getAppDriverAvailability"
     method: "GET"
     path: "/v1/internal-sandbox/app/driver/availability"
-    authorization_action: "synthetic_trip.dashboard.read"
+    authorization_action: "driver_availability.read"
     actors: ["driver"]
     request_classification: "L0"
     response_classification: "L2"
@@ -1373,25 +1419,25 @@ operations:
   - operation_id: "updateAppDriverAvailability"
     method: "POST"
     path: "/v1/internal-sandbox/app/driver/availability"
-    authorization_action: "synthetic_trip.start"
+    authorization_action: "driver_availability.update"
     actors: ["driver"]
-    request_classification: "L1"
+    request_classification: "L4"
     response_classification: "L2"
     idempotency_required: true
     audit: "strict"
-    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_AVAILABILITY_INVALID_STATE", "QUOTA_DRIVER_INELIGIBLE", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
-    acceptance_scenarios: ["MOB-001"]
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_AVAILABILITY_INVALID_STATE", "DRIVER_LIVENESS_REQUIRED", "DRIVER_LIVENESS_AUTHORIZATION_EXPIRED", "DRIVER_LIVENESS_AUTHORIZATION_REPLAYED", "DRIVER_LIVENESS_AUTHORIZATION_MISMATCH", "QUOTA_DRIVER_INELIGIBLE", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-001", "MOB-042", "MOB-044", "MOB-046"]
   - operation_id: "updateAppDriverDispatchPresence"
     method: "POST"
     path: "/v1/internal-sandbox/app/driver/dispatch-presence"
     authorization_action: "dispatch.presence.update"
     actors: ["driver"]
-    request_classification: "L3"
+    request_classification: "L4"
     response_classification: "L3"
     idempotency_required: true
-    audit: "sensitive"
-    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_LOCATION_STALE", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
-    acceptance_scenarios: ["MOB-035"]
+    audit: "strict"
+    allowed_errors: ["VALIDATION_INVALID_REQUEST", "AUTHENTICATION_REQUIRED", "DRIVER_LOCATION_STALE", "DRIVER_LIVENESS_REQUIRED", "DRIVER_LIVENESS_AUTHORIZATION_EXPIRED", "DRIVER_LIVENESS_AUTHORIZATION_REPLAYED", "DRIVER_LIVENESS_AUTHORIZATION_MISMATCH", "STORAGE_CONCURRENT_MODIFICATION", "CONFLICT_IDEMPOTENCY_KEY_REUSED", "INTERNAL_UNEXPECTED_ERROR"]
+    acceptance_scenarios: ["MOB-001", "MOB-035", "MOB-042", "MOB-044", "MOB-046"]
   - operation_id: "listAppDriverDispatchOffers"
     method: "GET"
     path: "/v1/internal-sandbox/app/driver/offers"
